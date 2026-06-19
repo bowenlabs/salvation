@@ -1,7 +1,7 @@
-# Thebes
+# Project Thebes
 
 **Cadmus** — a V8-first, Cloudflare-native full-stack framework.
-**Krypto** — a free, open-source web platform built on Cadmus.
+**Citadel** — a free, open-source web platform built on Cadmus.
 
 > Both projects are under active development. APIs will change.
 > Star the repo to follow along.
@@ -15,7 +15,7 @@ thebes/
 ├── packages/
 │   └── cadmus/        @bowenlabs/cadmus — the framework
 ├── apps/
-│   └── krypto/        Krypto — the reference app
+│   └── citadel/        Citadel — the reference app
 ├── docs/              Cadmus documentation site
 └── examples/          Standalone Cadmus usage examples
 ```
@@ -46,7 +46,7 @@ import { enqueue }     from '@bowenlabs/cadmus/queues'
 
 ---
 
-## Krypto
+## Citadel
 
 A free, open-source web platform for small businesses, creatives, and
 nonprofits. Built on Cadmus. One deploy gives operators a complete
@@ -58,7 +58,7 @@ digital presence — website, admin panel, forms, CRM, and notifications
 - **Operator-owned** — your Cloudflare account, your data, your domain
 - **Mobile-first** — the Panel is designed for phones and tablets first
 
-**[Read the Krypto docs →](./apps/krypto/README.md)**
+**[Read the Citadel docs →](./apps/citadel/README.md)**
 
 ---
 
@@ -78,7 +78,7 @@ V8-first framework can be tiny, fast, and developer-friendly simultaneously.
 | Project | Version | Status |
 |---|---|---|
 | Cadmus | 0.1.0 | 🚧 Active development — Phase 0 |
-| Krypto | 0.1.0 | 🚧 Active development — Phase 0 |
+| Citadel | 0.1.0 | 🚧 Active development — Phase 0 |
 
 Both projects are `0.x`. Breaking changes will happen.
 Stability guarantees begin at `1.0.0`.
@@ -90,11 +90,11 @@ Stability guarantees begin at `1.0.0`.
 Cadmus is MIT licensed. Contributions welcome — read
 [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a PR.
 
-Krypto uses a dual license. See [apps/krypto/LICENSE](./apps/krypto/LICENSE).
+Citadel uses a dual license. See [apps/citadel/LICENSE](./apps/citadel/LICENSE).
 
 All contributors and operators are expected to follow the
 [Code of Conduct & Acceptable Use](./CODE_OF_CONDUCT.md) — all
-contributions are welcome, and Krypto may not be used for hateful,
+contributions are welcome, and Citadel may not be used for hateful,
 discriminatory, or harassing purposes.
 
 ---

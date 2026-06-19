@@ -10,7 +10,7 @@ how Cadmus fits together.
 
 > **Coming in Phase 0.** This example will be the first thing built
 > after the Cadmus package structure is scaffolded. It validates that
-> the framework primitives work end-to-end before Krypto builds on them.
+> the framework primitives work end-to-end before Citadel builds on them.
 
 ---
 

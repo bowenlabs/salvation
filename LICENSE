@@ -1,4 +1,4 @@
-Krypto — Source Available License
+Citadel — Source Available License
 
 Copyright (c) 2026 BowenLabs. All rights reserved.
 
@@ -10,7 +10,7 @@ COMMUNITY USE — FREE
 
 This software may be used, modified, and deployed at no cost if you are:
 
-  (a) An individual using Krypto for personal or professional projects,
+  (a) An individual using Citadel for personal or professional projects,
       regardless of whether those projects generate revenue for you
       personally as a sole trader or freelancer;
 
@@ -20,14 +20,14 @@ This software may be used, modified, and deployed at no cost if you are:
   (c) A verified nonprofit organisation (see Nonprofit Exemption below).
 
 Community use includes the right to:
-  - Deploy Krypto for your own use or for clients
-  - Modify Krypto for your own use
-  - Fork Krypto and contribute changes back
+  - Deploy Citadel for your own use or for clients
+  - Modify Citadel for your own use
+  - Fork Citadel and contribute changes back
 
 Community use does NOT include the right to:
-  - Resell or redistribute Krypto as a competing product or service
+  - Resell or redistribute Citadel as a competing product or service
   - Remove or obscure BowenLabs copyright notices
-  - White-label Krypto and represent it as your own product
+  - White-label Citadel and represent it as your own product
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -41,14 +41,14 @@ software in any production capacity.
 To obtain a commercial license, contact: licensing@bowenlabs.io
 
 A commercial license grants:
-  - The right to deploy Krypto in production for commercial purposes
-  - The right to modify Krypto for internal use
+  - The right to deploy Citadel in production for commercial purposes
+  - The right to modify Citadel for internal use
   - Access to priority support (terms negotiated per agreement)
 
 A commercial license does NOT grant:
-  - The right to resell or redistribute Krypto as a competing product
-  - The right to white-label Krypto and remove BowenLabs attribution
-  - The right to sublicense Krypto to third parties
+  - The right to resell or redistribute Citadel as a competing product
+  - The right to white-label Citadel and remove BowenLabs attribution
+  - The right to sublicense Citadel to third parties
 
 Using this software in production without a required commercial license
 is a violation of this license and of BowenLabs's copyright.
@@ -89,7 +89,7 @@ DEALINGS IN THE SOFTWARE.
 
 NOTE: This license has not yet been reviewed by an attorney. It
 represents BowenLabs's licensing intent and will be replaced with
-attorney-reviewed language before Krypto reaches public availability.
+attorney-reviewed language before Citadel reaches public availability.
 The intent described here governs in the interim.
 
 For questions: licensing@bowenlabs.io

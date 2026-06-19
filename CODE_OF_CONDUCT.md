@@ -1,7 +1,7 @@
 # Code of Conduct & Acceptable Use
 
 This document covers two things: how people treat each other in this
-project, and what Krypto may be used to build.
+project, and what Citadel may be used to build.
 
 ---
 
@@ -32,9 +32,9 @@ channel (not a public issue) — see [README.md](README.md) for contact.
 
 ---
 
-## Acceptable use of Krypto
+## Acceptable use of Citadel
 
-Krypto is free, and we want it to stay easy to self-host without
+Citadel is free, and we want it to stay easy to self-host without
 gatekeeping. That said, it may not be used to build or operate sites
 that:
 
@@ -45,7 +45,7 @@ that:
 - Exist primarily to spread the above, even if individual pages look
   innocuous
 
-This is about how Krypto is used, not about who can use it — the project
+This is about how Citadel is used, not about who can use it — the project
 itself remains open to all contributors and operators in good faith.
 
 ---

@@ -18,10 +18,10 @@ first-class citizens. Composable — each primitive is usable independently.
 Designed to make building on Cloudflare so easy and secure that reaching for
 a heavier stack feels like the wrong choice.
 
-**Krypto** — a free, open-source web platform for small businesses, creatives,
+**Citadel** — a free, open-source web platform for small businesses, creatives,
 and nonprofits. Built on Cadmus. One deploy gives operators a complete digital
 presence — website, admin panel, forms, CRM, and notifications — on
-infrastructure they own forever. Krypto is Cadmus's reference implementation:
+infrastructure they own forever. Citadel is Cadmus's reference implementation:
 it proves the framework works in production and shows what building on Cadmus
 looks like end-to-end.
 
@@ -39,10 +39,10 @@ looks like end-to-end.
 | **Thebes** | The monorepo |
 | **Cadmus** | The framework (`packages/cadmus/`) |
 | **@bowenlabs/cadmus** | The npm package |
-| **Krypto** | The reference app / product (`apps/krypto/`) |
-| **Krypto Panel** | The owner-facing admin UI at `/admin/*` |
-| **Extensions** | Krypto add-ons (Section 3+, was "thimbles") |
-| **krypto-tooling** | Private Go Orchestrator repo (provisioning, email, distribution) |
+| **Citadel** | The reference app / product (`apps/citadel/`) |
+| **Citadel Panel** | The owner-facing admin UI at `/admin/*` |
+| **Extensions** | Citadel add-ons (Section 3+, was "thimbles") |
+| **citadel-tooling** | Private Go Orchestrator repo (provisioning, email, distribution) |
 
 ---
 
@@ -70,24 +70,24 @@ thebes/
 │       └── README.md
 │
 ├── apps/
-│   └── krypto/                  ← Krypto reference app
+│   └── citadel/                  ← Citadel reference app
 │       ├── workers/
 │       │   ├── site/            ← Worker 1: Astro public site
-│       │   └── panel/           ← Worker 2: TanStack Start Panel
-│       ├── core/                ← Krypto-specific shared code
+│       │   └── panel/           ← Worker 2: TanStack Start Panel (SolidJS)
+│       ├── core/                ← Citadel-specific shared code
 │       │   ├── db/
 │       │   │   ├── schema.ts    ← Drizzle schema
 │       │   │   └── migrations/
-│       │   ├── lib/             ← Krypto utilities (blocks, forms, design system, etc.)
+│       │   ├── lib/             ← Citadel utilities (blocks, forms, design system, etc.)
 │       │   └── components/
 │       │       ├── site/        ← Astro components
-│       │       └── panel/       ← React components
+│       │       └── panel/       ← Solid components
 │       ├── custom/              ← operator territory — never overwritten by updates
 │       │   ├── components/
 │       │   ├── extensions/      ← operator custom extensions (Section 3+)
 │       │   ├── themes/
 │       │   └── seed/
-│       ├── krypto.config.ts     ← operator config — never overwritten
+│       ├── citadel.config.ts     ← operator config — never overwritten
 │       ├── DECISIONS.md         ← operator architectural decisions
 │       └── seed.ts              ← first-deploy seed script
 │
@@ -99,7 +99,7 @@ thebes/
 │   └── with-d1/
 │
 ├── biome.json                   ← covers all packages + apps
-├── pnpm-workspace.yaml          ← packages/cadmus, apps/krypto, docs, examples/*
+├── pnpm-workspace.yaml          ← packages/cadmus, apps/citadel, docs, examples/*
 └── package.json                 ← root scripts
 
 ```
@@ -114,13 +114,13 @@ Cloudflare without adapter layers, Node shims, or configuration overhead.
 Each primitive is independently usable — you can use just `cadmus/auth`
 without pulling in `cadmus/db`.
 
-**Krypto is for operators.**
-They fork the repo, configure `krypto.config.ts`, and deploy. They never
+**Citadel is for operators.**
+They fork the repo, configure `citadel.config.ts`, and deploy. They never
 touch `core/` or `packages/cadmus/`. The Panel and public site are
 fully built — no coding required after the initial deploy.
 
-Code in `packages/cadmus/` must not contain anything Krypto-specific.
-Code in `apps/krypto/core/` is Krypto-specific and imports from `@bowenlabs/cadmus`.
+Code in `packages/cadmus/` must not contain anything Citadel-specific.
+Code in `apps/citadel/core/` is Citadel-specific and imports from `@bowenlabs/cadmus`.
 Never let this boundary blur.
 
 ---
@@ -132,10 +132,10 @@ Never let this boundary blur.
 | Framework | **@bowenlabs/cadmus** — V8-first CF primitives |
 | Framework build | **tsup** → `dist/` (ESM + CJS + `.d.ts`) |
 | Public site SSR | **Astro** with `@astrojs/cloudflare` adapter — Worker 1 |
-| Panel | **TanStack Start** (RC) — Worker 2, VMFE architecture |
-| Panel data fetching | **TanStack Query** — server state, API communication |
-| Panel routing | **TanStack Router** — built into TanStack Start |
-| React | **React 19** |
+| Panel | **TanStack Start** (Solid target) — Worker 2, VMFE architecture |
+| Panel data fetching | **@tanstack/solid-query** — server state, API communication |
+| Panel routing | **@tanstack/solid-router** — built into TanStack Start |
+| UI framework | **SolidJS** — fine-grained reactivity, no VDOM, minimal payload for V8 isolates |
 | Public API spine | **Hono** — form submission, auth, media upload endpoints |
 | Hono integration | **@bowenlabs/cadmus/hono** — thin wrappers over raw primitives |
 | Deployment | **Cloudflare Workers** via `wrangler deploy` (two Workers) |
@@ -149,10 +149,10 @@ Never let this boundary blur.
 | Queues | **Cloudflare Queues** via `@bowenlabs/cadmus/queues` |
 | Analytics | **Cloudflare Web Analytics** |
 | Fonts | **Cloudflare Fonts** — link to `fonts.googleapis.com`; CF intercepts at edge |
-| Icons | **Phosphor React** — everywhere, no other icon library |
-| UI components | **DaisyUI v5** + **Tailwind v4** |
+| Icons | **@phosphor-icons/web** — everywhere, no other icon library. No official Solid Phosphor package exists; the framework-agnostic web-component/CSS build is used instead of an unofficial community port |
+| UI components | **DaisyUI v5** + **Tailwind v4** — pure CSS, no framework binding required |
 | Charts | **Flowbite Charts** (ApexCharts, MIT) — Panel only |
-| Rich text (Panel) | **TipTap** — JSON stored natively, no transform layer |
+| Rich text (Panel) | **TipTap** (`@tiptap/core`, framework-agnostic) — JSON stored natively, no transform layer. No official Solid wrapper; integrate the vanilla core API directly or via the unofficial `solid-tiptap` bindings — decide when Section 2+ builds the editor |
 | Linting / formatting | **Biome** — replaces ESLint + Prettier |
 | Security scanning | **Snyk** (CI) |
 | Testing | **Vitest** + **@cloudflare/vitest-pool-workers** — real Workers runtime |
@@ -167,7 +167,7 @@ reactive client-side data layer. TanStack Query handles server communication;
 TanStack DB adds cross-collection queries, live queries, and optimistic
 mutations without manual cache wiring.
 
-**Why it matters for Krypto Panel:**
+**Why it matters for Citadel Panel:**
 - Mark submission archived → UI updates instantly without waiting for server
 - Block canvas saves → related panels update reactively
 - Contacts relate to activities relate to submissions — queryable locally
@@ -185,7 +185,7 @@ Do not add TanStack DB in Section 1. Flag any PR that introduces it early.
 
 ## Authentication
 
-Cadmus provides auth primitives. Krypto implements a magic link flow using
+Cadmus provides auth primitives. Citadel implements a magic link flow using
 those primitives. No passwords. No third-party auth dependencies in Section 1.
 
 ```
@@ -226,7 +226,7 @@ Never pass `env` through props. Never access bindings at module level.
 **In Astro pages (Worker 1 — public site):**
 ```typescript
 ---
-// apps/krypto/workers/site/src/pages/[slug].astro
+// apps/citadel/workers/site/src/pages/[slug].astro
 import { env } from 'cloudflare:workers'
 const database = db(env.DB)
 const settings = await database.select().from(siteSettings)
@@ -236,8 +236,8 @@ const settings = await database.select().from(siteSettings)
 
 **In TanStack Start server functions (Worker 2 — Panel):**
 ```typescript
-// apps/krypto/workers/panel/src/server-functions/pages.ts
-import { createServerFn } from '@tanstack/react-start'
+// apps/citadel/workers/panel/src/server-functions/pages.ts
+import { createServerFn } from '@tanstack/solid-start'
 import { db } from '@bowenlabs/cadmus/db'
 
 export const getPages = createServerFn({ method: 'GET' })
@@ -248,24 +248,25 @@ export const getPages = createServerFn({ method: 'GET' })
   })
 ```
 
-**In Panel components (TanStack Query):**
+**In Panel components (@tanstack/solid-query):**
 ```typescript
-// apps/krypto/workers/panel/src/routes/admin/pages/index.tsx
-import { useQuery } from '@tanstack/react-query'
+// apps/citadel/workers/panel/src/routes/admin/pages/index.tsx
+import { createQuery } from '@tanstack/solid-query'
 import { getPages } from '../../../server-functions/pages'
 
 function PagesPage() {
-  const { data: pages } = useQuery({
+  const pages = createQuery(() => ({
     queryKey: ['pages'],
     queryFn: () => getPages(),
     // pages is typed from Drizzle schema — zero manual type maintenance
-  })
+  }))
+  // pages.data is the reactive accessor — call it as pages.data, not destructured
 }
 ```
 
 **In Hono public API routes (Worker 2 — custom server entrypoint):**
 ```typescript
-// apps/krypto/workers/panel/app/server.ts
+// apps/citadel/workers/panel/app/server.ts
 api.post('/api/form/:slug', async (c) => {
   const database = db(c.env.DB)
   const kv = c.env.KV
@@ -279,7 +280,7 @@ All binding access happens in server functions or Hono route handlers.
 **Runtime constraint:** Both Workers run in the Cloudflare V8 isolate.
 No Node.js APIs anywhere. All crypto via `crypto.subtle` — never
 `import crypto from 'crypto'`. This is a Cadmus design principle, not
-just a Krypto constraint.
+just a Citadel constraint.
 
 ---
 
@@ -300,7 +301,7 @@ export function db<TSchema extends Record<string, unknown>>(
 ```
 
 ```typescript
-// apps/krypto/core/lib/db.ts
+// apps/citadel/core/lib/db.ts
 import { db } from '@bowenlabs/cadmus/db'
 import * as schema from '../db/schema'
 
@@ -308,12 +309,12 @@ export const createDb = (d1: D1Database) => db(d1, schema)
 ```
 
 All reads and writes go through Drizzle. No abstraction layer on top.
-Both Workers import from `apps/krypto/core/` — same schema, same helper,
-same types. Schema in `apps/krypto/core/db/schema.ts` is Krypto-specific.
+Both Workers import from `apps/citadel/core/` — same schema, same helper,
+same types. Schema in `apps/citadel/core/db/schema.ts` is Citadel-specific.
 
 Schema changes:
-1. Edit `apps/krypto/core/db/schema.ts`
-2. `pnpm db:generate` — creates migration in `apps/krypto/core/db/migrations/`
+1. Edit `apps/citadel/core/db/schema.ts`
+2. `pnpm db:generate` — creates migration in `apps/citadel/core/db/migrations/`
 3. `pnpm db:migrate` — applies to local D1
 4. `pnpm db:migrate:prod` — applies to production D1
 
@@ -352,7 +353,7 @@ site_settings (singleton — id = 1 always)
 ├── domain:           primaryDomain,
 │                     domainProvider: 'cloudflare' | 'external' | 'unknown' | null,
 │                     nameserverDelegated (boolean, default false),
-│                     domainRegisteredViaKrypto (boolean, default false),
+│                     domainRegisteredViaCitadel (boolean, default false),
 │                     cfAccountId (text, nullable),
 │                     cfApiTokenScoped (boolean, default false)
 └── features:         JSON feature toggle map (all false by default)
@@ -411,7 +412,7 @@ type Block =
 
 The block canvas in the Panel renders these. The public site renders them
 via `<BlockRenderer>`. Both reference the same type definitions from
-`apps/krypto/core/lib/blocks.ts`.
+`apps/citadel/core/lib/blocks.ts`.
 
 ---
 
@@ -467,7 +468,7 @@ Cloudflare Images is available as a paid extension (Section 3+).
 ## Image service interface
 
 Defined in `@bowenlabs/cadmus/storage`. Implemented in
-`apps/krypto/core/lib/image-service.ts`. Never construct image URLs inline.
+`apps/citadel/core/lib/image-service.ts`. Never construct image URLs inline.
 
 ```typescript
 // packages/cadmus/src/storage/index.ts
@@ -530,8 +531,8 @@ OWNER_EMAIL=           ← owner email for Panel account + notifications
 MEDIA_URL=             ← public R2 bucket base URL, no trailing slash
 
 # Optional
-KRYPTO_SERVICE_KEY=    ← shared secret for internal service calls
-KRYPTO_SITE_ID=        ← issued by krypto-tooling, enables managed features
+CITADEL_SERVICE_KEY=    ← shared secret for internal service calls
+CITADEL_SITE_ID=        ← issued by citadel-tooling, enables managed features
 CF_ANALYTICS_TOKEN=    ← Cloudflare Web Analytics token
 ```
 
@@ -543,13 +544,13 @@ Both Workers have their own `wrangler.jsonc` with **identical binding IDs**.
 Same D1 `database_id`, same KV `id`, same R2 `bucket_name`.
 
 ```jsonc
-// apps/krypto/workers/site/wrangler.jsonc
-// apps/krypto/workers/panel/wrangler.jsonc
+// apps/citadel/workers/site/wrangler.jsonc
+// apps/citadel/workers/panel/wrangler.jsonc
 // (same binding IDs in both — only "name" differs)
 {
-  "d1_databases": [{ "binding": "DB", "database_name": "krypto-db", "database_id": "..." }],
+  "d1_databases": [{ "binding": "DB", "database_name": "citadel-db", "database_id": "..." }],
   "kv_namespaces": [{ "binding": "KV", "id": "..." }],
-  "r2_buckets": [{ "binding": "R2", "bucket_name": "krypto-media" }],
+  "r2_buckets": [{ "binding": "R2", "bucket_name": "citadel-media" }],
   "send_email": [{ "name": "EMAIL" }]
 }
 ```
@@ -560,8 +561,8 @@ Same D1 `database_id`, same KV `id`, same R2 `bucket_name`.
 
 ```bash
 # From repo root
-pnpm dev:site         # wrangler dev in apps/krypto/workers/site/ — :3000
-pnpm dev:panel        # wrangler dev in apps/krypto/workers/panel/ — :3001
+pnpm dev:site         # wrangler dev in apps/citadel/workers/site/ — :3000
+pnpm dev:panel        # wrangler dev in apps/citadel/workers/panel/ — :3001
 pnpm dev              # both Workers via concurrently
 
 pnpm build:cadmus     # tsup → packages/cadmus/dist/
@@ -573,7 +574,7 @@ pnpm deploy:site      # wrangler deploy (site)
 pnpm deploy:panel     # wrangler deploy (panel)
 pnpm deploy           # both (site first)
 
-pnpm db:generate      # drizzle-kit generate from krypto schema
+pnpm db:generate      # drizzle-kit generate from citadel schema
 pnpm db:migrate       # apply to local D1
 pnpm db:migrate:prod  # apply to production D1
 pnpm db:studio        # Drizzle Studio
@@ -581,9 +582,9 @@ pnpm db:studio        # Drizzle Studio
 pnpm seed             # seed.ts against local D1
 pnpm lint             # biome check . (all packages + apps)
 pnpm format           # biome format --write .
-pnpm test             # all tests (cadmus + krypto)
+pnpm test             # all tests (cadmus + citadel)
 pnpm test:cadmus      # Vitest + @cloudflare/vitest-pool-workers on packages/cadmus/
-pnpm test:int         # Krypto integration tests
+pnpm test:int         # Citadel integration tests
 pnpm test:e2e         # Playwright + axe
 ```
 
@@ -596,9 +597,9 @@ pnpm test:e2e         # Playwright + axe
 2. Does this import from another Cadmus primitive — breaking zero cross-dependency?
 3. Does this require Node.js APIs — breaking V8-first?
 4. Can this be clearly documented in one page — if not, the design is wrong?
-5. Would a developer using a different framework than Krypto benefit from this?
+5. Would a developer using a different framework than Citadel benefit from this?
 
-**For Krypto features:**
+**For Citadel features:**
 1. Does this put data in a service the operator doesn't control?
 2. Does this require a new account or subscription for the operator?
 3. Does this break the free-forever promise for core features?
@@ -618,10 +619,11 @@ If yes to any: flag it before proceeding.
 - **Thrown errors:** `CadmusError` and typed subclasses. Never raw `Error`. Never Result types.
 - **Hono is a peer, not a dependency:** `@bowenlabs/cadmus/hono` wraps raw primitives — it never reimplements them.
 - **tsup builds dist/:** The exports map points at `dist/`. TypeScript source is for development only. CI validates both.
-- **Mobile-first Panel:** Krypto Panel is designed for phones and tablets first. Desktop is an enhancement. Bottom navigation, full-screen views, tap-to-reorder. Never retrofit a desktop UI for mobile.
+- **Mobile-first Panel:** Citadel Panel is designed for phones and tablets first. Desktop is an enhancement. Bottom navigation, full-screen views, tap-to-reorder. Never retrofit a desktop UI for mobile.
+- **SolidJS, not React:** Panel UI is built in SolidJS — fine-grained reactivity, no virtual DOM, minimal compiled payload for fast cold starts in V8 isolates. Use `createSignal`/`createEffect`, not React hooks. When a dependency has no official Solid package (e.g. Phosphor icons), prefer the framework-agnostic build over an unofficial community port.
 - **Scale-appropriate:** Don't build for scale you don't have. No premature abstractions.
 - **No throwaway work:** Every decision should hold up across phases.
-- **Clean boundaries:** Cadmus has no Krypto-specific code. Krypto imports from Cadmus, never the reverse. Extension distribution logic stays in krypto-tooling.
+- **Clean boundaries:** Cadmus has no Citadel-specific code. Citadel imports from Cadmus, never the reverse. Extension distribution logic stays in citadel-tooling.
 - **Documentation is the product:** Cadmus should be so well documented that reaching for AI to understand it feels unnecessary. If something can't be documented clearly, the design is wrong.
 
 ---

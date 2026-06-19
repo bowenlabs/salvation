@@ -594,14 +594,14 @@ scope until the org is created and a governance model is in place.
 ## Versioning and stability
 
 Cadmus follows semantic versioning. During active development alongside
-Krypto (Sections 1–2), breaking changes are expected. Version stays `0.x`.
+Citadel (Sections 1–2), breaking changes are expected. Version stays `0.x`.
 Stability guarantees begin at `1.0.0`.
 
 `1.0.0` will not be tagged until:
-- All core primitives are proven in production by Krypto
+- All core primitives are proven in production by Citadel
 - The full API surface is documented in `docs/`
 - A changelog and migration guide process exists
-- At least one app other than Krypto uses Cadmus in production
+- At least one app other than Citadel uses Cadmus in production
 - The community primitive model has a published contribution guide
 
 Do not rush to `1.0.0`. The `0.x` label is honest and sets correct
@@ -633,7 +633,7 @@ framework to move it to ✅.
 - **Not a meta-framework.** Cadmus doesn't generate routes, manage layouts,
   or own your build pipeline. Astro and TanStack Start do that.
 - **Not an ORM.** Cadmus wraps Drizzle's D1 adapter. Drizzle is the ORM.
-- **Not a UI library.** No components. No design system. That's Krypto's job.
+- **Not a UI library.** No components. No design system. That's Citadel's job.
 - **Not a hosting platform.** Cloudflare is the platform. Cadmus is the
   framework layer that makes Cloudflare feel complete.
 - **Not multi-cloud.** Cadmus is deliberately Cloudflare-specific. Abstractions

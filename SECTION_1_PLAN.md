@@ -4,7 +4,7 @@
 > small business owner build pages, capture form submissions, manage contacts,
 > and receive notifications — on infrastructure they own forever.
 >
-> **Definition of done:** An owner can deploy Krypto, build their site with a
+> **Definition of done:** An owner can deploy Citadel, build their site with a
 > block editor, embed a form, receive a submission, get notified by email, and
 > view the contact in their CRM — without writing a single line of code after
 > the initial deploy.
@@ -28,7 +28,7 @@
 13. [Phase 6 — Page builder](#phase-6--page-builder)
 14. [Phase 7 — Form builder](#phase-7--form-builder)
 15. [Phase 8 — CRM and inbox](#phase-8--crm-and-inbox)
-16. [Phase 9 — Krypto Panel shell](#phase-9--krypto-panel-shell)
+16. [Phase 9 — Citadel Panel shell](#phase-9--citadel-panel-shell)
 17. [Phase 10 — Settings and design Panel](#phase-10--settings-and-design-panel)
 18. [Phase 11 — Media and R2](#phase-11--media-and-r2)
 19. [Phase 12 — Notifications](#phase-12--notifications)
@@ -56,12 +56,12 @@
            │                              │
     ┌──────▼──────────────────────────────▼──────┐
     │                                             │
-    │              Krypto                         │
+    │              Citadel                         │
     │   (Hono + Astro + TanStack Router            │
     │    on Cloudflare Workers)                    │
     │                                             │
     │  ┌──────────────┐   ┌────────────────────┐  │
-    │  │  Public Site  │   │   Krypto Panel     │  │
+    │  │  Public Site  │   │   Citadel Panel     │  │
     │  │  (site)       │   │   /admin/*         │  │
     │  └──────────────┘   └────────────────────┘  │
     └─────────────────────────────────────────────┘
@@ -80,8 +80,8 @@
 
 ```
 ┌─────────────────────────────────────┐  ┌──────────────────────────────────────┐
-│  Worker 1: Astro (apps/krypto/workers/site/)    │  │  Worker 2: TanStack Start            │
-│                                     │  │  (apps/krypto/workers/panel/)                    │
+│  Worker 1: Astro (apps/citadel/workers/site/)    │  │  Worker 2: TanStack Start            │
+│                                     │  │  (apps/citadel/workers/panel/)                    │
 │  Hono entrypoint (src/app.ts)       │  │                                      │
 │    custom routes → handle()         │  │  Custom entrypoint (app/server.ts)   │
 │                                     │  │    Hono /api/* (public, unauthed)    │
@@ -153,7 +153,7 @@
 Incoming request to Worker 1 (Astro — public site)
       │
       ▼
-apps/krypto/workers/site/src/app.ts (Hono)
+apps/citadel/workers/site/src/app.ts (Hono)
   ├── custom routes  — checked first (e.g. /api/ping)
   └── handle()       — Astro SSR fallback, from @astrojs/cloudflare/handler
                          (must be last; not astro/hono — see DECISIONS.md,
@@ -168,7 +168,7 @@ apps/krypto/workers/site/src/app.ts (Hono)
 Incoming request to Worker 2 (TanStack Start — Panel)
       │
       ▼
-apps/krypto/workers/panel/app/server.ts (custom entrypoint)
+apps/citadel/workers/panel/app/server.ts (custom entrypoint)
   ├── /api/*  → Hono route handlers (unauthenticated public API)
   │     ├── POST /api/form/:slug      — form submission
   │     ├── POST /api/auth/magic-link — send magic link
@@ -247,7 +247,7 @@ Owner clicks link → GET /api/auth/verify?token={raw}
   ├── generate session id: crypto.getRandomValues(16 bytes) → hex
   ├── store session in KV: key=`session:{id}` value={userId,email,role} TTL=7days
   ├── sign cookie value: HMAC-SHA256(sessionId, SESSION_SECRET) → sig
-  ├── set cookie: `krypto_session={sessionId}.{sig}`
+  ├── set cookie: `citadel_session={sessionId}.{sig}`
   │     HttpOnly, Secure, SameSite=Lax, Path=/
   └── redirect /admin/dashboard
 
@@ -299,9 +299,9 @@ server function: savePage(id, { title, slug, blocks, status })
   ├── validate blocks against Block type definitions
   ├── db.update(pages).set({...}).where(id = id)
   ├── if status changed to 'published': set publishedAt = now()
-  └── POST /api/revalidate { paths: ['/', `/${slug}`], secret: KRYPTO_SERVICE_KEY }
+  └── POST /api/revalidate { paths: ['/', `/${slug}`], secret: CITADEL_SERVICE_KEY }
         ├── validate Bearer token
-        ├── purgeCache(`${serverUrl}/`) via apps/krypto/core/lib/cache.ts
+        ├── purgeCache(`${serverUrl}/`) via apps/citadel/core/lib/cache.ts
         ├── purgeCache(`${serverUrl}/${slug}`)
         └── skipped silently in dev (caches.default unavailable)
 ```
@@ -346,11 +346,11 @@ const database = db(env.DB)
 In TanStack Start server functions (Worker 2):
 ```typescript
 // ✅ Correct — server function handler only
-// getCloudflareContext()/@tanstack/react-start/cloudflare do not exist in
-// this version (@tanstack/react-start 1.168.26) — confirmed via Phase 0
+// getCloudflareContext()/@tanstack/solid-start/cloudflare do not exist in
+// this version (@tanstack/solid-start 1.168.26) — confirmed via Phase 0
 // POC 1b, see DECISIONS.md. Use a dynamic cloudflare:workers import inside
 // the handler, same as everywhere else bindings are accessed in this stack.
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn } from '@tanstack/solid-start'
 
 export const getPages = createServerFn({ method: 'GET' })
   .handler(async () => {
@@ -399,7 +399,7 @@ crypto.randomBytes(32)
 crypto.createHmac('sha256', secret)
 ```
 
-**Affects:** `apps/krypto/core/lib/auth.ts`, `apps/krypto/core/lib/session.ts`, Hono auth middleware.
+**Affects:** `apps/citadel/core/lib/auth.ts`, `apps/citadel/core/lib/session.ts`, Hono auth middleware.
 
 ---
 
@@ -444,11 +444,11 @@ built Worker under `wrangler dev`. Keep the dev-bypass branch in
 wrangler or other runtimes like `vitest-pool-workers`), but don't assume
 it's actually triggering without checking. See `DECISIONS.md`.
 
-**Solution:** All cache writes and purges go through `apps/krypto/core/lib/cache.ts`
+**Solution:** All cache writes and purges go through `apps/citadel/core/lib/cache.ts`
 which checks for dev mode and skips gracefully:
 
 ```typescript
-// apps/krypto/core/lib/cache.ts
+// apps/citadel/core/lib/cache.ts
 export async function purgeCache(url: string): Promise<void> {
   if (import.meta.env.DEV) return // caches.default not available in dev
   const cache = caches.default
@@ -479,7 +479,7 @@ that explicit cache-aside logic built (most naturally as Hono middleware
 wrapping the SSR fallback) — not built yet, only `purgeCache()` itself has
 been verified working.
 
-**Affects:** All Astro public pages, `apps/krypto/core/lib/cache.ts`, all Hono content
+**Affects:** All Astro public pages, `apps/citadel/core/lib/cache.ts`, all Hono content
 save routes (pages, settings, forms).
 
 ---
@@ -549,7 +549,7 @@ is not enforced correctly.
 - Read settings with `db.select().from(siteSettings).where(eq(siteSettings.id, 1)).get()`
 - Seed script inserts with `id = 1` on first run, skips if exists
 
-**Affects:** `apps/krypto/core/db/schema.ts`, `seed.ts`, all settings read/write paths.
+**Affects:** `apps/citadel/core/db/schema.ts`, `seed.ts`, all settings read/write paths.
 
 ---
 
@@ -567,7 +567,7 @@ created without flagging.
 The form builder UI should enforce this — an email field type is a distinct
 option in the field type picker, not a variant of text.
 
-**Affects:** `/api/form/[slug]`, `apps/krypto/core/lib/upsert-contact.ts`, form builder UI.
+**Affects:** `/api/form/[slug]`, `apps/citadel/core/lib/upsert-contact.ts`, form builder UI.
 
 ---
 
@@ -590,7 +590,7 @@ return <img src={src} srcSet={srcset} sizes={sizes} alt={block.alt} loading="laz
 return <img src={block.url} alt={block.alt} />
 ```
 
-**Affects:** `<BlockRenderer>`, Panel image block preview, `apps/krypto/core/lib/image-service.ts`.
+**Affects:** `<BlockRenderer>`, Panel image block preview, `apps/citadel/core/lib/image-service.ts`.
 
 ---
 
@@ -622,7 +622,7 @@ extensions used in the Panel editor must be registered in the `generateHTML`
 call — otherwise nodes will render as empty.
 
 ```typescript
-// apps/krypto/core/lib/rich-text.ts
+// apps/citadel/core/lib/rich-text.ts
 import { generateHTML } from '@tiptap/html'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
@@ -632,7 +632,7 @@ export function tiptapToHtml(content: JSONContent): string {
 }
 ```
 
-**Affects:** `<BlockRenderer>`, `apps/krypto/core/lib/rich-text.ts`, Panel TipTap editor
+**Affects:** `<BlockRenderer>`, `apps/citadel/core/lib/rich-text.ts`, Panel TipTap editor
 extension config (must stay in sync with renderer extensions).
 
 ---
@@ -660,9 +660,9 @@ apply. See `DECISIONS.md`, "DaisyUI v5 token names" for the full repro.
 
 ```html
 <!-- Correct order in <head> -->
-<link rel="stylesheet" href="/themes/theme-krypto.css" />  <!-- DaisyUI theme -->
+<link rel="stylesheet" href="/themes/theme-citadel.css" />  <!-- DaisyUI theme -->
 <style>
-  :root[data-theme="krypto"] {
+  :root[data-theme="citadel"] {
     --color-primary: oklch(62% 0.18 145);          /* primary override */
     --color-primary-content: oklch(100% 0 0);
     /* ... rest of brand scale */
@@ -741,7 +741,7 @@ activities + submissions) become complex. None of these exist in Section 1.
 single-row reads. Use `db.select().from(table).where(...).all()` for
 multi-row reads. Test INSERT + immediate SELECT in integration tests.
 
-**Affects:** All database operations in `apps/krypto/core/lib/` and server functions.
+**Affects:** All database operations in `apps/citadel/core/lib/` and server functions.
 
 ---
 
@@ -750,7 +750,7 @@ multi-row reads. Test INSERT + immediate SELECT in integration tests.
 **Framework decision: Hono + Astro + TanStack Router.** This decision is
 recorded in `DECISIONS.md` and is not revisited.
 
-**Goal:** Validate that the chosen stack works correctly for Krypto's four
+**Goal:** Validate that the chosen stack works correctly for Citadel's four
 highest-risk scenarios before committing to Phase 1. Phase 0 is a focused
 proof of concept — not a throwaway — the code produced here becomes the
 foundation of Phase 1.
@@ -790,7 +790,7 @@ zero manual type maintenance:
 // Change a column in schema → TypeScript shows every Panel component
 // that needs updating before deploy
 
-// apps/krypto/workers/panel/src/server-functions/pages.ts
+// apps/citadel/workers/panel/src/server-functions/pages.ts
 export const getPages = createServerFn({ method: 'GET' })
   .handler(async () => {
     const { env } = await import('cloudflare:workers')
@@ -799,13 +799,13 @@ export const getPages = createServerFn({ method: 'GET' })
     // inferred automatically — never written manually
   })
 
-// apps/krypto/workers/panel/src/routes/admin/pages/index.tsx
-const { data: pages } = useQuery({
+// apps/citadel/workers/panel/src/routes/admin/pages/index.tsx
+const pages = createQuery(() => ({
   queryKey: ['pages'],
   queryFn: () => getPages(),
-  // pages is Page[] — typed from Drizzle schema automatically
-  // hover over pages in editor — no any, no manual type import
-})
+  // pages.data is Page[] — typed from Drizzle schema automatically
+  // hover over pages.data in editor — no any, no manual type import
+}))
 ```
 
 ---
@@ -813,9 +813,9 @@ const { data: pages } = useQuery({
 ### Architecture overview
 
 ```
-Worker 1: Astro (apps/krypto/workers/site/) — public site
+Worker 1: Astro (apps/citadel/workers/site/) — public site
 │
-├── apps/krypto/workers/site/src/app.ts (Hono entrypoint)
+├── apps/citadel/workers/site/src/app.ts (Hono entrypoint)
 │     ├── custom routes — checked first (e.g. /api/ping)
 │     └── handle()       — Astro SSR fallback, @astrojs/cloudflare/handler
 │                            (must be last — not astro/hono, see DECISIONS.md)
@@ -823,9 +823,9 @@ Worker 1: Astro (apps/krypto/workers/site/) — public site
 └── Routes: /*, /[slug], /about, /contact, /login
       └── env.DB (cloudflare:workers) → Drizzle → render HTML
 
-Worker 2: TanStack Start (apps/krypto/workers/panel/) — Panel
+Worker 2: TanStack Start (apps/citadel/workers/panel/) — Panel
 │
-├── apps/krypto/workers/panel/app/server.ts (custom entrypoint)
+├── apps/citadel/workers/panel/app/server.ts (custom entrypoint)
 │     ├── Hono /api/* — public unauthenticated API
 │     │     ├── POST /api/form/:slug      form submission
 │     │     ├── POST /api/auth/magic-link send token
@@ -839,22 +839,22 @@ Worker 2: TanStack Start (apps/krypto/workers/panel/) — Panel
             └── return type inferred → TanStack Query component (no any)
 
 Shared:
-  apps/krypto/core/db/schema.ts  — single source of truth, imported by both Workers
-  apps/krypto/core/lib/db.ts     — db(d1) helper, imported by both Workers
-  apps/krypto/core/lib/cache.ts  — cache purge with dev bypass, imported by both Workers
+  apps/citadel/core/db/schema.ts  — single source of truth, imported by both Workers
+  apps/citadel/core/lib/db.ts     — db(d1) helper, imported by both Workers
+  apps/citadel/core/lib/cache.ts  — cache purge with dev bypass, imported by both Workers
 ```
 
 ### Build pipeline
 
 ```
-Build 1: Astro (apps/krypto/workers/site/)      Build 2: TanStack Start (apps/krypto/workers/panel/)
+Build 1: Astro (apps/citadel/workers/site/)      Build 2: TanStack Start (apps/citadel/workers/panel/)
   pnpm build:site                     pnpm build:panel
   astro build                         vite build
-  Output: apps/krypto/workers/site/dist/          Output: apps/krypto/workers/panel/dist/
+  Output: apps/citadel/workers/site/dist/          Output: apps/citadel/workers/panel/dist/
 
 Two independent wrangler deploys:
-  pnpm deploy:site   → wrangler deploy (apps/krypto/workers/site/)
-  pnpm deploy:panel  → wrangler deploy (apps/krypto/workers/panel/)
+  pnpm deploy:site   → wrangler deploy (apps/citadel/workers/site/)
+  pnpm deploy:panel  → wrangler deploy (apps/citadel/workers/panel/)
   pnpm deploy        → both sequentially
 ```
 
@@ -945,25 +945,25 @@ TanStack Router's standard, well-documented mechanism for exactly this.
 Full investigation in `DECISIONS.md`.
 
 **Build:**
-- Astro SSR login page at `/login` in `apps/krypto/workers/site/`
-- `apps/krypto/workers/panel/app/middleware.ts` — `requireAuth`, a
+- Astro SSR login page at `/login` in `apps/citadel/workers/site/`
+- `apps/citadel/workers/panel/app/middleware.ts` — `requireAuth`, a
   `createServerFn`-wrapped Web Crypto HMAC verify + KV session lookup
   (wrapped as a server function, not a plain async function, because
   `getCookie()` is server-only and `beforeLoad` can run client-side
   during SPA navigation)
-- `apps/krypto/workers/panel/src/routes/admin/route.tsx` — layout route
+- `apps/citadel/workers/panel/src/routes/admin/route.tsx` — layout route
   for `/admin`, `beforeLoad` calls `requireAuth()` and throws
   `redirect({ to: '/login' })` if it returns `null`
-- `apps/krypto/workers/panel/src/routes/login.tsx` — placeholder login
+- `apps/citadel/workers/panel/src/routes/login.tsx` — placeholder login
   page (full implementation is Phase 3)
 
 ```typescript
-// apps/krypto/workers/panel/app/middleware.ts
-import { createServerFn } from '@tanstack/react-start'
-import { getCookie } from '@tanstack/react-start/server'
+// apps/citadel/workers/panel/app/middleware.ts
+import { createServerFn } from '@tanstack/solid-start'
+import { getCookie } from '@tanstack/solid-start/server'
 
 export const requireAuth = createServerFn({ method: 'GET' }).handler(async () => {
-  const cookieValue = getCookie('krypto_session')
+  const cookieValue = getCookie('citadel_session')
   if (!cookieValue) return null
 
   const [sessionId, sig] = cookieValue.split('.')
@@ -990,8 +990,8 @@ export const requireAuth = createServerFn({ method: 'GET' }).handler(async () =>
 ```
 
 ```typescript
-// apps/krypto/workers/panel/src/routes/admin/route.tsx
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
+// apps/citadel/workers/panel/src/routes/admin/route.tsx
+import { createFileRoute, Outlet, redirect } from '@tanstack/solid-router'
 import { requireAuth } from '../../../app/middleware'
 
 export const Route = createFileRoute('/admin')({
@@ -1017,7 +1017,7 @@ export const Route = createFileRoute('/admin')({
 ### POC 4 — Cache invalidation via Cloudflare Cache API
 
 **Risk:** Cache invalidation uses the Cloudflare Cache API explicitly via
-`apps/krypto/core/lib/cache.ts`. This must work reliably and be simple enough to use
+`apps/citadel/core/lib/cache.ts`. This must work reliably and be simple enough to use
 consistently throughout the codebase.
 
 **Build:**
@@ -1065,14 +1065,14 @@ These must be in place before Phase 1 begins. They are not optional.
 `pnpm dev:panel` must also work independently. If any of these require
 multiple terminals or manual steps, fix it before moving on.
 
-**M2 — Shared types via `apps/krypto/core/`**
-All types shared between both Workers live in `apps/krypto/core/` — schema types flow
-from `apps/krypto/core/db/schema.ts` via Drizzle inference, never duplicated manually.
+**M2 — Shared types via `apps/citadel/core/`**
+All types shared between both Workers live in `apps/citadel/core/` — schema types flow
+from `apps/citadel/core/db/schema.ts` via Drizzle inference, never duplicated manually.
 TanStack Start server functions infer their return type from Drizzle directly.
 Never use `any` at a server function boundary. Never duplicate a type.
 
 **M3 — ESLint boundary enforcement**
-An ESLint rule prevents `apps/krypto/core/` from importing `apps/krypto/custom/`. Enforced in CI.
+An ESLint rule prevents `apps/citadel/core/` from importing `apps/citadel/custom/`. Enforced in CI.
 Contributors get an immediate error if the boundary is violated.
 
 ```javascript
@@ -1082,8 +1082,8 @@ Contributors get an immediate error if the boundary is violated.
   rules: {
     'no-restricted-imports': ['error', {
       patterns: [{
-        group: ['@apps/krypto/custom/*', '../apps/krypto/custom/*'],
-        message: 'core/ must not import from apps/krypto/custom/. Use dependency injection.'
+        group: ['@apps/citadel/custom/*', '../apps/citadel/custom/*'],
+        message: 'core/ must not import from apps/citadel/custom/. Use dependency injection.'
       }]
     }]
   }
@@ -1112,7 +1112,7 @@ Update `pnpm lint` to `biome check .` and `pnpm format` to `biome format --write
 
 **M5 — Astro content collections explicitly forbidden**
 Astro has a built-in content collections system (file-based). It must not
-be used in Krypto — all content comes from D1. Document this in CLAUDE.md
+be used in Citadel — all content comes from D1. Document this in CLAUDE.md
 and add a lint rule or comment in `astro.config.ts` making this explicit.
 
 **M6 — Login page is Astro SSR, not Panel SPA**
@@ -1123,11 +1123,11 @@ route inside TanStack Router.
 **M7 — Cache API dev bypass**
 `caches.default` is not available in `wrangler dev`. All cache
 write/purge calls must check `import.meta.env.DEV` and skip in
-development. Document this pattern once in `apps/krypto/core/lib/cache.ts` and use
+development. Document this pattern once in `apps/citadel/core/lib/cache.ts` and use
 it everywhere:
 
 ```typescript
-// apps/krypto/core/lib/cache.ts
+// apps/citadel/core/lib/cache.ts
 export async function purgeCache(url: string): Promise<void> {
   if (import.meta.env.DEV) return // cache not available in dev
   const cache = caches.default
@@ -1153,21 +1153,21 @@ only if it causes issues — do not add it later as an afterthought.
 - [ ] **0.6** Confirm login page is in Astro — not in Panel Worker (M6)
 
 **Worker 2 — TanStack Start Panel:**
-- [ ] **0.7** Scaffold TanStack Start Worker. Do not use `pnpm create cloudflare@latest . --framework=tanstack-start` — it hangs indefinitely on an arrow-key git prompt that ignores `--no-git` (confirmed bug, see `DECISIONS.md`). Call the TanStack CLI directly instead: `pnpm dlx @tanstack/cli@0.69.3 create panel --framework react --deployment cloudflare --no-git --non-interactive --yes --target-dir .`. Then add `apps/krypto/workers/*` to `pnpm-workspace.yaml`'s packages list — `apps/*` alone doesn't match this directory's depth — and run `pnpm install` from the repo root before `pnpm run generate-routes` in `panel/`.
-- [ ] **0.8** Configure same D1, KV, R2 binding IDs as Worker 1 in `apps/krypto/workers/panel/wrangler.jsonc`
+- [ ] **0.7** Scaffold TanStack Start Worker. Do not use `pnpm create cloudflare@latest . --framework=tanstack-start` — it hangs indefinitely on an arrow-key git prompt that ignores `--no-git` (confirmed bug, see `DECISIONS.md`). Call the TanStack CLI directly instead: `pnpm dlx @tanstack/cli@0.69.3 create panel --framework solid --deployment cloudflare --no-git --non-interactive --yes --target-dir .`. Then add `apps/citadel/workers/*` to `pnpm-workspace.yaml`'s packages list — `apps/*` alone doesn't match this directory's depth — and run `pnpm install` from the repo root before `pnpm run generate-routes` in `panel/`.
+- [ ] **0.8** Configure same D1, KV, R2 binding IDs as Worker 1 in `apps/citadel/workers/panel/wrangler.jsonc`
 - [ ] **0.9** Install DaisyUI for TanStack Start (Vite — same pattern as Astro)
 - [ ] **0.10** POC 1b — Server function reads D1 via `env.DB` (from a dynamic 'cloudflare:workers' import)
 - [ ] **0.11** POC 3 — TanStack Start auth middleware + session cookie + `/admin/*` redirect
 - [ ] **0.12** POC 4 — Cache dev bypass + production cache purge after deploy
 - [ ] **0.13** Write one server function with Drizzle + verify type flows to component (no `any`)
 - [ ] **0.14** Write one Hono public API route in custom server entrypoint (`app/server.ts`)
-- [ ] **0.15** ~~Verify `prerender = false` on all Panel routes that use server functions~~ — **milestone doesn't apply.** Confirmed during Phase 0 (2026-06-19): TanStack Router/Start has no per-route `prerender`/`ssr` export in this version (no match anywhere in `@tanstack/react-router`'s route types) — this carries over an Astro-specific concept. With the Cloudflare deployment target, nothing is statically prerendered by default regardless; there's no flag to set or check. See `DECISIONS.md`.
+- [ ] **0.15** ~~Verify `prerender = false` on all Panel routes that use server functions~~ — **milestone doesn't apply.** Confirmed during Phase 0 (2026-06-19): TanStack Router/Start has no per-route `prerender`/`ssr` export in this version (no match anywhere in `@tanstack/solid-router`'s route types) — this carries over an Astro-specific concept. With the Cloudflare deployment target, nothing is statically prerendered by default regardless; there's no flag to set or check. See `DECISIONS.md`.
 
 **Shared foundation:**
-- [ ] **0.16** Create `apps/krypto/core/db/schema.ts` with minimal schema (users + pages tables)
+- [ ] **0.16** Create `apps/citadel/core/db/schema.ts` with minimal schema (users + pages tables)
 - [ ] **0.17** Run `pnpm db:generate` + `pnpm db:migrate` — confirm both Workers see same tables. Requires `migrations_dir` on the D1 binding and a shared `--persist-to` path across `dev:site`/`dev:panel`/`db:migrate` — see Phase 1 milestone 1.34 and `DECISIONS.md`. Verify by inserting a row via `wrangler d1 execute` from one Worker's persisted state and reading it back from the other's `wrangler dev` instance, not just by confirming no error.
 - [ ] **0.18** Install Biome at repo root (M4) — `pnpm add -D @biomejs/biome && pnpm biome init`
-- [ ] **0.19** Add Biome boundary rule preventing `apps/krypto/core/` → `apps/krypto/custom/` imports (M3)
+- [ ] **0.19** Add Biome boundary rule preventing `apps/citadel/core/` → `apps/citadel/custom/` imports (M3)
 - [ ] **0.20** Configure TypeScript path aliases: `@core/*` in both Workers
 - [ ] **0.21** `pnpm dev` starts both Workers — `pnpm dev:site` and `pnpm dev:panel` work independently (M1)
 - [ ] **0.22** Measure both Worker bundle sizes: `wrangler deploy --dry-run` in each
@@ -1191,9 +1191,9 @@ only if it causes issues — do not add it later as an afterthought.
 - Server function return type inferred from Drizzle — no `any` in Panel components
 - Both Workers import from `@bowenlabs/cadmus/db` and `@bowenlabs/cadmus/cache` via workspace reference
 - Both Workers confirmed reading the same D1 data (shared binding IDs)
-- `apps/krypto/core/db/schema.ts` imports without errors in both Workers
-- Biome passes with zero violations across `packages/cadmus/`, `apps/krypto/core/`, and both Worker directories
-- Biome boundary rule fires when `apps/krypto/core/` attempts to import `apps/krypto/custom/`
+- `apps/citadel/core/db/schema.ts` imports without errors in both Workers
+- Biome passes with zero violations across `packages/cadmus/`, `apps/citadel/core/`, and both Worker directories
+- Biome boundary rule fires when `apps/citadel/core/` attempts to import `apps/citadel/custom/`
 - Both Worker bundle sizes documented — within 10MB Workers Paid limit
 - `packages/cadmus/` has correct exports map — each primitive importable independently
 - `packages/cadmus/README.md` exists with framework overview
@@ -1206,11 +1206,11 @@ only if it causes issues — do not add it later as an afterthought.
 
 Thebes is a monorepo. Two critical boundaries:
 
-1. **Cadmus ↔ Krypto:** `packages/cadmus/` never imports from `apps/krypto/`.
-   Krypto imports from `@bowenlabs/cadmus`. This boundary is permanent.
+1. **Cadmus ↔ Citadel:** `packages/cadmus/` never imports from `apps/citadel/`.
+   Citadel imports from `@bowenlabs/cadmus`. This boundary is permanent.
 
-2. **core ↔ custom (within Krypto):** `apps/krypto/core/` is BowenLabs
-   territory, updated via upstream merge. `apps/krypto/custom/` is operator
+2. **core ↔ custom (within Citadel):** `apps/citadel/core/` is BowenLabs
+   territory, updated via upstream merge. `apps/citadel/custom/` is operator
    territory, never touched by updates. Enforced by Biome rules.
 
 Both boundaries must be established in Phase 0 and never violated.
@@ -1233,7 +1233,7 @@ thebes/
 │       └── README.md
 │
 ├── apps/
-│   └── krypto/                        ← Krypto reference app
+│   └── citadel/                        ← Citadel reference app
 │       │
 │       ├── workers/
 │       │   ├── site/                  ← Worker 1: Astro public site
@@ -1248,7 +1248,7 @@ thebes/
 │       │   │   │   ├── layouts/
 │       │   │   │   └── assets/app.css ← @import tailwindcss; @plugin "daisyui"
 │       │   │   └── public/
-│       │   │       ├── themes/        ← DaisyUI theme CSS (updated by Krypto)
+│       │   │       ├── themes/        ← DaisyUI theme CSS (updated by Citadel)
 │       │   │       └── custom/        ← operator static assets (never touched)
 │       │   │
 │       │   └── panel/                 ← Worker 2: TanStack Start Panel
@@ -1270,8 +1270,8 @@ thebes/
 │       ├── core/                      ← BowenLabs territory — never edit as operator
 │       │   ├── components/
 │       │   │   ├── site/              ← Astro components
-│       │   │   └── panel/             ← React components
-│       │   ├── lib/                   ← Krypto utilities (blocks, forms, design system)
+│       │   │   └── panel/             ← Solid components
+│       │   ├── lib/                   ← Citadel utilities (blocks, forms, design system)
 │       │   └── db/
 │       │       ├── schema.ts          ← Drizzle schema — single source of truth
 │       │       └── migrations/        ← auto-generated, never hand-edit
@@ -1283,15 +1283,15 @@ thebes/
 │       │   ├── themes/
 │       │   └── seed/
 │       │
-│       ├── krypto.config.ts           ← operator config — never overwritten
+│       ├── citadel.config.ts           ← operator config — never overwritten
 │       ├── DECISIONS.md               ← operator architectural decisions
 │       └── seed.ts
 │
 ├── docs/                              ← Cadmus documentation site (Astro)
 ├── examples/                          ← standalone Cadmus usage examples
-├── drizzle.config.ts                  ← points at apps/krypto/core/db/schema.ts
+├── drizzle.config.ts                  ← points at apps/citadel/core/db/schema.ts
 ├── biome.json                         ← covers packages/, apps/, docs/, examples/
-├── pnpm-workspace.yaml                ← packages/cadmus, apps/krypto, docs, examples/*
+├── pnpm-workspace.yaml                ← packages/cadmus, apps/citadel, docs, examples/*
 ├── package.json                       ← root scripts
 └── .github/
     └── workflows/
@@ -1299,16 +1299,16 @@ thebes/
         └── update.yml                 ← weekly upstream merge from bowenlabs/thebes
 ```
 
-### The `krypto.config.ts` contract
+### The `citadel.config.ts` contract
 
 ```typescript
-// apps/krypto/krypto.config.ts
-// This file is yours. Krypto will never overwrite it.
+// apps/citadel/citadel.config.ts
+// This file is yours. Citadel will never overwrite it.
 
-import type { KryptoConfig } from 'apps/krypto/core/lib/config'
+import type { CitadelConfig } from 'apps/citadel/core/lib/config'
 
-const config: KryptoConfig = {
-  theme: 'krypto',
+const config: CitadelConfig = {
+  theme: 'citadel',
   seed: {
     siteName: 'My Site',
     tagline:  '',
@@ -1324,29 +1324,29 @@ export default config
 
 **Cadmus (`packages/cadmus/`):**
 - V8-first, Cloudflare-native primitives only
-- No Krypto-specific code — ever
+- No Citadel-specific code — ever
 - Each primitive independently importable with zero cross-primitive dependencies
 - PRs touching `packages/cadmus/` must not import from `apps/`
 
-**Krypto core (`apps/krypto/core/`):**
-- Krypto-specific components, utilities, schema
-- Imports from `@bowenlabs/cadmus` — never from `apps/krypto/custom/`
+**Citadel core (`apps/citadel/core/`):**
+- Citadel-specific components, utilities, schema
+- Imports from `@bowenlabs/cadmus` — never from `apps/citadel/custom/`
 - Updated via upstream merge — operators never edit these files
-- PRs to `bowenlabs/thebes` that touch Krypto touch only `apps/krypto/core/`
+- PRs to `bowenlabs/thebes` that touch Citadel touch only `apps/citadel/core/`
 
-**Krypto custom (`apps/krypto/custom/`):**
-- Operator territory — Krypto never overwrites these files
-- Imports from `apps/krypto/core/` — never from `packages/cadmus/` directly
+**Citadel custom (`apps/citadel/custom/`):**
+- Operator territory — Citadel never overwrites these files
+- Imports from `apps/citadel/core/` — never from `packages/cadmus/` directly
 - Custom components shadow core components of the same name
 - Custom components shadow core components of the same name
 - Custom themes layer on top of preset themes
 
 **Entry points (`src/`):**
-- Thin wrappers that import from `apps/krypto/core/` and apply `apps/krypto/custom/` overrides
-- These files are generated by the seed script and updated by Krypto
+- Thin wrappers that import from `apps/citadel/core/` and apply `apps/citadel/custom/` overrides
+- These files are generated by the seed script and updated by Citadel
   only when the override API changes (rare, semver-gated)
 
-**`krypto.config.ts`:**
+**`citadel.config.ts`:**
 - Never overwritten by updates
 - The operator's single source of truth for customization intent
 - Read by core at build time and runtime
@@ -1355,7 +1355,7 @@ export default config
 
 ## 5. Update and maintenance model
 
-### How Krypto updates flow to operator instances
+### How Citadel updates flow to operator instances
 
 ```
 BowenLabs pushes to bowenlabs/thebes:main
@@ -1377,20 +1377,20 @@ on every operator fork
 
 ### Why conflicts should be rare
 
-Updates only touch `apps/krypto/core/`, `public/themes/`, and root config files.
-Operators never edit `apps/krypto/core/`. If an operator wants to change core behavior,
-they use `apps/krypto/custom/` overrides — which are never touched by updates.
+Updates only touch `apps/citadel/core/`, `public/themes/`, and root config files.
+Operators never edit `apps/citadel/core/`. If an operator wants to change core behavior,
+they use `apps/citadel/custom/` overrides — which are never touched by updates.
 
 The only realistic conflict sources are:
-- Operator edited a file in `apps/krypto/core/` (violates the boundary — document this)
-- Krypto changed a root config file the operator also changed (`wrangler.jsonc`,
-  `drizzle.config.ts`) — Krypto should minimize touching these
+- Operator edited a file in `apps/citadel/core/` (violates the boundary — document this)
+- Citadel changed a root config file the operator also changed (`wrangler.jsonc`,
+  `drizzle.config.ts`) — Citadel should minimize touching these
 
 ### The `DECISIONS.md` file
 
 Every significant architectural decision is recorded in `DECISIONS.md`
 with date, options considered, decision made, and rationale. This file:
-- Is operator-owned (in the repo root, not in `apps/krypto/core/`)
+- Is operator-owned (in the repo root, not in `apps/citadel/core/`)
 - Is never overwritten by updates
 - Serves as institutional memory for why things are the way they are
 - Is the first place a new engineer should read after `CLAUDE.md`
@@ -1469,7 +1469,7 @@ Phase 7   Form builder
 Phase 8   CRM and inbox
           └── Contacts + Activities + form submission inbox + contact upsert
 
-Phase 9   Krypto Panel shell
+Phase 9   Citadel Panel shell
           └── Panel layout, nav, dashboard, stat cards, activity feed
 
 Phase 10  Settings and design Panel
@@ -1507,74 +1507,74 @@ they harden what exists.
 skeletons. Full repo structure in place. All tooling configured. CI passes.
 `pnpm dev` starts both Workers. `pnpm deploy` deploys both Workers.
 
-Phase 0 produced two working POC scaffolds in `apps/krypto/workers/site/` and
-`apps/krypto/workers/panel/` — Phase 1 hardens them into the permanent repo structure,
-adds all remaining dependencies, establishes the `apps/krypto/core/`/`apps/krypto/custom/` boundary,
+Phase 0 produced two working POC scaffolds in `apps/citadel/workers/site/` and
+`apps/citadel/workers/panel/` — Phase 1 hardens them into the permanent repo structure,
+adds all remaining dependencies, establishes the `apps/citadel/core/`/`apps/citadel/custom/` boundary,
 and wires up CI. No new features. No schema beyond what Phase 0 proved out.
 That all comes in Phase 2+.
 
 ### Milestones
 
-**Worker 1 — Astro public site (`apps/krypto/workers/site/`):**
-- [ ] **1.1** Promote Phase 0 Astro scaffold to permanent structure — confirm `apps/krypto/workers/site/src/app.ts` Hono entrypoint checks custom routes first, then falls through to `handle()` from `@astrojs/cloudflare/handler` (must be last). Do not use `astro/hono`'s `middleware()`/`pages()` — confirmed broken for custom Cloudflare entrypoints, see `DECISIONS.md`.
-- [ ] **1.2** Confirm `apps/krypto/workers/site/astro.config.mjs` has `adapter: cloudflare()` (no `entrypoint` option — it doesn't exist on this adapter version), `output: 'server'`, `@tailwindcss/vite` plugin, and no `experimental.advancedRouting` flag
-- [ ] **1.3** Confirm `apps/krypto/workers/site/wrangler.jsonc` has all bindings: D1, KV, R2, Email Workers (`send_email`), `nodejs_compat` flag, `observability: true`
-- [ ] **1.4** Install Phosphor React in `apps/krypto/workers/site/`
-- [ ] **1.5** Create `apps/krypto/workers/site/src/layouts/Layout.astro` — bare HTML shell, imports `app.css`, `<ViewTransitions />`, accepts `title` prop
-- [ ] **1.6** Create `apps/krypto/workers/site/src/pages/index.astro` — placeholder reading `site_settings.siteName` from D1, renders in layout
-- [ ] **1.7** Confirm `apps/krypto/workers/site/.dev.vars` exists and is in `.gitignore`; create `apps/krypto/workers/site/.dev.vars.example` with all required keys: `SESSION_SECRET`, `OWNER_EMAIL`, `MEDIA_URL`
+**Worker 1 — Astro public site (`apps/citadel/workers/site/`):**
+- [ ] **1.1** Promote Phase 0 Astro scaffold to permanent structure — confirm `apps/citadel/workers/site/src/app.ts` Hono entrypoint checks custom routes first, then falls through to `handle()` from `@astrojs/cloudflare/handler` (must be last). Do not use `astro/hono`'s `middleware()`/`pages()` — confirmed broken for custom Cloudflare entrypoints, see `DECISIONS.md`.
+- [ ] **1.2** Confirm `apps/citadel/workers/site/astro.config.mjs` has `adapter: cloudflare()` (no `entrypoint` option — it doesn't exist on this adapter version), `output: 'server'`, `@tailwindcss/vite` plugin, and no `experimental.advancedRouting` flag
+- [ ] **1.3** Confirm `apps/citadel/workers/site/wrangler.jsonc` has all bindings: D1, KV, R2, Email Workers (`send_email`), `nodejs_compat` flag, `observability: true`
+- [ ] **1.4** Install @phosphor-icons/web in `apps/citadel/workers/site/`
+- [ ] **1.5** Create `apps/citadel/workers/site/src/layouts/Layout.astro` — bare HTML shell, imports `app.css`, `<ViewTransitions />`, accepts `title` prop
+- [ ] **1.6** Create `apps/citadel/workers/site/src/pages/index.astro` — placeholder reading `site_settings.siteName` from D1, renders in layout
+- [ ] **1.7** Confirm `apps/citadel/workers/site/.dev.vars` exists and is in `.gitignore`; create `apps/citadel/workers/site/.dev.vars.example` with all required keys: `SESSION_SECRET`, `OWNER_EMAIL`, `MEDIA_URL`
 
-**Worker 2 — TanStack Start Panel (`apps/krypto/workers/panel/`):**
-- [ ] **1.8** Promote Phase 0 TanStack Start scaffold to permanent structure — confirm `apps/krypto/workers/panel/app/server.ts` custom entrypoint with Hono public API routes and TanStack Start fallback
-- [ ] **1.9** Confirm `apps/krypto/workers/panel/vite.config.ts` has `cloudflare({ viteEnvironment: { name: 'ssr' } })`, `tanstackStart()`, `tailwindcss()` in correct order
-- [ ] **1.10** Confirm `apps/krypto/workers/panel/wrangler.jsonc` has same D1, KV, R2 binding IDs as Worker 1, plus Email, `nodejs_compat`, `observability: true`, `"main": "app/server.ts"`
-- [ ] **1.11** Install Phosphor React in `apps/krypto/workers/panel/`
-- [ ] **1.12** Install TipTap in `apps/krypto/workers/panel/`: `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/html` — Panel-only dependency, never imported from `apps/krypto/core/`
-- [ ] **1.13** Install Flowbite Charts in `apps/krypto/workers/panel/`: ApexCharts + Flowbite Charts wrapper — Panel-only dependency
-- [ ] **1.14** Create `apps/krypto/workers/panel/src/routes/__root.tsx` — bare TanStack Router root layout, imports `panel.css`
-- [ ] **1.15** Create `apps/krypto/workers/panel/src/routes/admin/dashboard.tsx` — placeholder route, `prerender = false`, calls `requireAuth()` in loader, renders "Dashboard"
-- [ ] **1.16** Create `apps/krypto/workers/panel/src/routes/login.tsx` — placeholder login page (full login implementation is Phase 3)
-- [ ] **1.17** Confirm `apps/krypto/workers/panel/.dev.vars` exists and is in `.gitignore`; create `apps/krypto/workers/panel/.dev.vars.example` with same keys as Worker 1
+**Worker 2 — TanStack Start Panel (`apps/citadel/workers/panel/`):**
+- [ ] **1.8** Promote Phase 0 TanStack Start scaffold to permanent structure — confirm `apps/citadel/workers/panel/app/server.ts` custom entrypoint with Hono public API routes and TanStack Start fallback
+- [ ] **1.9** Confirm `apps/citadel/workers/panel/vite.config.ts` has `cloudflare({ viteEnvironment: { name: 'ssr' } })`, `tanstackStart()`, `tailwindcss()` in correct order
+- [ ] **1.10** Confirm `apps/citadel/workers/panel/wrangler.jsonc` has same D1, KV, R2 binding IDs as Worker 1, plus Email, `nodejs_compat`, `observability: true`, `"main": "app/server.ts"`
+- [ ] **1.11** Install @phosphor-icons/web in `apps/citadel/workers/panel/`
+- [ ] **1.12** Install TipTap in `apps/citadel/workers/panel/`: `@tiptap/core`, `@tiptap/starter-kit`, `@tiptap/html` (vanilla/framework-agnostic — no official Solid wrapper) — Panel-only dependency, never imported from `apps/citadel/core/`
+- [ ] **1.13** Install Flowbite Charts in `apps/citadel/workers/panel/`: ApexCharts + Flowbite Charts wrapper — Panel-only dependency
+- [ ] **1.14** Create `apps/citadel/workers/panel/src/routes/__root.tsx` — bare TanStack Router root layout, imports `panel.css`
+- [ ] **1.15** Create `apps/citadel/workers/panel/src/routes/admin/dashboard.tsx` — placeholder route, `prerender = false`, calls `requireAuth()` in loader, renders "Dashboard"
+- [ ] **1.16** Create `apps/citadel/workers/panel/src/routes/login.tsx` — placeholder login page (full login implementation is Phase 3)
+- [ ] **1.17** Confirm `apps/citadel/workers/panel/.dev.vars` exists and is in `.gitignore`; create `apps/citadel/workers/panel/.dev.vars.example` with same keys as Worker 1
 - [ ] **1.18** Confirm `export const prerender = false` on all Panel routes that use server functions — add lint comment or Biome rule to catch regressions
 
-**Shared `apps/krypto/core/` structure:**
-- [ ] **1.19** Establish permanent `apps/krypto/core/` directory structure at repo root:
+**Shared `apps/citadel/core/` structure:**
+- [ ] **1.19** Establish permanent `apps/citadel/core/` directory structure at repo root:
   ```
   core/
   ├── components/
   │   ├── site/       ← Astro components shared across public site
-  │   └── panel/      ← React components shared across Panel
+  │   └── panel/      ← Solid components shared across Panel
   ├── lib/            ← all shared utilities (auth, db, cache, blocks, forms, etc.)
   └── db/
       ├── schema.ts   ← canonical Drizzle schema (promoted from Phase 0 minimal)
       └── migrations/ ← auto-generated, never hand-edit
   ```
-- [ ] **1.20** Confirm `apps/krypto/core/lib/db.ts` exists (`db(d1: D1Database)` helper) — promoted from Phase 0
-- [ ] **1.21** Confirm `apps/krypto/core/lib/cache.ts` exists with dev bypass — promoted from Phase 0
-- [ ] **1.22** Create `apps/krypto/core/lib/auth.ts` stub — token generation + HMAC sign/verify signatures only, no implementation (Phase 3)
-- [ ] **1.23** Create `apps/krypto/core/lib/session.ts` stub — KV session read/write/delete signatures only (Phase 3)
-- [ ] **1.24** Create `apps/krypto/core/lib/image-service.ts` — full `ImageService` interface + `defaultImageService` R2 implementation (needed from Phase 5 onward, zero cost to add now)
+- [ ] **1.20** Confirm `apps/citadel/core/lib/db.ts` exists (`db(d1: D1Database)` helper) — promoted from Phase 0
+- [ ] **1.21** Confirm `apps/citadel/core/lib/cache.ts` exists with dev bypass — promoted from Phase 0
+- [ ] **1.22** Create `apps/citadel/core/lib/auth.ts` stub — token generation + HMAC sign/verify signatures only, no implementation (Phase 3)
+- [ ] **1.23** Create `apps/citadel/core/lib/session.ts` stub — KV session read/write/delete signatures only (Phase 3)
+- [ ] **1.24** Create `apps/citadel/core/lib/image-service.ts` — full `ImageService` interface + `defaultImageService` R2 implementation (needed from Phase 5 onward, zero cost to add now)
 - [ ] **1.25** Confirm `@core/*` path alias resolves in both Workers' `tsconfig.json` — promoted from Phase 0
 
-**Operator `apps/krypto/custom/` structure:**
-- [ ] **1.26** Create `apps/krypto/custom/` directory structure:
+**Operator `apps/citadel/custom/` structure:**
+- [ ] **1.26** Create `apps/citadel/custom/` directory structure:
   ```
-  apps/krypto/custom/
+  apps/citadel/custom/
   ├── components/
   │   ├── site/       ← operator Astro component overrides
-  │   └── panel/      ← operator React component overrides
+  │   └── panel/      ← operator Solid component overrides
   ├── blocks/         ← operator custom block types (Section 2+)
   ├── themes/         ← operator CSS theme overrides
   └── seed/           ← operator seed data overrides
   ```
-- [ ] **1.27** Add `@apps/krypto/custom/*` path alias to both Workers' `tsconfig.json`
-- [ ] **1.28** Confirm Biome boundary rule (from Phase 0) fires on any `apps/krypto/core/` → `apps/krypto/custom/` import attempt
+- [ ] **1.27** Add `@apps/citadel/custom/*` path alias to both Workers' `tsconfig.json`
+- [ ] **1.28** Confirm Biome boundary rule (from Phase 0) fires on any `apps/citadel/core/` → `apps/citadel/custom/` import attempt
 
 **Operator config and public assets:**
-- [ ] **1.29** Create `krypto.config.ts` at repo root with `KryptoConfig` type and documented defaults:
+- [ ] **1.29** Create `citadel.config.ts` at repo root with `CitadelConfig` type and documented defaults:
   ```typescript
-  const config: KryptoConfig = {
-    theme: 'krypto',
+  const config: CitadelConfig = {
+    theme: 'citadel',
     seed: {
       siteName: 'My Site',
       tagline: '',
@@ -1583,12 +1583,12 @@ That all comes in Phase 2+.
     },
   }
   ```
-- [ ] **1.30** Create `apps/krypto/workers/site/public/themes/` — empty directory placeholder for DaisyUI theme CSS files (populated in Phase 4)
-- [ ] **1.31** Create `apps/krypto/workers/site/public/apps/krypto/custom/` — empty directory for operator static assets, add `.gitkeep`
+- [ ] **1.30** Create `apps/citadel/workers/site/public/themes/` — empty directory placeholder for DaisyUI theme CSS files (populated in Phase 4)
+- [ ] **1.31** Create `apps/citadel/workers/site/public/apps/citadel/custom/` — empty directory for operator static assets, add `.gitkeep`
 
 **Root tooling and scripts:**
-- [ ] **1.32** Confirm `drizzle.config.ts` at repo root points at `apps/krypto/core/db/schema.ts` and `apps/krypto/core/db/migrations/`
-- [ ] **1.33** Confirm `biome.json` at repo root covers `apps/krypto/core/`, `apps/krypto/workers/site/src/`, `apps/krypto/workers/panel/app/`, `apps/krypto/custom/` — promoted from Phase 0
+- [ ] **1.32** Confirm `drizzle.config.ts` at repo root points at `apps/citadel/core/db/schema.ts` and `apps/citadel/core/db/migrations/`
+- [ ] **1.33** Confirm `biome.json` at repo root covers `apps/citadel/core/`, `apps/citadel/workers/site/src/`, `apps/citadel/workers/panel/app/`, `apps/citadel/custom/` — promoted from Phase 0
 - [ ] **1.34** Confirm root `package.json` scripts from Phase 0 are complete and correct. Note `dev:site`/`dev:panel`/`db:migrate` all need a **shared** `--persist-to` path — confirmed during Phase 0 (2026-06-19) that `wrangler dev` defaults its local D1 persistence to its own working directory, so two Workers sharing a `database_id` do *not* automatically share local data without this. `db:migrate` also needs `--config` (no wrangler config exists at the repo root) and the targeted config needs `migrations_dir` pointing at Drizzle's actual output, not the default `./migrations`. See `DECISIONS.md`:
   ```json
   "dev:site":        "cd workers/site && wrangler dev --port 3000 --persist-to ../../../../.wrangler/state",
@@ -1601,13 +1601,13 @@ That all comes in Phase 2+.
   "deploy:panel":    "cd workers/panel && wrangler deploy",
   "deploy":          "pnpm build && pnpm deploy:site && pnpm deploy:panel",
   "db:generate":     "drizzle-kit generate",
-  "db:migrate":      "wrangler d1 migrations apply krypto-db --local --config apps/krypto/workers/site/wrangler.jsonc --persist-to ./.wrangler/state",
-  "db:migrate:prod": "wrangler d1 migrations apply krypto-db --remote --config apps/krypto/workers/site/wrangler.jsonc",
+  "db:migrate":      "wrangler d1 migrations apply citadel-db --local --config apps/citadel/workers/site/wrangler.jsonc --persist-to ./.wrangler/state",
+  "db:migrate:prod": "wrangler d1 migrations apply citadel-db --remote --config apps/citadel/workers/site/wrangler.jsonc",
   "db:studio":       "drizzle-kit studio",
   "lint":            "biome check .",
   "format":          "biome format --write ."
   ```
-- [ ] **1.35** Confirm `pnpm-workspace.yaml` exists at repo root listing both Workers and `apps/krypto/core/`
+- [ ] **1.35** Confirm `pnpm-workspace.yaml` exists at repo root listing both Workers and `apps/citadel/core/`
 
 **CI and update workflow:**
 - [ ] **1.36** Create `.github/workflows/ci.yml`:
@@ -1618,20 +1618,20 @@ That all comes in Phase 2+.
   - Trigger: schedule (weekly, Monday 09:00 UTC)
   - Steps: fetch `bowenlabs/thebes:main` → merge → run CI → push if clean → open GitHub issue if conflicts
   - Never auto-deploys on conflict — operator resolves manually
-- [ ] **1.38** Create `CONTRIBUTING.md` noting: local dev requires both Workers running (`pnpm dev`), cookie auth must be tested on a custom domain not `workers.dev` (G6), `apps/krypto/core/` is never edited directly
+- [ ] **1.38** Create `CONTRIBUTING.md` noting: local dev requires both Workers running (`pnpm dev`), cookie auth must be tested on a custom domain not `workers.dev` (G6), `apps/citadel/core/` is never edited directly
 
 **Security headers:**
-- [ ] **1.39** Add security headers to `apps/krypto/workers/site/src/app.ts` Hono middleware (applies to all Worker 1 responses):
+- [ ] **1.39** Add security headers to `apps/citadel/workers/site/src/app.ts` Hono middleware (applies to all Worker 1 responses):
   - `Strict-Transport-Security: max-age=31536000; includeSubDomains`
   - `X-Content-Type-Options: nosniff`
   - `X-Frame-Options: SAMEORIGIN` — never DENY (preview iframes require SAMEORIGIN)
   - `Referrer-Policy: strict-origin-when-cross-origin`
   - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
   - CSP: allowlist Cloudflare Fonts, Cloudflare Analytics, `'self'`
-- [ ] **1.40** Add same security headers to `apps/krypto/workers/panel/app/server.ts` Hono middleware (applies to all Worker 2 API responses)
+- [ ] **1.40** Add same security headers to `apps/citadel/workers/panel/app/server.ts` Hono middleware (applies to all Worker 2 API responses)
 
 **Verification:**
-- [ ] **1.41** `pnpm dev:site` starts Worker 1 on `:3000`, `apps/krypto/workers/site/src/pages/index.astro` renders without errors
+- [ ] **1.41** `pnpm dev:site` starts Worker 1 on `:3000`, `apps/citadel/workers/site/src/pages/index.astro` renders without errors
 - [ ] **1.42** `pnpm dev:panel` starts Worker 2 on `:3001`, `/admin/dashboard` redirects to `/login` (auth not yet implemented — redirect is correct)
 - [ ] **1.43** `pnpm dev` starts both Workers concurrently with one command
 - [ ] **1.44** `pnpm build` completes without errors for both Workers
@@ -1642,11 +1642,11 @@ That all comes in Phase 2+.
 ### Gotchas
 - G1 (binding access), G5 (both Workers must run for full local dev), G6 (cookie auth needs custom domain for proper testing)
 - Phase 0 scaffold files from `pnpm create cloudflare@latest` may include example routes, test files, or demo content — remove all of these before Phase 1 is considered complete. The skeleton must be clean.
-- TipTap and Flowbite Charts are Panel-only (`apps/krypto/workers/panel/`) — never import them from `apps/krypto/core/` or `apps/krypto/workers/site/`. Biome boundary rules should catch this.
+- TipTap and Flowbite Charts are Panel-only (`apps/citadel/workers/panel/`) — never import them from `apps/citadel/core/` or `apps/citadel/workers/site/`. Biome boundary rules should catch this.
 - Email Workers `send_email` binding must be in both `wrangler.jsonc` files even though only Worker 2 sends email — binding declarations are per-Worker and Worker 1 may need it in future phases
-- `apps/krypto/workers/site/public/` is served as static assets by Astro — anything placed here is publicly accessible. Never put secrets, `.dev.vars`, or migration files here.
+- `apps/citadel/workers/site/public/` is served as static assets by Astro — anything placed here is publicly accessible. Never put secrets, `.dev.vars`, or migration files here.
 - Both Workers must have `nodejs_compat` in `compatibility_flags` — missing this causes subtle runtime failures that are hard to debug
-- `pnpm-workspace.yaml`'s `packages` list must include a pattern matching `apps/krypto/workers/*` explicitly — `apps/*` alone only matches one directory level deep and silently excludes both Workers (three levels under `apps/`). **Confirmed during Phase 0 (2026-06-19):** with only `apps/*` in the list, `pnpm install` at the repo root reported "Already up to date" and did nothing for `panel/` — no error, no `node_modules`, no indication the package was never recognized as a workspace member. See `DECISIONS.md`.
+- `pnpm-workspace.yaml`'s `packages` list must include a pattern matching `apps/citadel/workers/*` explicitly — `apps/*` alone only matches one directory level deep and silently excludes both Workers (three levels under `apps/`). **Confirmed during Phase 0 (2026-06-19):** with only `apps/*` in the list, `pnpm install` at the repo root reported "Already up to date" and did nothing for `panel/` — no error, no `node_modules`, no indication the package was never recognized as a workspace member. See `DECISIONS.md`.
 
 ### Acceptance criteria
 - `pnpm dev:site` and `pnpm dev:panel` each start independently with full binding access
@@ -1656,13 +1656,13 @@ That all comes in Phase 2+.
 - `pnpm lint` passes with zero Biome violations
 - CI (`ci.yml`) passes on GitHub on a clean push to `main`
 - `update.yml` runs in a test fork — merges cleanly, opens issue on conflict
-- `apps/krypto/core/`, `apps/krypto/custom/` directories exist with correct structure
-- `@core/*` and `@apps/krypto/custom/*` path aliases resolve in both Workers
-- `krypto.config.ts` exists at repo root with `KryptoConfig` type
+- `apps/citadel/core/`, `apps/citadel/custom/` directories exist with correct structure
+- `@core/*` and `@apps/citadel/custom/*` path aliases resolve in both Workers
+- `citadel.config.ts` exists at repo root with `CitadelConfig` type
 - `DECISIONS.md` exists — Phase 0 + Phase 1 findings recorded
 - Security headers present on all responses from both Workers
 - No scaffold demo files, example routes, or placeholder content remaining
-- `apps/krypto/workers/site/public/themes/` and `apps/krypto/workers/site/public/apps/krypto/custom/` directories exist
+- `apps/citadel/workers/site/public/themes/` and `apps/citadel/workers/site/public/apps/citadel/custom/` directories exist
 - Both Workers' `.dev.vars.example` committed; `.dev.vars` gitignored
 
 ---
@@ -1674,12 +1674,12 @@ in place. Drizzle Studio shows all tables with correct columns.
 
 ### Milestones
 
-- [ ] **2.1** Create `apps/krypto/core/db/schema.ts` with all Section 1 tables:
+- [ ] **2.1** Create `apps/citadel/core/db/schema.ts` with all Section 1 tables:
   - `users` (id, email, role, firstName, lastName, createdAt)
   - `sessions` (id, userId, expiresAt, createdAt)
   - `magic_link_tokens` (id, email, tokenHash, expiresAt, used, createdAt)
   - `site_settings` (id=1 singleton, all identity/appearance/contact/nav/seo/features fields,
-      plus domain fields: primaryDomain, domainProvider, nameserverDelegated, domainRegisteredViaKrypto,
+      plus domain fields: primaryDomain, domainProvider, nameserverDelegated, domainRegisteredViaCitadel,
       cfAccountId, cfApiTokenScoped — all nullable/default false; populated by Orchestrator in Section 2)
   - `pages` (id, title, slug, blocks JSON, status, createdAt, updatedAt, publishedAt)
   - `forms` (id, name, slug, fields JSON, createdAt, updatedAt)
@@ -1695,14 +1695,14 @@ in place. Drizzle Studio shows all tables with correct columns.
   - `activities.contactId` — index
   - `activities.occurredAt` — index (dashboard sort)
 - [ ] **2.3** Add `site_settings` singleton constraint (CHECK id = 1 or unique index)
-- [ ] **2.4** Run `pnpm db:generate` — confirm migration file created in `apps/krypto/core/db/migrations/`
+- [ ] **2.4** Run `pnpm db:generate` — confirm migration file created in `apps/citadel/core/db/migrations/`
 - [ ] **2.5** Run `pnpm db:migrate` — confirm migration applies to local D1 without errors
 - [ ] **2.6** Run `pnpm db:studio` — confirm all tables visible with correct columns
-- [ ] **2.7** Create `apps/krypto/core/lib/blocks.ts` — `Block` union type + `isValidBlock()` validator
-- [ ] **2.8** Create `apps/krypto/core/lib/forms.ts` — `FormField` union type + `isValidFormField()` validator
+- [ ] **2.7** Create `apps/citadel/core/lib/blocks.ts` — `Block` union type + `isValidBlock()` validator
+- [ ] **2.8** Create `apps/citadel/core/lib/forms.ts` — `FormField` union type + `isValidFormField()` validator
 - [ ] **2.9** Create `seed.ts` skeleton — connects to D1, inserts `site_settings` (id=1) if not exists, inserts owner user from `OWNER_EMAIL` if not exists
 - [ ] **2.10** Run `pnpm seed` — confirm seed runs without errors on local D1
-- [ ] **2.11** Add `pnpm db:migrate:prod` script — `wrangler d1 migrations apply krypto-db --remote`
+- [ ] **2.11** Add `pnpm db:migrate:prod` script — `wrangler d1 migrations apply citadel-db --remote`
 
 ### Gotchas
 - G7 (singleton enforcement), G14 (Drizzle D1 quirks)
@@ -1714,7 +1714,7 @@ in place. Drizzle Studio shows all tables with correct columns.
 - `pnpm db:studio` shows all 9 tables with correct columns and indexes
 - `pnpm seed` runs idempotently (safe to run twice)
 - TypeScript infers correct types from Drizzle schema on all table operations
-- `Block` and `FormField` types are importable from `apps/krypto/core/lib/blocks.ts` and `apps/krypto/core/lib/forms.ts`
+- `Block` and `FormField` types are importable from `apps/citadel/core/lib/blocks.ts` and `apps/citadel/core/lib/forms.ts`
 
 ---
 
@@ -1726,18 +1726,18 @@ across requests. Logout clears session.
 
 ### Milestones
 
-- [ ] **3.1** Create `apps/krypto/core/lib/auth.ts`:
+- [ ] **3.1** Create `apps/citadel/core/lib/auth.ts`:
   - `generateToken()` — `crypto.getRandomValues(32 bytes)` → hex string
   - `hashToken(token)` — `crypto.subtle.digest('SHA-256', ...)` → hex string
   - `generateSessionId()` — `crypto.getRandomValues(16 bytes)` → hex string
   - `signSession(sessionId, secret)` — HMAC-SHA256 → base64url string
   - `verifySession(sessionId, sig, secret)` — returns boolean
-- [ ] **3.2** Create `apps/krypto/core/lib/session.ts`:
+- [ ] **3.2** Create `apps/citadel/core/lib/session.ts`:
   - `getSession(kv, sessionId)` — KV get with retry (G3)
   - `createSession(kv, sessionId, payload, ttl)` — KV put
   - `deleteSession(kv, sessionId)` — KV delete
   - `parseSessionCookie(cookieHeader)` — splits `{sessionId}.{sig}`
-- [ ] **3.3** Create `apps/krypto/core/lib/rate-limit.ts`:
+- [ ] **3.3** Create `apps/citadel/core/lib/rate-limit.ts`:
   - `checkRateLimit(kv, key, limit, windowSeconds)` — KV incr pattern
   - Returns `{ allowed: boolean, remaining: number }`
 - [ ] **3.4** Create `POST /api/auth/magic-link`:
@@ -1767,20 +1767,20 @@ across requests. Logout clears session.
   - KV session lookup
   - Valid: attach user headers, continue
   - Invalid: redirect `/login`
-- [ ] **3.8** Create `apps/krypto/workers/site/src/pages/login.astro` (Astro SSR login page):
+- [ ] **3.8** Create `apps/citadel/workers/site/src/pages/login.astro` (Astro SSR login page):
   - Email input form
   - Posts to `/api/auth/magic-link`
   - Shows "Check your email" state
   - Shows error state for `?error=invalid` and `?error=unauthorized`
   - Dev mode: shows "Dev mode — token logged to console" notice
-- [ ] **3.9** Create `apps/krypto/core/lib/notify.ts`:
+- [ ] **3.9** Create `apps/citadel/core/lib/notify.ts`:
   - `sendEmail(env, { to, subject, html })` — wraps CF Email Workers `send_email`
   - In dev (no EMAIL binding): logs to console, does not throw
 - [ ] **3.10** Create `requireAuth()` helper for server functions:
   - Reads session from request headers (attached by middleware)
   - Throws if no session
   - Returns `{ userId, email, role }`
-- [ ] **3.11** Create placeholder `apps/krypto/workers/panel/src/routes/admin/dashboard.tsx` that calls `requireAuth()` in its loader and renders "Dashboard — authenticated"
+- [ ] **3.11** Create placeholder `apps/citadel/workers/panel/src/routes/admin/dashboard.tsx` that calls `requireAuth()` in its loader and renders "Dashboard — authenticated"
 - [ ] **3.12** Verify redirect loop does not occur (login page must not be behind middleware)
 - [ ] **3.13** Test end-to-end on custom domain (G6)
 
@@ -1808,25 +1808,25 @@ site and Panel. Live preview iframe reflects token changes via postMessage.
 ### Milestones
 
 - [ ] **4.1** Create six DaisyUI custom theme files in `public/themes/`:
-  - `theme-krypto.css`, `theme-noir.css`, `theme-adobe.css`
+  - `theme-citadel.css`, `theme-noir.css`, `theme-adobe.css`
   - `theme-flint.css`, `theme-sage.css`, `theme-blank-canvas.css`
   - Each defines DaisyUI token overrides in OKLCH for that theme's palette
-- [ ] **4.2** Port `apps/krypto/core/lib/color-scale.ts` from v1 — generates 11-stop OKLCH scale from hex
-- [ ] **4.3** Port `apps/krypto/core/lib/contrast.ts` from v1 — WCAG AA ratio checker
-- [ ] **4.4** Port `apps/krypto/core/lib/font-pairing.ts` from v1 — 7 pairings + `buildFontUrl()`
-- [ ] **4.5** Create `apps/krypto/core/lib/design-system/`:
+- [ ] **4.2** Port `apps/citadel/core/lib/color-scale.ts` from v1 — generates 11-stop OKLCH scale from hex
+- [ ] **4.3** Port `apps/citadel/core/lib/contrast.ts` from v1 — WCAG AA ratio checker
+- [ ] **4.4** Port `apps/citadel/core/lib/font-pairing.ts` from v1 — 7 pairings + `buildFontUrl()`
+- [ ] **4.5** Create `apps/citadel/core/lib/design-system/`:
   - `theme-presets.ts` — `ThemePreset` type + `THEME_PRESET_LIST`
   - `spacing-presets.ts` — Compact / Balanced / Airy token values
   - `type-defaults.ts` — default type scale token values
   - `resolve-spacing-tokens.ts` — merges preset with SiteSettings overrides
   - `resolve-type-tokens.ts` — merges defaults with SiteSettings `typeTokens`
   - `build-token-style.ts` — produces `<style>` tag content string from resolved tokens
-- [ ] **4.6** Create `apps/krypto/core/lib/image-service.ts` — `ImageService` interface + `defaultImageService` (R2 direct, no transform)
-- [ ] **4.7** Update `apps/krypto/workers/site/src/layouts/Layout.astro` (root Astro layout):
+- [ ] **4.6** Create `apps/citadel/core/lib/image-service.ts` — `ImageService` interface + `defaultImageService` (R2 direct, no transform)
+- [ ] **4.7** Update `apps/citadel/workers/site/src/layouts/Layout.astro` (root Astro layout):
   - Set `data-theme="{theme}"` on `<html>`
   - Set `.dark` class if `darkMode` is true
   - Load theme CSS: `<link href="/themes/theme-{name}.css">`
-- [ ] **4.8** Create `apps/krypto/workers/site/src/pages/layout.tsx` (site layout):
+- [ ] **4.8** Create `apps/citadel/workers/site/src/pages/layout.tsx` (site layout):
   - Fetch `site_settings` from D1
   - Resolve font pairing → inject `<link>` for Cloudflare Fonts
   - Call `generateColorScale(brandColor)` → inject primary/secondary/tertiary OKLCH overrides
@@ -1841,7 +1841,7 @@ site and Panel. Live preview iframe reflects token changes via postMessage.
 - [ ] **4.10** Create `<BrandColorProvider>` client component for Panel:
   - Sets `data-theme`, loads theme CSS, injects overrides on mount and on `louise:panel-preview` events
   - Used in Panel layout to keep Panel UI in sync with owner's active theme
-- [ ] **4.11** Create `apps/krypto/workers/site/src/assets/app.css`:
+- [ ] **4.11** Create `apps/citadel/workers/site/src/assets/app.css`:
   - Tailwind v4 `@import`
   - `@theme inline` block mapping DaisyUI token names to Tailwind utilities
   - `prose-site` class mapping `--tw-prose-*` to DaisyUI tokens
@@ -1886,36 +1886,36 @@ works. `/coming-soon` renders. `robots.txt` generates correctly.
   - `<HomepageGallery>` — visual-forward
   - `<HomepageStory>` — narrative, mission-driven
   - All accept `{ settings, heroTitle, heroBody }` props
-- [ ] **5.4** Create `apps/krypto/workers/site/src/pages/page.tsx` (homepage):
+- [ ] **5.4** Create `apps/citadel/workers/site/src/pages/page.tsx` (homepage):
   - Fetch `site_settings` + page with `slug: 'home'`
   - Switch on `homepageLayout` → render correct variant
   - Add `Cache-Control: public, max-age=60` response header (G4)
-- [ ] **5.5** Create `apps/krypto/workers/site/src/pages/[slug]/page.tsx` (catch-all):
+- [ ] **5.5** Create `apps/citadel/workers/site/src/pages/[slug]/page.tsx` (catch-all):
   - Exclude reserved slugs: `home`, `about`, `contact`
   - Fetch page by slug, status = 'published'
   - `notFound()` if not found
   - Render `<BlockRenderer blocks={page.blocks} />`
   - No static prerendering — Astro SSR renders all pages dynamically
   - `Cache-Control: public, max-age=60` on Astro SSR responses
-- [ ] **5.6** Create `apps/krypto/workers/site/src/pages/about/page.tsx`:
+- [ ] **5.6** Create `apps/citadel/workers/site/src/pages/about/page.tsx`:
   - Fetch page with `slug: 'about'`
   - `notFound()` if not found
   - Render title + `<BlockRenderer>`
-- [ ] **5.7** Create `apps/krypto/workers/site/src/pages/contact/page.tsx`:
+- [ ] **5.7** Create `apps/citadel/workers/site/src/pages/contact/page.tsx`:
   - Fetch page with `slug: 'contact'` + `site_settings.contact`
   - Render contact info + `<PublicForm>` for the contact form
-- [ ] **5.8** Create `apps/krypto/workers/site/src/pages/coming-soon/page.tsx`:
+- [ ] **5.8** Create `apps/citadel/workers/site/src/pages/coming-soon/page.tsx`:
   - Fetch `site_settings` for branding only
   - Render minimal branded screen with back-to-home link
   - `<meta name="robots" content="noindex">`
   - Returns 200 — not a 404
-- [ ] **5.9** Create `apps/krypto/workers/site/src/pages/robots.txt.ts` (Astro endpoint):
+- [ ] **5.9** Create `apps/citadel/workers/site/src/pages/robots.txt.ts` (Astro endpoint):
   - Fetch `site_settings.seo.disableIndexing`
   - If true: `Disallow: /`
   - Always disallow: `/admin/`, `/api/`, `/coming-soon`
   - Include sitemap URL when indexing enabled
-- [ ] **5.10** Create `apps/krypto/workers/site/src/pages/404.astro` — site-scoped 404 with nav + footer
-- [ ] **5.11** Create `apps/krypto/workers/site/src/pages/500.astro` — site-scoped error page
+- [ ] **5.10** Create `apps/citadel/workers/site/src/pages/404.astro` — site-scoped 404 with nav + footer
+- [ ] **5.11** Create `apps/citadel/workers/site/src/pages/500.astro` — site-scoped error page
 
 ### Gotchas
 - `[slug]` catch-all must list reserved slugs to prevent shadowing dedicated routes
@@ -1941,19 +1941,19 @@ Panel. Blocks render correctly on the public site via `<BlockRenderer>`.
 
 - [ ] **6.1** Create `<BlockRenderer>` public site component:
   - Renders `Block[]` from `pages.blocks`
-  - `richText` → `tiptapToHtml(content)` via `apps/krypto/core/lib/rich-text.ts`
+  - `richText` → `tiptapToHtml(content)` via `apps/citadel/core/lib/rich-text.ts`
   - `image` → `imageService.render(block)` → `<img>` with `loading="lazy"`, `decoding="async"`, `srcset` (G9)
   - `hero` → `<HeroBlock>`
   - `form` → fetch form by id → `<PublicForm>`
   - `columns` → recursive `<BlockRenderer>` per column
   - `divider` → `<hr>`
-- [ ] **6.2** Create `apps/krypto/core/lib/rich-text.ts` — `tiptapToHtml(content: JSONContent): string` using `@tiptap/html` (G11)
-- [ ] **6.3** Create Panel page list: `apps/krypto/workers/panel/src/routes/admin/pages/page.tsx`
+- [ ] **6.2** Create `apps/citadel/core/lib/rich-text.ts` — `tiptapToHtml(content: JSONContent): string` using `@tiptap/html` (G11)
+- [ ] **6.3** Create Panel page list: `apps/citadel/workers/panel/src/routes/admin/pages/page.tsx`
   - Fetch all pages sorted by `updatedAt` DESC
   - Table: title, slug, status, updatedAt
   - "New page" button → `/admin/pages/new`
   - Click row → `/admin/pages/[id]`
-- [ ] **6.4** Create Panel block canvas editor: `apps/krypto/workers/panel/src/routes/admin/pages/[id]/page.tsx`
+- [ ] **6.4** Create Panel block canvas editor: `apps/citadel/workers/panel/src/routes/admin/pages/[id]/page.tsx`
   - Load page by id (or blank for "new")
   - Render `<PageEditor>` client component
 - [ ] **6.5** Create `<PageEditor>` client component:
@@ -1983,9 +1983,9 @@ Panel. Blocks render correctly on the public site via `<BlockRenderer>`.
   - POST `/api/revalidate`
   - Redirect to `/admin/pages`
 - [ ] **6.9** Create `POST /api/revalidate`:
-  - Validate `Authorization: Bearer {KRYPTO_SERVICE_KEY}`
-  - Call `purgeCache()` from `apps/krypto/core/lib/cache.ts` for each affected URL
-  - Calls `purgeCache()` from `apps/krypto/core/lib/cache.ts` — skipped silently in dev (G4)
+  - Validate `Authorization: Bearer {CITADEL_SERVICE_KEY}`
+  - Call `purgeCache()` from `apps/citadel/core/lib/cache.ts` for each affected URL
+  - Calls `purgeCache()` from `apps/citadel/core/lib/cache.ts` — skipped silently in dev (G4)
 - [ ] **6.10** Verify `<BlockRenderer>` renders all block types on the public site
 - [ ] **6.11** Verify TipTap extensions in editor match extensions in `generateHTML` (G11)
 
@@ -2014,8 +2014,8 @@ and trigger contact upsert + activity log.
 
 ### Milestones
 
-- [ ] **7.1** Create Panel form list: `apps/krypto/workers/panel/src/routes/admin/forms/page.tsx`
-- [ ] **7.2** Create Panel form builder: `apps/krypto/workers/panel/src/routes/admin/forms/[id]/page.tsx`
+- [ ] **7.1** Create Panel form list: `apps/citadel/workers/panel/src/routes/admin/forms/page.tsx`
+- [ ] **7.2** Create Panel form builder: `apps/citadel/workers/panel/src/routes/admin/forms/[id]/page.tsx`
   - Form name + slug fields
   - Field list with add / reorder / delete
   - Per-field editor: type picker, label, name (auto-generated from label), required toggle, placeholder, options (for select)
@@ -2043,7 +2043,7 @@ and trigger contact upsert + activity log.
   - INSERT `activities` (`type: 'form_submission'`)
   - Send notification (Phase 12 — stub for now, skip silently)
   - Return 200 generic success
-- [ ] **7.6** Create `apps/krypto/core/lib/upsert-contact.ts`:
+- [ ] **7.6** Create `apps/citadel/core/lib/upsert-contact.ts`:
   - Find contact by email in D1
   - If found: merge `types` array (add new type if not present), UPDATE
   - If not found: INSERT with `types: ['lead']`
@@ -2075,7 +2075,7 @@ the people list. Activities display on the dashboard.
 
 ### Milestones
 
-- [ ] **8.1** Create Panel inbox: `apps/krypto/workers/panel/src/routes/admin/inbox/page.tsx`
+- [ ] **8.1** Create Panel inbox: `apps/citadel/workers/panel/src/routes/admin/inbox/page.tsx`
   - Two-pane layout: submission list (left) + detail (right)
   - List: sender name/email, form name, date, status badge
   - Filter tabs: All / New / Archived (with counts)
@@ -2085,11 +2085,11 @@ the people list. Activities display on the dashboard.
   - `requireAuth()`
   - UPDATE `form_submissions` set status = 'archived' where id = id
   - Optimistic update in UI via `useOptimistic`
-- [ ] **8.3** Create Panel people list: `apps/krypto/workers/panel/src/routes/admin/people/page.tsx`
+- [ ] **8.3** Create Panel people list: `apps/citadel/workers/panel/src/routes/admin/people/page.tsx`
   - Table: name, email, types, status, createdAt
   - Client-side search by name/email
   - Click row → contact detail (read-only in Section 1)
-- [ ] **8.4** Create contact detail view: `apps/krypto/workers/panel/src/routes/admin/people/[id]/page.tsx`
+- [ ] **8.4** Create contact detail view: `apps/citadel/workers/panel/src/routes/admin/people/[id]/page.tsx`
   - Contact fields (read-only display in Section 1)
   - Activity timeline for this contact
 - [ ] **8.5** Create `<ActivityFeed>` component:
@@ -2097,7 +2097,7 @@ the people list. Activities display on the dashboard.
   - Each item: icon (by type), summary, relative timestamp
   - Used on both dashboard and contact detail
 - [ ] **8.6** Create `<StatCard>` component — label, value, icon, optional href, optional badge
-- [ ] **8.7** Create Panel dashboard: `apps/krypto/workers/panel/src/routes/admin/dashboard/page.tsx`
+- [ ] **8.7** Create Panel dashboard: `apps/citadel/workers/panel/src/routes/admin/dashboard/page.tsx`
   - Stat cards: total pages, total contacts, unread submissions, total forms
   - Recent activity feed (last 20 activities)
   - Time-based greeting
@@ -2111,14 +2111,14 @@ the people list. Activities display on the dashboard.
 
 ---
 
-## Phase 9 — Krypto Panel shell
+## Phase 9 — Citadel Panel shell
 
 **Goal:** Panel has a complete, accessible shell — nav, header, layout —
 that works on mobile and desktop. All Panel routes are reachable from the nav.
 
 ### Milestones
 
-- [ ] **9.1** Create `apps/krypto/workers/panel/src/routes/layout.tsx`:
+- [ ] **9.1** Create `apps/citadel/workers/panel/src/routes/layout.tsx`:
   - Fetch `site_settings` for site name, brand, theme
   - Fetch unread submission count (for inbox badge)
   - Wrap in `<BrandColorProvider>`
@@ -2129,7 +2129,7 @@ that works on mobile and desktop. All Panel routes are reachable from the nav.
   - Renders `<LouiseNav>` + `<LouiseHeader>` + mobile overlay
   - Sets `data-theme` wrapper
 - [ ] **9.3** Create `<LouiseNav>`:
-  - Krypto logo + site name
+  - Citadel logo + site name
   - Nav sections: CONTENT (Pages, Forms), PEOPLE (Inbox, Contacts), SITE (Settings, Design, Extensions)
   - Active route highlight
   - Inbox badge (unread count)
@@ -2161,7 +2161,7 @@ site after save.
 
 ### Milestones
 
-- [ ] **10.1** Create Panel settings page: `apps/krypto/workers/panel/src/routes/admin/settings/page.tsx`
+- [ ] **10.1** Create Panel settings page: `apps/citadel/workers/panel/src/routes/admin/settings/page.tsx`
   - Tabs: General, Contact, SEO, Export
   - General: site name, tagline, logo upload (links to Phase 11), favicon upload
   - Contact: email, phone, address, social links
@@ -2171,7 +2171,7 @@ site after save.
   - `requireAuth()`
   - UPDATE `site_settings` where id = 1
   - POST `/api/revalidate` for affected paths
-- [ ] **10.3** Create Panel design page: `apps/krypto/workers/panel/src/routes/admin/design/page.tsx`
+- [ ] **10.3** Create Panel design page: `apps/citadel/workers/panel/src/routes/admin/design/page.tsx`
   - Tabs: Theme, Colors, Typography, Spacing
   - Theme tab: `<ThemePresetPicker>` + homepage layout + dark mode + `<SettingsPreviewPane>`
   - Colors tab: `<BrandColorPicker>` (primary, secondary, tertiary) with OKLCH ramp + AA warning
@@ -2220,7 +2220,7 @@ served via the public R2 URL. `<BlockRenderer>` renders images via `ImageService
   - Generate unique key: `media/{uuid}.{ext}`
   - `env.R2.put(key, file, { httpMetadata: { contentType } })`
   - Return `{ url: 'https://media.{domain}/{key}' }`
-- [ ] **11.2** Update `defaultImageService.upload` in `apps/krypto/core/lib/image-service.ts` to call `/api/media/upload`
+- [ ] **11.2** Update `defaultImageService.upload` in `apps/citadel/core/lib/image-service.ts` to call `/api/media/upload`
 - [ ] **11.3** Create `<MediaUploader>` client component:
   - Drag-and-drop + click-to-browse
   - Shows upload progress
@@ -2305,7 +2305,7 @@ Security headers are correct. Error boundaries work.
   - All operations idempotent (safe to run twice)
   - Verify R2 bucket accessible — warn if not (G13)
   - Log clear success/failure for each step
-- [ ] **13.2** Create `apps/krypto/core/lib/export.ts`:
+- [ ] **13.2** Create `apps/citadel/core/lib/export.ts`:
   - Fetch all tables from D1
   - Serialize to JSON per table
   - Fetch all R2 objects (list + get)
@@ -2339,11 +2339,11 @@ Security headers are correct. Error boundaries work.
   - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
   - `X-Frame-Options: SAMEORIGIN` — never DENY
 - [ ] **13.6** Error boundary audit:
-  - `apps/krypto/workers/site/src/pages/404.astro` — site-scoped 404 with nav + footer
-  - `apps/krypto/workers/site/src/pages/500.astro` — site-scoped error page
+  - `apps/citadel/workers/site/src/pages/404.astro` — site-scoped 404 with nav + footer
+  - `apps/citadel/workers/site/src/pages/500.astro` — site-scoped error page
   - TanStack Start Panel routes: `errorComponent` on route definitions — Panel-scoped error UI
 - [ ] **13.7** Verify seed script on a fresh D1 instance (wipe + remigrate + reseed)
-- [ ] **13.8** Ensure the deployment is accessible at its `*.workers.dev` URL before any custom domain is pointed — this is the **preview URL** that Section 2's zero-downtime cutover flow depends on. Clients with an existing live site must be able to review their Krypto deployment at the preview URL before the nameserver flip. Do not remove or restrict access to the `workers.dev` URL in production.
+- [ ] **13.8** Ensure the deployment is accessible at its `*.workers.dev` URL before any custom domain is pointed — this is the **preview URL** that Section 2's zero-downtime cutover flow depends on. Clients with an existing live site must be able to review their Citadel deployment at the preview URL before the nameserver flip. Do not remove or restrict access to the `workers.dev` URL in production.
 
 ### Acceptance criteria
 - `pnpm seed` on a fresh database creates all expected rows
@@ -2437,7 +2437,7 @@ time to build both POCs properly before deciding.
 Section 1 is complete when every item below is true:
 
 ### Functional
-- [ ] Owner deploys Krypto to Cloudflare Workers from a README
+- [ ] Owner deploys Citadel to Cloudflare Workers from a README
 - [ ] Owner logs in via magic link — no password
 - [ ] Owner creates a page with all 6 block types and publishes it
 - [ ] Published page is accessible at `/{slug}` on the public site
@@ -2458,14 +2458,14 @@ Section 1 is complete when every item below is true:
 - [ ] Domain onboarding strategy recorded in `DECISIONS.md`
 - [ ] TanStack DB deferred to Section 2+ recorded in `DECISIONS.md`
 - [ ] No `@tanstack/db` dependency in either Worker
-- [ ] Biome passes with zero violations on all code across `apps/krypto/core/`, both Workers, `apps/krypto/custom/`
-- [ ] Biome boundary rule enforced — `apps/krypto/core/` never imports from `apps/krypto/custom/`
-- [ ] TipTap and Flowbite Charts never imported outside `apps/krypto/workers/panel/`
-- [ ] Cache purge dev bypass in `apps/krypto/core/lib/cache.ts` — never throws in dev
-- [ ] `apps/krypto/core/` and `apps/krypto/custom/` folder structure in place and enforced
-- [ ] `apps/krypto/workers/site/` and `apps/krypto/workers/panel/` are independent deployable Workers with their own `wrangler.jsonc`
+- [ ] Biome passes with zero violations on all code across `apps/citadel/core/`, both Workers, `apps/citadel/custom/`
+- [ ] Biome boundary rule enforced — `apps/citadel/core/` never imports from `apps/citadel/custom/`
+- [ ] TipTap and Flowbite Charts never imported outside `apps/citadel/workers/panel/`
+- [ ] Cache purge dev bypass in `apps/citadel/core/lib/cache.ts` — never throws in dev
+- [ ] `apps/citadel/core/` and `apps/citadel/custom/` folder structure in place and enforced
+- [ ] `apps/citadel/workers/site/` and `apps/citadel/workers/panel/` are independent deployable Workers with their own `wrangler.jsonc`
 - [ ] Both Workers share the same D1, KV, R2 binding IDs
-- [ ] `krypto.config.ts` exists at repo root and is read by core at build/runtime
+- [ ] `citadel.config.ts` exists at repo root and is read by core at build/runtime
 - [ ] `update.yml` runs weekly and merges upstream changes cleanly — opens issue on conflict, never auto-deploys on conflict
 - [ ] `ci.yml` gates both Worker deploys — broken builds do not deploy
 - [ ] All 9 database tables exist with correct schema, indexes, and domain fields on `site_settings`
@@ -2500,6 +2500,6 @@ Section 1 is complete when every item below is true:
 
 ---
 
-*Krypto — Open source. Always free. Built with care.*
+*Citadel — Open source. Always free. Built with care.*
 *A BowenLabs project.*
 ENDOFFILE

@@ -1,6 +1,6 @@
 # Decisions
 
-> This file is operator-owned. Krypto will never overwrite it.
+> This file is operator-owned. Citadel will never overwrite it.
 > Record every significant architectural decision here with date, options
 > considered, decision made, and rationale. This is the first file a new
 > engineer reads after CLAUDE.md.
@@ -72,7 +72,7 @@ G4 gotcha).
 ## 2026-06-19 — Monorepo renamed: Salvation → Thebes
 
 **Decision:** The monorepo is renamed from "Salvation" to "Thebes" — fits
-the naming theme better. `Cadmus` and `Krypto` are unaffected (see
+the naming theme better. `Cadmus` and `Citadel` are unaffected (see
 `CLAUDE.md`'s naming table — those two were never in scope for this
 rename). The GitHub repository itself (`bowenlabs/salvation` →
 `bowenlabs/thebes`) is renamed by the operator directly; all in-repo text
@@ -82,7 +82,7 @@ updated to match ahead of that.
 **Fixed in:** `README.md`, `CADMUS.md`, `CONTRIBUTING.md`, `CLAUDE.md`,
 `GETTING_STARTED.md`, `SECTION_1_PLAN.md`, `package.json`,
 `packages/cadmus/package.json`, `packages/cadmus/README.md`,
-`.github/workflows/update.yml`, `apps/krypto/README.md`.
+`.github/workflows/update.yml`, `apps/citadel/README.md`.
 
 **Not touched:** the 2026-06-18 "Project restructure" entry below, which
 records the original "Salvation" naming decision as a historical fact —
@@ -97,7 +97,7 @@ snapshot would defeat its purpose as a snapshot.
 
 **Decision:** `drizzle-orm` is installed at the **repo root**, not only
 inside each Worker. `core/db/schema.ts` and `core/lib/db.ts` are imported
-via the `@core/*` alias (not `@apps/krypto/core/*`). `dev:site`,
+via the `@core/*` alias (not `@apps/citadel/core/*`). `dev:site`,
 `dev:panel`, and `db:migrate` all pass the same explicit `--persist-to`
 path. One Worker's `wrangler.jsonc` D1 binding sets `migrations_dir` to
 Drizzle's actual output path.
@@ -105,7 +105,7 @@ Drizzle's actual output path.
 **What broke, found while wiring up Phase 0 milestone 0.17 for real (not
 just writing the docs):**
 
-1. **`Cannot find module '@apps/krypto/core/lib/db'`** — a real file
+1. **`Cannot find module '@apps/citadel/core/lib/db'`** — a real file
    (`src/server-functions/pages.ts`, created by following the docs) used
    this alias. The canonical alias defined everywhere else in
    `SECTION_1_PLAN.md`/`GETTING_STARTED.md` is `@core/*`; one code sample
@@ -113,7 +113,7 @@ just writing the docs):**
 
 2. **`Rollup failed to resolve import "drizzle-orm/d1"`** even with
    `drizzle-orm` correctly installed in each Worker's own `package.json`.
-   Root cause: `apps/krypto/core/` is not a declared workspace package —
+   Root cause: `apps/citadel/core/` is not a declared workspace package —
    pnpm's strict, non-hoisted `node_modules` means a file resolving a bare
    import searches its own ancestor directories for `node_modules`, and
    `core/`'s ancestor chain reaches the **repo root**, not either Worker's
@@ -122,14 +122,14 @@ just writing the docs):**
    never imported from `core/`.
 
 3. **`No configuration file found` running `pnpm db:migrate` from the repo
-   root.** The script (`wrangler d1 migrations apply krypto-db --local`)
+   root.** The script (`wrangler d1 migrations apply citadel-db --local`)
    has no wrangler config to read at the root. Needed `--config` pointing
    at a Worker's `wrangler.jsonc`.
 
 4. **`No migrations present at .../workers/site/migrations`** after
    fixing #3. `wrangler d1 migrations` defaults to a `migrations/` folder
    relative to the wrangler config's own directory — not Drizzle's actual
-   `out` path (`apps/krypto/core/db/migrations`). Fixed by adding
+   `out` path (`apps/citadel/core/db/migrations`). Fixed by adding
    `"migrations_dir": "../../core/db/migrations"` to the D1 binding.
 
 5. **The two Workers don't share local D1 data even with the same
@@ -150,10 +150,10 @@ against the shared persisted state and confirmed it was visible from a
 query inside the *other* Worker's running `wrangler dev` instance — actual
 proof of shared data, not just shared configuration values.
 
-**Fixed in:** `package.json` (root scripts), `apps/krypto/workers/site/wrangler.jsonc`
-(`migrations_dir`), `apps/krypto/workers/panel/src/server-functions/pages.ts`
-(alias), `drizzle.config.ts` (new file), `apps/krypto/core/db/schema.ts` +
-`apps/krypto/core/lib/db.ts` (new files), both Workers' `tsconfig.json`
+**Fixed in:** `package.json` (root scripts), `apps/citadel/workers/site/wrangler.jsonc`
+(`migrations_dir`), `apps/citadel/workers/panel/src/server-functions/pages.ts`
+(alias), `drizzle.config.ts` (new file), `apps/citadel/core/db/schema.ts` +
+`apps/citadel/core/lib/db.ts` (new files), both Workers' `tsconfig.json`
 (`@core/*` alias), `SECTION_1_PLAN.md` (milestones 0.17, 1.34, 2.5),
 `GETTING_STARTED.md` (Steps 16, 19, 20, troubleshooting section).
 
@@ -223,7 +223,7 @@ the "POC 3" section — only the import paths were confirmed against the
 package's type declarations, not run end-to-end. That's genuinely Phase 3
 scope; flagged in `GETTING_STARTED.md` rather than presented as confirmed.
 
-**Fixed in:** `apps/krypto/workers/panel/wrangler.jsonc`, `app/server.ts`
+**Fixed in:** `apps/citadel/workers/panel/wrangler.jsonc`, `app/server.ts`
 (new file), `package.json` (added `hono`), `CLAUDE.md`, `SECTION_1_PLAN.md`
 (all `app/routes`/`app/server-functions` references across every future
 phase, the binding-access code samples, the architecture diagrams),
@@ -280,13 +280,13 @@ generate-routes` afterward resolves it.
 
 **A third bug, only visible after fixing the first two:** `pnpm install`
 from the repo root reported "Already up to date" and silently produced no
-`node_modules` for `panel/` at all. Root cause: `apps/krypto/workers/panel`
+`node_modules` for `panel/` at all. Root cause: `apps/citadel/workers/panel`
 sits three directory levels under `apps/`, but `pnpm-workspace.yaml`'s
 `apps/*` pattern only matches one level deep — `panel` was never recognized
 as a workspace member. Phase 1's own gotcha list already called for
 `pnpm-workspace.yaml` to list both Workers explicitly, but the pattern
 actually checked in (`apps/*`) didn't satisfy that. Fixed by adding
-`apps/krypto/workers/*` to the `packages` list.
+`apps/citadel/workers/*` to the `packages` list.
 
 **Fixed in:** `pnpm-workspace.yaml`, `SECTION_1_PLAN.md` (milestone 0.7 +
 Phase 1 gotcha), `GETTING_STARTED.md` (Step 10).
@@ -432,7 +432,7 @@ Cloudflare Worker entrypoint in this version combination.
 
 **The fix:**
 ```typescript
-// apps/krypto/workers/site/src/app.ts
+// apps/citadel/workers/site/src/app.ts
 import { Hono } from 'hono'
 import { handle } from '@astrojs/cloudflare/handler'
 
@@ -469,7 +469,12 @@ entrypoint + `appSymbol` attachment — at that point `cf()`/`middleware()`/
 
 ## 2026-06-19 — Component framework tiering: React, Alpine, and extension flexibility
 
-**Decision:** Standardize on React as the only UI component framework inside
+**Superseded by:** the 2026-06-19 "Panel UI framework: React → SolidJS" entry
+at the end of this file. The Panel/`core/` tier below is no longer React —
+it's SolidJS. The Alpine.js (public site) and operator-extension tiers are
+unaffected and still apply as written.
+
+**Decision (historical — Panel tier no longer current):** Standardize on React as the only UI component framework inside
 `core/` and the Panel. Use Alpine.js for lightweight sprinkle-on interactivity
 on the public site that doesn't justify a full island. Allow operator/community
 extensions to bring their own framework (Vue, Svelte, etc.) for their own
@@ -494,7 +499,7 @@ Options considered:
   by nature (no shared reactivity with the rest of the page), live outside
   `core/`'s maintained surface, and Astro's whole multi-framework islands
   model exists for exactly this case. Forcing React narrows the contributor
-  pool with no real benefit to Krypto's own maintenance burden.
+  pool with no real benefit to Citadel's own maintenance burden.
 
 **Chosen tiering:**
 - `core/` and the Panel: React only — Astro/TanStack Start dependencies are
@@ -624,7 +629,7 @@ Not deferred. The `@bowenlabs/cadmus/queues` primitive provides a producer
 helper and a consumer handler wrapper.
 
 Options considered:
-- Defer to post-Krypto Section 1 — rejected: Queues are core CF
+- Defer to post-Citadel Section 1 — rejected: Queues are core CF
   infrastructure, not an advanced feature; excluding them would make
   Cadmus feel incomplete for any real app
 - Out of scope — rejected outright
@@ -700,39 +705,39 @@ permanent.
 
 ---
 
-## 2026-06-18 — Project restructure: Salvation monorepo, Cadmus framework, Krypto product
+## 2026-06-18 — Project restructure: Salvation monorepo, Cadmus framework, Citadel product
 
 **Decision:** Restructure the project as a monorepo (`salvation`) containing
-the Cadmus framework (`packages/cadmus/`, `@bowenlabs/cadmus`) and the Krypto
-reference application (`apps/krypto/`). What was previously `krypto` becomes
-`krypto`. What was previously `core/` shared utilities becomes the foundation
+the Cadmus framework (`packages/cadmus/`, `@bowenlabs/cadmus`) and the Citadel
+reference application (`apps/citadel/`). What was previously `citadel` becomes
+`citadel`. What was previously `core/` shared utilities becomes the foundation
 of the Cadmus framework package.
 
 **Options considered:**
-- Continue as a single-product repo (Krypto) — rejected: misses the framework opportunity, `core/` was already framework-shaped
-- Separate repos from day one (cadmus repo + krypto repo) — rejected: coordination overhead while both are moving fast, no shared tooling
+- Continue as a single-product repo (Citadel) — rejected: misses the framework opportunity, `core/` was already framework-shaped
+- Separate repos from day one (cadmus repo + citadel repo) — rejected: coordination overhead while both are moving fast, no shared tooling
 - Monorepo from day one — chosen
 
 **Rationale:**
 The `core/` boundary was already functioning as a proto-framework. Formalising
 it as `@bowenlabs/cadmus` makes the abstraction explicit, forces the right
-separation, and means Krypto builds against the real package API from day one.
+separation, and means Citadel builds against the real package API from day one.
 The monorepo avoids cross-repo coordination cost until Cadmus is mature enough
 to stand alone — at which point `packages/cadmus/` is extracted cleanly.
 
-Krypto serves as Cadmus's reference implementation, proving every primitive
+Citadel serves as Cadmus's reference implementation, proving every primitive
 in production before stability guarantees are made. Cadmus `1.0.0` is not
-tagged until at least one app other than Krypto uses it in production.
+tagged until at least one app other than Citadel uses it in production.
 
 **Naming:**
 - Monorepo: `salvation` (github.com/bowenlabs/salvation)
 - Framework: Cadmus (`@bowenlabs/cadmus`)
-- Product: Krypto (`apps/krypto/`)
-- Private tooling: `krypto-tooling` (was `krypto-tooling`)
+- Product: Citadel (`apps/citadel/`)
+- Private tooling: `citadel-tooling` (was `citadel-tooling`)
 - Extensions: replaces "extensions" throughout
 
 **Revisit if:** Cadmus gets meaningful independent adoption and needs its own
-repo, docs site, and release cadence separate from Krypto's.
+repo, docs site, and release cadence separate from Citadel's.
 
 ---
 
@@ -746,7 +751,7 @@ Section 2 will need to provision Cloudflare accounts and configure domains on be
 **Client onboarding spectrum:**
 
 The client population is not cleanly bimodal — it spans a spectrum:
-- **No domain, doesn't know what one is** — needs Krypto to handle everything invisibly
+- **No domain, doesn't know what one is** — needs Citadel to handle everything invisibly
 - **Has a domain, doesn't know where** — registered years ago, login email likely defunct
 - **Has a domain, knows what it is** — can follow instructions if they're clear
 - **Has a domain and a live site** — needs zero-downtime cutover, can't break anything
@@ -755,20 +760,20 @@ The client population is not cleanly bimodal — it spans a spectrum:
 
 **Path A — New domain, new CF account (Stripe provisioning protocol)**
 - Client has no domain or chooses a new one
-- Krypto (via the Orchestrator) triggers CF account provisioning in the client's name using the Stripe-integrated protocol (launched April 2026)
+- Citadel (via the Orchestrator) triggers CF account provisioning in the client's name using the Stripe-integrated protocol (launched April 2026)
 - Domain registered via CF Registrar API (currently in beta)
 - Client ends up as the actual account owner with their own CF dashboard
-- Krypto holds a scoped, revocable API token for ongoing deployments
+- Citadel holds a scoped, revocable API token for ongoing deployments
 - At handoff, token is revoked or transferred — client has full independent ownership
 - **Known beta gaps:** CF Registrar API does not yet support renewals, transfers, or contact updates programmatically. These are manual processes post-registration. Track for resolution.
 
 **Path B — Existing domain, DNS delegation (recommended for most existing-domain cases)**
 - Client owns a domain at an external registrar (Namecheap, GoDaddy, Squarespace, etc.)
-- Krypto instructs the client to point their nameservers at Cloudflare
-- Once delegated, Krypto manages DNS records programmatically (CNAME, A, MX, etc.)
+- Citadel instructs the client to point their nameservers at Cloudflare
+- Once delegated, Citadel manages DNS records programmatically (CNAME, A, MX, etc.)
 - Client does not need to transfer the domain — registrar relationship is unchanged
-- Krypto gains full DNS control without touching the registrar
-- **Identity note:** The Stripe provisioning protocol uses the client's email to match or create a CF account. The client's Krypto login email may differ from their Stripe billing email — identity reconciliation must be explicit in the Section 2 onboarding flow, not assumed.
+- Citadel gains full DNS control without touching the registrar
+- **Identity note:** The Stripe provisioning protocol uses the client's email to match or create a CF account. The client's Citadel login email may differ from their Stripe billing email — identity reconciliation must be explicit in the Section 2 onboarding flow, not assumed.
 
 **Path C — Full domain transfer to CF Registrar**
 - Client transfers domain ownership to Cloudflare Registrar
@@ -776,8 +781,8 @@ The client population is not cleanly bimodal — it spans a spectrum:
 - Not a primary path — offer as an option after onboarding is complete, never as a blocker
 
 **Path D — CNAME/A record only, client keeps DNS control**
-- Client updates a single DNS record, Krypto doesn't control DNS
-- Lowest friction, but Krypto loses the ability to manage DNS going forward
+- Client updates a single DNS record, Citadel doesn't control DNS
+- Lowest friction, but Citadel loses the ability to manage DNS going forward
 - Fragile for Section 2+ workflows that require DNS management
 - Only appropriate as a fallback if the client refuses nameserver delegation
 
@@ -788,7 +793,7 @@ The client-facing onboarding questions should be plain-language, not technical:
 1. "Do you have a website address already?" → Yes / No / I'm not sure
 2. If yes: "Do you know where it's registered?" → Yes / No / I'm not sure
 
-"I'm not sure" on both should funnel into a domain search flow, not a dead end. Searching a name they want lets Krypto check availability, suggest alternatives, and surface whether they already own it (CF's provisioning protocol detects matching accounts). Never present a 404 or error state — always offer a next step.
+"I'm not sure" on both should funnel into a domain search flow, not a dead end. Searching a name they want lets Citadel check availability, suggest alternatives, and surface whether they already own it (CF's provisioning protocol detects matching accounts). Never present a 404 or error state — always offer a next step.
 
 **Section 1 data model requirement:**
 
@@ -798,26 +803,26 @@ The following fields must be present on `site_settings` from Section 1. Section 
 domain:           primaryDomain (text)
                   domainProvider: 'cloudflare' | 'external' | 'unknown' | null
                   nameserverDelegated: boolean (default false)
-                  domainRegisteredViaKrypto: boolean (default false)
+                  domainRegisteredViaCitadel: boolean (default false)
                   cfAccountId (text, nullable) — populated by Orchestrator in Section 2
-                  cfApiTokenScoped: boolean (default false) — true while Krypto holds deploy token
+                  cfApiTokenScoped: boolean (default false) — true while Citadel holds deploy token
 ```
 
 `domainProvider: 'unknown'` is a valid and expected state — never treat null/unknown as an error. The "I don't know" client is a first-class case.
 
 **Cloudflare ownership model:**
 
-Krypto uses Path B (agent provisioning via Stripe protocol), not the Tenant API. The distinction matters:
-- **Tenant API** (rejected): Cloudflare user account is BowenLabs' — client is invited as a member, not a true owner. Wrong for Krypto's ownership philosophy.
-- **Agent provisioning** (chosen): CF account is provisioned in the client's name. Client is the actual account owner. Krypto holds a scoped token, not ownership.
+Citadel uses Path B (agent provisioning via Stripe protocol), not the Tenant API. The distinction matters:
+- **Tenant API** (rejected): Cloudflare user account is BowenLabs' — client is invited as a member, not a true owner. Wrong for Citadel's ownership philosophy.
+- **Agent provisioning** (chosen): CF account is provisioned in the client's name. Client is the actual account owner. Citadel holds a scoped token, not ownership.
 
 **Zero-downtime cutover (Section 2 concern, flag for Section 1 Phase 13):**
 
-Clients with an existing live site need Krypto to be fully deployed and DNS-ready before the nameserver flip. This is a staging → live promotion flow. Phase 13 (seed, export, hardening) should leave a hook for this — specifically, the ability to deploy to a preview URL before the domain is pointed.
+Clients with an existing live site need Citadel to be fully deployed and DNS-ready before the nameserver flip. This is a staging → live promotion flow. Phase 13 (seed, export, hardening) should leave a hook for this — specifically, the ability to deploy to a preview URL before the domain is pointed.
 
 **Registrar API beta gaps to track:**
 - Renewals, transfers, contact updates not yet available programmatically
-- Stripe Projects (the provisioning protocol) is in open beta — validate for Krypto's non-agent, platform-driven use case before building Section 2
+- Stripe Projects (the provisioning protocol) is in open beta — validate for Citadel's non-agent, platform-driven use case before building Section 2
 - Confirm scoped token permissions needed for deploy-only access
 
 **Revisit if:** Registrar API exits beta with full programmatic support (simplifies Path A). Better Auth's Cloudflare story improves (affects Section 2 auth model, not domain provisioning). Tenant API introduces client ownership transfer as a native feature (changes the Path A vs Tenant API calculus).
@@ -882,7 +887,7 @@ Hono:     lives in Worker 2 custom server entrypoint for public API routes
 
 **Options considered:**
 - Sharp for server-side resizing — rejected: Sharp requires native binaries, does not run on Cloudflare V8 isolate
-- Separate Go/Node service with Sharp — rejected: absorbs infrastructure cost for every Krypto site, violates free-forever promise
+- Separate Go/Node service with Sharp — rejected: absorbs infrastructure cost for every Citadel site, violates free-forever promise
 - Cloudflare Images — deferred to Section 2+ as a paid extension add-on
 - R2 direct serving with HTML best practices — chosen for Section 1
 
@@ -891,7 +896,7 @@ Store originals in R2. Serve as-is. Use `loading="lazy"`, `decoding="async"`, `s
 
 All image rendering goes through `core/lib/image-service.ts` — never construct or transform image URLs inline. This allows a Cloudflare Images extension to replace the service implementation without touching any component, renderer, or block data.
 
-**Rationale:** No server-side image processing in Section 1 keeps Krypto free and infrastructure-simple. The `ImageService` interface pattern means the upgrade path to Cloudflare Images is a extension, not a refactor. Original R2 URLs stored in the database; transformation is a render-time concern.
+**Rationale:** No server-side image processing in Section 1 keeps Citadel free and infrastructure-simple. The `ImageService` interface pattern means the upgrade path to Cloudflare Images is a extension, not a refactor. Original R2 URLs stored in the database; transformation is a render-time concern.
 
 **Revisit if:** Image quality becomes a meaningful barrier to adoption, especially for the portfolio extension. Cloudflare Images is the planned Section 2+ answer.
 
@@ -999,12 +1004,12 @@ Two build pipelines unified by a single `wrangler deploy`:
 
 **Options considered:**
 - npm package distribution — rejected: does not allow operators to own and modify their codebase
-- Managed hosting — rejected: violates operator data ownership, changes Krypto's product category
+- Managed hosting — rejected: violates operator data ownership, changes Citadel's product category
 - Manual updates — rejected: non-starters for a "white glove" experience
 - GitHub fork + upstream merge — chosen
 
 **Decision:**
-Krypto is distributed as a GitHub template. Operators fork it and own their instance. `update.yml` (GitHub Actions, weekly) fetches from `bowenlabs/krypto:main` and auto-merges if CI passes. Opens a GitHub issue if there are conflicts.
+Citadel is distributed as a GitHub template. Operators fork it and own their instance. `update.yml` (GitHub Actions, weekly) fetches from `bowenlabs/citadel:main` and auto-merges if CI passes. Opens a GitHub issue if there are conflicts.
 
 The `core/` vs `custom/` folder boundary is enforced by ESLint rules and documented convention. Operators never edit `core/` — if they do, `update.yml` merges will produce conflicts.
 
@@ -1029,11 +1034,78 @@ The `core/` vs `custom/` folder boundary is enforced by ESLint rules and documen
 
 **Decision:** Biome. Replaces both ESLint and Prettier.
 
-**Rationale:** For an open source project where contributors need a fast feedback loop, Biome's speed advantage is meaningful. No ESLint/Prettier config conflict edge cases to debug. One tool, one config file (`biome.json`), one `pnpm lint` command. The ecosystem is large enough for Krypto's needs.
+**Rationale:** For an open source project where contributors need a fast feedback loop, Biome's speed advantage is meaningful. No ESLint/Prettier config conflict edge cases to debug. One tool, one config file (`biome.json`), one `pnpm lint` command. The ecosystem is large enough for Citadel's needs.
 
-**Revisit if:** A specific lint rule required by Krypto is unavailable in Biome and has no equivalent. Check Biome's rule coverage before adding any custom ESLint rule.
+**Revisit if:** A specific lint rule required by Citadel is unavailable in Biome and has no equivalent. Check Biome's rule coverage before adding any custom ESLint rule.
 
 ---
 
-*Krypto — Open source. Always free. Built with care.*
+---
+
+## 2026-06-19 — Panel UI framework: React → SolidJS
+
+**Decision:** Rewrite the Panel (Worker 2) from React + TanStack Start to
+SolidJS + TanStack Start. Supersedes the "Component framework tiering"
+entry above for the Panel/`core/` tier; the Alpine.js and operator-extension
+tiers from that entry are unchanged.
+
+**Context:** Citadel was renamed from Krypto around the same time, as part
+of a broader direction shift toward a more generic, plugin-extensible CMS
+(see README.md/CADMUS.md for current framing). SolidJS was chosen because
+it compiles to direct DOM updates with no virtual DOM, giving a smaller
+runtime payload and faster cold starts in Cloudflare's V8 isolates — more
+aligned with Cadmus's V8-first principle than React.
+
+**What changed the calculus since the earlier decision:** That entry's own
+"Revisit if" clause said: *"TanStack Start ships a stable non-React
+adapter."* It already has — TanStack Start is a multi-framework
+meta-framework (same as TanStack Router/Query), with first-party Solid
+support documented at
+https://tanstack.com/start/latest/docs/framework/solid. This was the
+detail missed when first scoping the migration (an early draft of the plan
+incorrectly assumed Start was React-only and planned to replace server
+functions with raw Hono routes) — confirmed via `npm view
+@tanstack/solid-start exports` showing the same `./server-entry`,
+`./plugin/vite`, etc. export map as `@tanstack/react-start`.
+
+**What carried over almost unchanged:** file-based routing, `createServerFn`
+server functions, and SSR — all work the same way under the Solid target.
+Only the component layer (JSX syntax, `useState`/`useEffect` →
+`createSignal`/`createEffect`) and the TanStack Router/Query framework
+bindings (`@tanstack/react-router` → `@tanstack/solid-router`,
+`@tanstack/react-query` → `@tanstack/solid-query`) needed rewriting.
+
+**Two real gaps found during the rewrite:**
+1. No official `@phosphor-icons/solid` package exists — only unofficial
+   community ports (`phosphor-solid-js`, `@transitionsag/phosphor-solid`,
+   etc.). Used the official framework-agnostic `@phosphor-icons/web`
+   (web-component/CSS build) instead of depending on an unofficial port.
+2. TipTap's React/Vue packages are framework-specific wrappers around the
+   framework-agnostic `@tiptap/core`; no official Solid wrapper exists
+   either. Deferred — TipTap integration is Section 2+ work — but
+   `@tiptap/core` direct integration (or the unofficial `solid-tiptap`
+   bindings) is the path when that's built.
+
+**A real bug hit during verification, root-caused rather than worked
+around:** after swapping dependencies, `pnpm dev` threw `useRouter()
+returns null inside HeadContent` on first boot. Bisecting `__root.tsx`
+(stripping it to a bare shell, adding pieces back one at a time, then a
+cache-cleared restart) showed this was a stale `node_modules/.vite`
+SSR dependency-optimization cache left over from the old React-targeted
+dependency graph — not a SolidStart/solid-router bug. `rm -rf
+node_modules/.vite` before the next `pnpm dev` resolved it. See
+GETTING_STARTED.md's vite.config.ts section for the operational note.
+
+**Also found:** `tsr.config.json`'s `"target"` field defaults to `"react"`
+regardless of which framework the project actually uses, and
+`@tanstack/router-cli generate` will silently inject a stray
+`@tanstack/react-router` import into every route file if left unset. Fixed
+by setting `"target": "solid"` explicitly.
+
+**Revisit if:** an official `@phosphor-icons/solid` or TipTap Solid wrapper
+ships, at which point swap off the web-component/vanilla-core fallbacks.
+
+---
+
+*Citadel — Open source. Always free. Built with care.*
 *A BowenLabs project.*

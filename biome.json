@@ -43,7 +43,7 @@
       }
     },
     {
-      "includes": ["**/apps/krypto/core/**"],
+      "includes": ["**/apps/citadel/core/**"],
       "linter": {
         "rules": {
           "style": {
@@ -52,7 +52,7 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["**/custom/**", "@apps/krypto/custom/**"]
+                    "group": ["**/custom/**", "@apps/citadel/custom/**"]
                   }
                 ]
               }

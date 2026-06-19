@@ -1,7 +1,7 @@
 packages:
   - 'packages/*'
   - 'apps/*'
-  - 'apps/krypto/workers/*'
+  - 'apps/citadel/workers/*'
   - 'docs'
   - 'examples/*'
 

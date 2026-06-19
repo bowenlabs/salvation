@@ -1,5 +1,5 @@
 # Getting Started
-## Thebes — Cadmus Framework + Krypto Reference App
+## Thebes — Cadmus Framework + Citadel Reference App
 ## Astro + TanStack Start + Cloudflare Workers
 
 > This guide walks you through Phase 0 — validating the two-Worker VMFE
@@ -10,7 +10,7 @@
 > Cadmus primitive structure in place.
 >
 > **Monorepo:** `thebes/` contains `packages/cadmus/` (the framework)
-> and `apps/krypto/` (the reference app). Worker 1 is Astro (public site).
+> and `apps/citadel/` (the reference app). Worker 1 is Astro (public site).
 > Worker 2 is TanStack Start (Panel). Both Workers share the same D1, KV,
 > and R2 binding IDs. Hono lives inside Worker 2's custom server entrypoint.
 > All shared primitives live in `@bowenlabs/cadmus` — imported by both Workers.
@@ -60,13 +60,13 @@ Cloudflare Account
 ├── R2 Bucket ────────────────────────────────────┤ same IDs in both
 │                                                  │ wrangler.jsonc files
 ├── Worker 1: Astro public site ←─────────────────┘
-│   apps/krypto/workers/site/
+│   apps/citadel/workers/site/
 │   ├── Hono entrypoint — custom routes → handle()
 │   ├── Astro SSR pages — bindings via env (cloudflare:workers)
 │   └── Serves: /, /[slug], /about, /contact, /coming-soon
 │
 └── Worker 2: TanStack Start Panel ←─────────────┘
-    apps/krypto/workers/panel/
+    apps/citadel/workers/panel/
     ├── Custom server entrypoint (app/server.ts)
     │   └── Hono — /api/form/:slug, /api/auth/*, /api/media/upload
     ├── TanStack Start — all /admin/* routes
@@ -93,8 +93,8 @@ yet and will need to revisit that config later.
 ### Step 1 — Scaffold Astro Worker
 
 ```bash
-mkdir -p apps/krypto/workers/site
-cd apps/krypto/workers/site
+mkdir -p apps/citadel/workers/site
+cd apps/citadel/workers/site
 pnpm create cloudflare@latest . --framework=astro
 ```
 
@@ -124,7 +124,7 @@ Use the stable, documented `handle()` export instead — a plain Hono app
 that checks custom routes first, then falls through to Astro SSR:
 
 ```typescript
-// apps/krypto/workers/site/src/app.ts
+// apps/citadel/workers/site/src/app.ts
 import { Hono } from 'hono'
 import { handle } from '@astrojs/cloudflare/handler'
 
@@ -144,7 +144,7 @@ app.all('*', async (c) => handle(c.req.raw, c.env, c.executionCtx))
 export default app
 ```
 
-Update `apps/krypto/workers/site/astro.config.mjs`. No `entrypoint` option
+Update `apps/citadel/workers/site/astro.config.mjs`. No `entrypoint` option
 (it doesn't exist on this adapter version — Astro auto-detects `src/app.ts`
 as the Worker entry regardless), and no `experimental.advancedRouting`
 flag (that's what gates the broken `astro/hono` feature):
@@ -176,7 +176,7 @@ DaisyUI v5 uses Tailwind v4 as a Vite plugin, not PostCSS:
 pnpm add tailwindcss @tailwindcss/vite daisyui
 ```
 
-Create `apps/krypto/workers/site/src/assets/app.css`:
+Create `apps/citadel/workers/site/src/assets/app.css`:
 
 ```css
 @import "tailwindcss";
@@ -187,7 +187,7 @@ Import in your layout:
 
 ```astro
 ---
-// apps/krypto/workers/site/src/layouts/Layout.astro
+// apps/citadel/workers/site/src/layouts/Layout.astro
 import "../assets/app.css"
 ---
 ```
@@ -205,9 +205,9 @@ during Phase 0.
 ### Step 5 — Configure Worker 1 wrangler.jsonc
 
 ```jsonc
-// apps/krypto/workers/site/wrangler.jsonc
+// apps/citadel/workers/site/wrangler.jsonc
 {
-  "name": "krypto-site",
+  "name": "citadel-site",
   "main": "./src/app.ts",
   "compatibility_date": "2026-06-17",
   "compatibility_flags": ["nodejs_compat"],
@@ -218,8 +218,8 @@ during Phase 0.
   "observability": { "enabled": true },
   "d1_databases": [{
     "binding": "DB",
-    "database_name": "krypto-db",
-    "database_id": "placeholder"    // replace after: wrangler d1 create krypto-db
+    "database_name": "citadel-db",
+    "database_id": "placeholder"    // replace after: wrangler d1 create citadel-db
   }],
   "kv_namespaces": [{
     "binding": "KV",
@@ -230,7 +230,7 @@ during Phase 0.
   }],
   "r2_buckets": [{
     "binding": "R2",
-    "bucket_name": "krypto-media"
+    "bucket_name": "citadel-media"
   }],
   "images": {
     "binding": "IMAGES"
@@ -262,15 +262,15 @@ under your control.
 Create bindings (run once — IDs go into both Workers):
 
 ```bash
-wrangler d1 create krypto-db              # copy database_id
+wrangler d1 create citadel-db              # copy database_id
 wrangler kv namespace create KV           # copy id
 wrangler kv namespace create SESSION      # copy id
-wrangler r2 bucket create krypto-media
+wrangler r2 bucket create citadel-media
 ```
 
 ### Step 6 — TypeScript types for Worker 1
 
-Create `apps/krypto/workers/site/src/env.d.ts`:
+Create `apps/citadel/workers/site/src/env.d.ts`:
 
 ```typescript
 interface Env {
@@ -294,7 +294,7 @@ declare namespace App {
 ### Step 7 — Local secrets
 
 ```bash
-# apps/krypto/workers/site/.dev.vars — never commit
+# apps/citadel/workers/site/.dev.vars — never commit
 SESSION_SECRET=dev-secret-change-in-production
 OWNER_EMAIL=you@yourdomain.com
 MEDIA_URL=http://localhost:3001/media
@@ -321,7 +321,7 @@ See [DECISIONS.md](./DECISIONS.md).
 
 ```astro
 ---
-// apps/krypto/workers/site/src/pages/test.astro
+// apps/citadel/workers/site/src/pages/test.astro
 import { env } from 'cloudflare:workers'
 const result = await env.DB.prepare('SELECT 1 as ok').first()
 ---
@@ -329,7 +329,7 @@ const result = await env.DB.prepare('SELECT 1 as ok').first()
 ```
 
 ```bash
-cd apps/krypto/workers/site && pnpm dev    # starts on :3000
+cd apps/citadel/workers/site && pnpm dev    # starts on :3000
 ```
 
 Visit `http://localhost:3000/api/ping` — both `db` and `kv` populated = **POC 1a complete**.
@@ -353,7 +353,7 @@ Visit `http://localhost:3000/api/ping` — both `db` and `kv` populated = **POC 
    [DECISIONS.md](./DECISIONS.md).
 
 ```css
-/* apps/krypto/workers/site/public/themes/theme-test.css */
+/* apps/citadel/workers/site/public/themes/theme-test.css */
 :root[data-theme="test"] {
   --color-primary: oklch(62% 0.18 145);
   --color-primary-content: oklch(100% 0 0);
@@ -362,7 +362,7 @@ Visit `http://localhost:3000/api/ping` — both `db` and `kv` populated = **POC 
 
 ```astro
 ---
-// apps/krypto/workers/site/src/pages/token-test.astro
+// apps/citadel/workers/site/src/pages/token-test.astro
 import '../assets/app.css'
 const tokenStyle = `:root[data-theme="test"] { --color-primary: oklch(42% 0.12 145); }`
 ---
@@ -404,10 +404,10 @@ with its real non-interactive flags instead:
 
 ```bash
 cd ../..   # back to repo root
-mkdir -p apps/krypto/workers/panel
-cd apps/krypto/workers/panel
+mkdir -p apps/citadel/workers/panel
+cd apps/citadel/workers/panel
 pnpm dlx @tanstack/cli@0.69.3 create panel \
-  --framework react \
+  --framework solid \
   --deployment cloudflare \
   --no-git \
   --non-interactive \
@@ -417,7 +417,7 @@ pnpm dlx @tanstack/cli@0.69.3 create panel \
 
 **Two more things to do immediately after scaffolding:**
 
-1. `apps/krypto/workers/panel` sits **three** levels under `apps/`, but the
+1. `apps/citadel/workers/panel` sits **three** levels under `apps/`, but the
    root `pnpm-workspace.yaml`'s `apps/*` glob only matches one level deep —
    `panel` is silently invisible to the workspace until you fix this.
    Add an explicit deeper pattern:
@@ -426,7 +426,7 @@ pnpm dlx @tanstack/cli@0.69.3 create panel \
    packages:
      - 'packages/*'
      - 'apps/*'
-     - 'apps/krypto/workers/*'
+     - 'apps/citadel/workers/*'
      - 'docs'
      - 'examples/*'
    ```
@@ -447,16 +447,16 @@ Use the **same binding IDs** as Worker 1 — same D1, same KV, same R2 — plus
 the same `SESSION`/`IMAGES`/`send_email` bindings, `$schema`, and
 compatibility flags. `main` must point at a custom entrypoint file
 (`./app/server.ts`, created in Step 17) — **not**
-`@tanstack/react-start/server-entry`, the framework's own default entry.
+`@tanstack/solid-start/server-entry`, the framework's own default entry.
 Pointing `main` at the package default works for a vanilla scaffold with
 no custom routes, but once you add the Hono entrypoint in Step 17, `main`
 must point at that file instead:
 
 ```jsonc
-// apps/krypto/workers/panel/wrangler.jsonc
+// apps/citadel/workers/panel/wrangler.jsonc
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "krypto-panel",
+  "name": "citadel-panel",
   "main": "./app/server.ts",
   "compatibility_date": "2026-06-17",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -467,19 +467,19 @@ must point at that file instead:
   "observability": { "enabled": true },
   "d1_databases": [{
     "binding": "DB",
-    "database_name": "krypto-db",
-    "database_id": "same-id-as-site-worker"    // copy from apps/krypto/workers/site/wrangler.jsonc
+    "database_name": "citadel-db",
+    "database_id": "same-id-as-site-worker"    // copy from apps/citadel/workers/site/wrangler.jsonc
   }],
   "kv_namespaces": [{
     "binding": "KV",
-    "id": "same-id-as-site-worker"             // copy from apps/krypto/workers/site/wrangler.jsonc
+    "id": "same-id-as-site-worker"             // copy from apps/citadel/workers/site/wrangler.jsonc
   }, {
     "binding": "SESSION",
-    "id": "same-id-as-site-worker"             // copy from apps/krypto/workers/site/wrangler.jsonc
+    "id": "same-id-as-site-worker"             // copy from apps/citadel/workers/site/wrangler.jsonc
   }],
   "r2_buckets": [{
     "binding": "R2",
-    "bucket_name": "krypto-media"
+    "bucket_name": "citadel-media"
   }],
   "images": {
     "binding": "IMAGES"
@@ -505,20 +505,20 @@ Add the plugin line to the **existing** `src/styles.css` (don't create a
 new file — the scaffold already imports this one from `src/routes/__root.tsx`):
 
 ```css
-/* apps/krypto/workers/panel/src/styles.css */
+/* apps/citadel/workers/panel/src/styles.css */
 @import "tailwindcss";
 @plugin "daisyui";
 ```
 
 `vite.config.ts`'s plugin list (already correct from the scaffold, no
-changes needed) — note the order and that `devtools()`/`viteReact()` are
-both required, unlike earlier drafts of this guide:
+changes needed) — note the order and that `devtools()`/`solid({ ssr: true })`
+are both required, unlike earlier drafts of this guide:
 
 ```typescript
 import { defineConfig } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import viteReact from '@vitejs/plugin-react'
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import solid from 'vite-plugin-solid'
 import tailwindcss from '@tailwindcss/vite'
 import { cloudflare } from '@cloudflare/vite-plugin'
 
@@ -529,10 +529,23 @@ export default defineConfig({
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
     tailwindcss(),
     tanstackStart(),
-    viteReact(),
+    solid({ ssr: true }),
   ],
 })
 ```
+
+**Note:** `tsr.config.json` must set `"target": "solid"` — the TanStack
+router-cli defaults to `"target": "react"` regardless of which framework
+you scaffolded with, and will silently inject React imports into generated
+route files if left unset. Confirmed during the Solid migration (2026-06-19).
+
+**Also note:** if you change UI framework dependencies after the project
+already has a populated `node_modules/.vite` cache, delete it
+(`rm -rf node_modules/.vite`) before the next `pnpm dev`. A stale SSR
+dependency-optimization cache from the old framework can surface as
+`useRouter()`/context hooks returning `null` inside framework-agnostic
+TanStack Router components like `HeadContent` — a Vite caching issue, not
+a code or library bug. Confirmed during the Solid migration (2026-06-19).
 
 ### Step 13 — TypeScript types for Worker 2
 
@@ -547,7 +560,7 @@ pnpm wrangler types    # generates worker-configuration.d.ts
 ### Step 14 — Local secrets
 
 ```bash
-# apps/krypto/workers/panel/.dev.vars — never commit
+# apps/citadel/workers/panel/.dev.vars — never commit
 SESSION_SECRET=dev-secret-change-in-production
 OWNER_EMAIL=you@yourdomain.com
 MEDIA_URL=http://localhost:3001/media
@@ -555,8 +568,8 @@ MEDIA_URL=http://localhost:3001/media
 
 ### Step 15 — POC 1b: verify D1 in a server function
 
-**`getCloudflareContext()` from `@tanstack/react-start/cloudflare` does not
-exist in this version** (`@tanstack/react-start@1.168.26` has no
+**`getCloudflareContext()` from `@tanstack/solid-start/cloudflare` does not
+exist in this version** (`@tanstack/solid-start@1.168.26` has no
 `./cloudflare` export at all) — confirmed during Phase 0 (2026-06-19).
 Bindings are read the same way as everywhere else in this stack: a dynamic
 `cloudflare:workers` import inside the handler. Full repro in
@@ -567,9 +580,9 @@ that directory doesn't exist here. `app/` is reserved for the custom Hono
 entrypoint added in Step 17.
 
 ```typescript
-// apps/krypto/workers/panel/src/routes/test.tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+// apps/citadel/workers/panel/src/routes/test.tsx
+import { createFileRoute } from '@tanstack/solid-router'
+import { createServerFn } from '@tanstack/solid-start'
 
 const getD1Test = createServerFn({ method: 'GET' }).handler(async () => {
   const { env } = await import('cloudflare:workers')
@@ -590,7 +603,7 @@ function Test() {
 
 ```bash
 pnpm run generate-routes   # regenerates src/routeTree.gen.ts for the new route
-cd apps/krypto/workers/panel && pnpm dev    # starts on :3000, per package.json
+cd apps/citadel/workers/panel && pnpm dev    # starts on :3000, per package.json
 ```
 
 Visit `http://localhost:3000/test` — result populated = **POC 1b complete**.
@@ -602,13 +615,13 @@ Drizzle — no `any` anywhere. Same `cloudflare:workers` pattern as Step 15.
 
 **Requires Steps 19 and 20 (Drizzle install + `core/db/schema.ts` +
 `@core/*` alias) to be done first** — do those now if you haven't.
-The path alias is **`@core/*`, not `@apps/krypto/core/*`** — confirmed
+The path alias is **`@core/*`, not `@apps/citadel/core/*`** — confirmed
 during Phase 0 (2026-06-19), see [DECISIONS.md](./DECISIONS.md) for the
 exact `Cannot find module` error this produces if you use the wrong one:
 
 ```typescript
-// apps/krypto/workers/panel/src/server-functions/pages.ts
-import { createServerFn } from '@tanstack/react-start'
+// apps/citadel/workers/panel/src/server-functions/pages.ts
+import { createServerFn } from '@tanstack/solid-start'
 import { db } from '@core/lib/db'
 import { pages } from '@core/db/schema'
 
@@ -621,12 +634,13 @@ export const getPages = createServerFn({ method: 'GET' })
   })
 ```
 
-Use with TanStack Query in a Panel route:
+Use with @tanstack/solid-query in a Panel route:
 
 ```typescript
-// apps/krypto/workers/panel/src/routes/admin/pages/index.tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+// apps/citadel/workers/panel/src/routes/admin/pages/index.tsx
+import { createFileRoute } from '@tanstack/solid-router'
+import { createQuery } from '@tanstack/solid-query'
+import { Show } from 'solid-js'
 import { getPages } from '../../../server-functions/pages'
 
 export const Route = createFileRoute('/admin/pages/')({
@@ -634,14 +648,17 @@ export const Route = createFileRoute('/admin/pages/')({
 })
 
 function PagesPage() {
-  const { data: pages, isLoading } = useQuery({
+  const pages = createQuery(() => ({
     queryKey: ['pages'],
     queryFn: () => getPages(),
     // pages type inferred from Drizzle schema — no manual typing
-  })
+  }))
 
-  if (isLoading) return <div className="loading loading-spinner" />
-  return <pre>{JSON.stringify(pages, null, 2)}</pre>
+  return (
+    <Show when={!pages.isLoading} fallback={<div class="loading loading-spinner" />}>
+      <pre>{JSON.stringify(pages.data, null, 2)}</pre>
+    </Show>
+  )
 }
 ```
 
@@ -660,12 +677,12 @@ own type: `(request: Request, opts?: RequestOptions) => Promise<Response>`.
 Don't pass `env`/`ctx` through — TanStack Start reads bindings via
 `cloudflare:workers` inside server functions instead, same as Step 15.
 
-Create `apps/krypto/workers/panel/app/server.ts`:
+Create `apps/citadel/workers/panel/app/server.ts`:
 
 ```typescript
-// apps/krypto/workers/panel/app/server.ts
+// apps/citadel/workers/panel/app/server.ts
 import { Hono } from 'hono'
-import startHandler from '@tanstack/react-start/server-entry'
+import startHandler from '@tanstack/solid-start/server-entry'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -713,7 +730,7 @@ You'll also need `hono` installed in `panel/` — it isn't a dependency of
 the vanilla scaffold:
 
 ```bash
-cd apps/krypto/workers/panel && pnpm add hono
+cd apps/citadel/workers/panel && pnpm add hono
 ```
 
 `wrangler.jsonc` already points at `./app/server.ts` from Step 11.
@@ -738,7 +755,7 @@ Public Hono route reachable = **Hono public API confirmed**.
 Confirm Web Crypto works in the Worker runtime (critical — no Node.js crypto):
 
 ```typescript
-// add to apps/krypto/workers/panel/app/server.ts temporarily
+// add to apps/citadel/workers/panel/app/server.ts temporarily
 app.get('/api/crypto-test', async (c) => {
   const bytes = crypto.getRandomValues(new Uint8Array(32))
   const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
@@ -767,18 +784,18 @@ actually got tested. Full root cause and the registration mechanics we
 ruled out are in [DECISIONS.md](./DECISIONS.md).
 
 The auth check itself must be wrapped in a `createServerFn`, not a plain
-function — `getCookie()` (from `@tanstack/react-start/server`) is
+function — `getCookie()` (from `@tanstack/solid-start/server`) is
 server-only and throws if `beforeLoad` happens to run client-side during
 SPA navigation; wrapping it in a server function guarantees it always
 executes server-side via RPC regardless of where `beforeLoad` runs:
 
 ```typescript
-// apps/krypto/workers/panel/app/middleware.ts
-import { createServerFn } from '@tanstack/react-start'
-import { getCookie } from '@tanstack/react-start/server'
+// apps/citadel/workers/panel/app/middleware.ts
+import { createServerFn } from '@tanstack/solid-start'
+import { getCookie } from '@tanstack/solid-start/server'
 
 export const requireAuth = createServerFn({ method: 'GET' }).handler(async () => {
-  const cookieValue = getCookie('krypto_session')
+  const cookieValue = getCookie('citadel_session')
   if (!cookieValue) return null
 
   const [sessionId, sig] = cookieValue.split('.')
@@ -809,8 +826,8 @@ export const requireAuth = createServerFn({ method: 'GET' }).handler(async () =>
 Guard `/admin/*` with a layout route at `src/routes/admin/route.tsx`:
 
 ```typescript
-// apps/krypto/workers/panel/src/routes/admin/route.tsx
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
+// apps/citadel/workers/panel/src/routes/admin/route.tsx
+import { createFileRoute, Outlet, redirect } from '@tanstack/solid-router'
 import { requireAuth } from '../../../app/middleware'
 
 export const Route = createFileRoute('/admin')({
@@ -844,7 +861,7 @@ These files live in `core/` — imported by both Workers.
 ### Step 19 — Install Drizzle
 
 **Install `drizzle-orm` at the repo root, not just in each Worker.**
-Confirmed during Phase 0 (2026-06-19): `apps/krypto/core/` is not itself a
+Confirmed during Phase 0 (2026-06-19): `apps/citadel/core/` is not itself a
 workspace package — when Vite resolves a bare import like `drizzle-orm/d1`
 from a file there, it walks up the directory tree looking for
 `node_modules`, and lands on the **root** `node_modules`, not either
@@ -867,7 +884,7 @@ placement.
 ### Step 20 — Schema and db helper
 
 ```typescript
-// apps/krypto/core/db/schema.ts
+// apps/citadel/core/db/schema.ts
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 
 export const pages = sqliteTable('pages', {
@@ -882,13 +899,13 @@ export const pages = sqliteTable('pages', {
 // The full site_settings table (added in Phase 2) includes domain fields
 // that Section 2's Orchestrator populates:
 //   primaryDomain, domainProvider, nameserverDelegated,
-//   domainRegisteredViaKrypto, cfAccountId, cfApiTokenScoped
+//   domainRegisteredViaCitadel, cfAccountId, cfApiTokenScoped
 // These are nullable/false by default in Section 1 — never treat them
 // as errors if unset. See DECISIONS.md for the full domain onboarding strategy.
 ```
 
 ```typescript
-// apps/krypto/core/lib/db.ts
+// apps/citadel/core/lib/db.ts
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '../db/schema'
 
@@ -902,8 +919,8 @@ export function db(d1: D1Database) {
 import { defineConfig } from 'drizzle-kit'
 
 export default defineConfig({
-  schema: './apps/krypto/core/db/schema.ts',
-  out: './apps/krypto/core/db/migrations',
+  schema: './apps/citadel/core/db/schema.ts',
+  out: './apps/citadel/core/db/migrations',
   dialect: 'sqlite',
   driver: 'd1-http',
 })
@@ -929,10 +946,10 @@ Add `migrations_dir` to **one** Worker's `wrangler.jsonc` (the
 Drizzle's actual output location:
 
 ```jsonc
-// apps/krypto/workers/site/wrangler.jsonc
+// apps/citadel/workers/site/wrangler.jsonc
 "d1_databases": [{
   "binding": "DB",
-  "database_name": "krypto-db",
+  "database_name": "citadel-db",
   "database_id": "...",
   "migrations_dir": "../../core/db/migrations"
 }]
@@ -947,10 +964,10 @@ data with an explicit, identical `--persist-to` path. Update the root
 `package.json` scripts:
 
 ```json
-"dev:site":  "cd apps/krypto/workers/site && wrangler dev --port 3000 --persist-to ../../../../.wrangler/state",
-"dev:panel": "cd apps/krypto/workers/panel && wrangler dev --port 3001 --persist-to ../../../../.wrangler/state",
-"db:migrate": "wrangler d1 migrations apply krypto-db --local --config apps/krypto/workers/site/wrangler.jsonc --persist-to ./.wrangler/state",
-"db:migrate:prod": "wrangler d1 migrations apply krypto-db --remote --config apps/krypto/workers/site/wrangler.jsonc"
+"dev:site":  "cd apps/citadel/workers/site && wrangler dev --port 3000 --persist-to ../../../../.wrangler/state",
+"dev:panel": "cd apps/citadel/workers/panel && wrangler dev --port 3001 --persist-to ../../../../.wrangler/state",
+"db:migrate": "wrangler d1 migrations apply citadel-db --local --config apps/citadel/workers/site/wrangler.jsonc --persist-to ./.wrangler/state",
+"db:migrate:prod": "wrangler d1 migrations apply citadel-db --remote --config apps/citadel/workers/site/wrangler.jsonc"
 ```
 
 `db:migrate` also needed `--config` added — it has no wrangler config of
@@ -958,7 +975,7 @@ its own to read at the repo root, so it has nothing to tell it which D1
 database (or migrations folder) to target without one.
 
 ```bash
-pnpm db:generate    # creates apps/krypto/core/db/migrations/
+pnpm db:generate    # creates apps/citadel/core/db/migrations/
 pnpm db:migrate     # applies to local D1 in the shared --persist-to path
 pnpm db:studio      # verify tables in Drizzle Studio
 ```
@@ -986,11 +1003,11 @@ older wrangler versions or other runtimes like `vitest-pool-workers`), but
 don't rely on it actually triggering — confirm with a direct check before
 assuming "no console log" means something's broken.
 
-This helper goes in `apps/krypto/core/lib/cache.ts` and is imported by
+This helper goes in `apps/citadel/core/lib/cache.ts` and is imported by
 both Workers:
 
 ```typescript
-// apps/krypto/core/lib/cache.ts
+// apps/citadel/core/lib/cache.ts
 const isDev = typeof caches === 'undefined' || typeof caches.default === 'undefined'
 
 export async function purgeCache(url: string): Promise<void> {
@@ -1036,18 +1053,18 @@ pnpm add -D concurrently
 // package.json (repo root)
 {
   "scripts": {
-    "dev:site":       "cd apps/krypto/workers/site && wrangler dev --port 3000",
-    "dev:panel":      "cd apps/krypto/workers/panel && wrangler dev --port 3001",
+    "dev:site":       "cd apps/citadel/workers/site && wrangler dev --port 3000",
+    "dev:panel":      "cd apps/citadel/workers/panel && wrangler dev --port 3001",
     "dev":            "concurrently \"pnpm dev:site\" \"pnpm dev:panel\"",
-    "build:site":     "cd apps/krypto/workers/site && astro build",
-    "build:panel":    "cd apps/krypto/workers/panel && vite build",
+    "build:site":     "cd apps/citadel/workers/site && astro build",
+    "build:panel":    "cd apps/citadel/workers/panel && vite build",
     "build":          "pnpm build:site && pnpm build:panel",
-    "deploy:site":    "cd apps/krypto/workers/site && wrangler deploy",
-    "deploy:panel":   "cd apps/krypto/workers/panel && wrangler deploy",
+    "deploy:site":    "cd apps/citadel/workers/site && wrangler deploy",
+    "deploy:panel":   "cd apps/citadel/workers/panel && wrangler deploy",
     "deploy":         "pnpm build && pnpm deploy:site && pnpm deploy:panel",
     "db:generate":    "drizzle-kit generate",
-    "db:migrate":     "wrangler d1 migrations apply krypto-db --local",
-    "db:migrate:prod":"wrangler d1 migrations apply krypto-db --remote",
+    "db:migrate":     "wrangler d1 migrations apply citadel-db --local",
+    "db:migrate:prod":"wrangler d1 migrations apply citadel-db --remote",
     "db:studio":      "drizzle-kit studio"
   }
 }
@@ -1062,7 +1079,7 @@ as your primary workflow — always use root scripts.
 ## Project structure after Phase 0
 
 ```
-krypto/
+citadel/
 │
 ├── workers/
 │   ├── site/                          Worker 1 — Astro public site
@@ -1092,7 +1109,7 @@ krypto/
 │           │   ├── admin/             Panel routes (all prerender = false)
 │           │   └── login.tsx          login page
 │           ├── server-functions/      getPages, savePage, getContacts, etc.
-│           ├── components/            Panel React components
+│           ├── components/            Panel Solid components
 │           └── styles/
 │               └── panel.css          @import tailwindcss; @plugin "daisyui"
 │
@@ -1124,10 +1141,10 @@ krypto/
 │   ├── themes/
 │   └── seed/
 │
-├── drizzle.config.ts                  points at apps/krypto/core/db/schema.ts
+├── drizzle.config.ts                  points at apps/citadel/core/db/schema.ts
 ├── biome.json                         linter + formatter (all dirs)
 ├── package.json                       root scripts: dev, build, deploy, db:*
-├── krypto.config.ts                   operator config — never overwritten
+├── citadel.config.ts                   operator config — never overwritten
 ├── DECISIONS.md
 └── .github/
     └── workflows/
@@ -1158,7 +1175,7 @@ krypto/
 
 **Shared:**
 - [ ] **Same D1** — Both Workers read/write the same rows (same `database_id`)
-- [ ] **Shared schema** — `apps/krypto/core/db/schema.ts` imports without errors in both Workers
+- [ ] **Shared schema** — `apps/citadel/core/db/schema.ts` imports without errors in both Workers
 - [ ] **Dev commands** — `pnpm dev:site` and `pnpm dev:panel` work independently
 - [ ] **Dev commands** — `pnpm dev` starts both Workers from repo root
 
@@ -1196,8 +1213,8 @@ Remove any `tailwind.config.js` or PostCSS config. Use only
 **Worker 2 — TanStack Start:**
 
 **`getCloudflareContext is not a function` / module not found**
-`@tanstack/react-start/cloudflare` and `getCloudflareContext()` don't exist
-in this version (`@tanstack/react-start@1.168.26` has no `./cloudflare`
+`@tanstack/solid-start/cloudflare` and `getCloudflareContext()` don't exist
+in this version (`@tanstack/solid-start@1.168.26` has no `./cloudflare`
 export at all) — confirmed during Phase 0 (2026-06-19). Use
 `const { env } = await import('cloudflare:workers')` inside the handler
 instead. Never call it in client component code. See
@@ -1216,7 +1233,7 @@ Run `pnpm db:migrate` from the repo root. If it fails with "No
 configuration file found" or "No migrations present," `db:migrate` needs
 `--config` (pointing at a Worker's `wrangler.jsonc`) and that config needs
 `migrations_dir` pointing at Drizzle's actual output
-(`apps/krypto/core/db/migrations`), not the default `./migrations`
+(`apps/citadel/core/db/migrations`), not the default `./migrations`
 relative to the Worker's own folder.
 
 If migrations applied cleanly but you still get this error from one Worker
@@ -1232,11 +1249,11 @@ Confirm `tailwindcss()` is in `vite.config.ts` plugins and
 `@plugin "daisyui"` is in your CSS file imported from `__root.tsx`.
 
 **`caches is not defined`**
-You called `caches.default` directly. Always use `apps/krypto/core/lib/cache.ts`.
+You called `caches.default` directly. Always use `apps/citadel/core/lib/cache.ts`.
 
 **Custom entrypoint not picked up**
 `wrangler.jsonc` must have `"main": "./app/server.ts"` — not
-`@tanstack/react-start/server-entry`, which is the framework's own default
+`@tanstack/solid-start/server-entry`, which is the framework's own default
 entry and bypasses your custom Hono routes entirely.
 
 ---
@@ -1245,8 +1262,8 @@ entry and bypasses your custom Hono routes entirely.
 
 When all POC items are checked and `DECISIONS.md` updated:
 
-1. Expand `apps/krypto/core/db/schema.ts` to the full Section 1 schema (Phase 2) — including the domain fields on `site_settings` (`primaryDomain`, `domainProvider`, `nameserverDelegated`, `domainRegisteredViaKrypto`, `cfAccountId`, `cfApiTokenScoped`). These are nullable/default-false in Section 1 and populated by the Orchestrator in Section 2. See DECISIONS.md for the full domain onboarding strategy.
-2. Expand `apps/krypto/core/lib/` with all shared utilities
+1. Expand `apps/citadel/core/db/schema.ts` to the full Section 1 schema (Phase 2) — including the domain fields on `site_settings` (`primaryDomain`, `domainProvider`, `nameserverDelegated`, `domainRegisteredViaCitadel`, `cfAccountId`, `cfApiTokenScoped`). These are nullable/default-false in Section 1 and populated by the Orchestrator in Section 2. See DECISIONS.md for the full domain onboarding strategy.
+2. Expand `apps/citadel/core/lib/` with all shared utilities
 3. Set up Biome at repo root: `pnpm add -D @biomejs/biome && pnpm biome init`
 4. Add boundary rule preventing `core/` from importing `custom/`
 5. Add `.github/workflows/ci.yml` and `update.yml`
@@ -1255,7 +1272,7 @@ When all POC items are checked and `DECISIONS.md` updated:
 **workers.dev URL:** Do not restrict or remove access to the `*.workers.dev`
 URL in production. This is the preview URL that Section 2's zero-downtime
 cutover flow depends on — clients with an existing live site need to review
-their Krypto deployment at the preview URL before their nameserver flip.
+their Citadel deployment at the preview URL before their nameserver flip.
 
 **TanStack DB:** Do not add in Phase 0 or Section 1. The value compounds
 with relational complexity and team collaboration — both arrive in Section 2.

@@ -1,6 +1,6 @@
 # Contributing to Thebes
 
-Thank you for your interest in contributing. Both Cadmus and Krypto
+Thank you for your interest in contributing. Both Cadmus and Citadel
 welcome contributions — please read this before opening a PR.
 
 All contributions are welcome regardless of background, and all
@@ -45,9 +45,9 @@ pnpm install
 
 ```bash
 # Create Cloudflare resources (first time only)
-wrangler d1 create krypto-db
+wrangler d1 create citadel-db
 wrangler kv namespace create KV
-wrangler r2 bucket create krypto-media
+wrangler r2 bucket create citadel-media
 
 # Update binding IDs in both wrangler.jsonc files, then:
 pnpm db:migrate
@@ -62,8 +62,8 @@ pnpm dev:panel    # Worker 2 only (:3001)
 ### Local secrets
 
 ```bash
-# apps/krypto/workers/site/.dev.vars
-# apps/krypto/workers/panel/.dev.vars
+# apps/citadel/workers/site/.dev.vars
+# apps/citadel/workers/panel/.dev.vars
 SESSION_SECRET=dev-secret-change-in-production
 OWNER_EMAIL=you@yourdomain.com
 MEDIA_URL=http://localhost:3001/media
@@ -84,13 +84,13 @@ shipping. Cookie scoping on `*.workers.dev` differs from production.
 - New primitives — open a Discussion first
 
 **Hard rules for Cadmus PRs:**
-- No Krypto-specific code — ever
+- No Citadel-specific code — ever
 - No cross-primitive dependencies
 - No Node.js APIs
 - Every change must pass `@cloudflare/vitest-pool-workers` tests
 - Every public function must be documented
 
-### Krypto (`apps/krypto/`)
+### Citadel (`apps/citadel/`)
 
 - Bug fixes
 - Accessibility improvements (zero axe-core violations is the bar)
@@ -124,7 +124,7 @@ chore(deps): update drizzle-orm to 0.32
 ```
 
 Types: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`
-Scopes: `cadmus`, `krypto`, `auth`, `db`, `storage`, `cache`, `email`,
+Scopes: `cadmus`, `citadel`, `auth`, `db`, `storage`, `cache`, `email`,
 `queues`, `session`, `rate-limit`, `hono`, `docs`, `examples`
 
 ---

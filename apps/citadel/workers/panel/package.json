@@ -1,0 +1,52 @@
+{
+  "name": "panel",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "dev": "vite dev --port 3000",
+    "generate-routes": "tsr generate",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "deploy": "pnpm run build && wrangler deploy"
+  },
+  "dependencies": {
+    "@bowenlabs/cadmus": "workspace:*",
+    "@cloudflare/vite-plugin": "^1.26.0",
+    "@phosphor-icons/web": "^2.1.2",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/solid-devtools": "latest",
+    "@tanstack/solid-query": "^5.101.0",
+    "@tanstack/solid-router": "latest",
+    "@tanstack/solid-router-devtools": "latest",
+    "@tanstack/solid-start": "latest",
+    "daisyui": "^5.5.23",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.26",
+    "solid-js": "^1.9.13",
+    "tailwindcss": "^4.1.18"
+  },
+  "devDependencies": {
+    "@solidjs/testing-library": "^0.8.10",
+    "@tailwindcss/typography": "^0.5.16",
+    "@tanstack/devtools-vite": "latest",
+    "@tanstack/router-cli": "^1.132.0",
+    "@testing-library/dom": "^10.4.1",
+    "@types/node": "^22.10.2",
+    "jsdom": "^28.1.0",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.0",
+    "vite-plugin-solid": "^2.11.12",
+    "vitest": "^4.1.5",
+    "wrangler": "^4.70.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "lightningcss"
+    ]
+  }
+}
