@@ -1,0 +1,64 @@
+name: Update from upstream
+
+on:
+  schedule:
+    # Every Monday at 09:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  update:
+    name: Merge upstream changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "Salvation Update Bot"
+          git config user.email "bot@bowenlabs.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/bowenlabs/salvation.git || true
+          git fetch upstream main
+
+      - name: Attempt merge
+        id: merge
+        run: |
+          git merge upstream/main --no-edit || echo "MERGE_CONFLICT=true" >> $GITHUB_ENV
+
+      - name: Push if merge succeeded
+        if: env.MERGE_CONFLICT != 'true'
+        run: git push origin main
+
+      - name: Open issue if conflict
+        if: env.MERGE_CONFLICT == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Upstream merge conflict — manual resolution required',
+              body: [
+                '## Upstream merge conflict',
+                '',
+                'The weekly merge from `bowenlabs/salvation:main` produced conflicts.',
+                'Please resolve manually:',
+                '',
+                '```bash',
+                'git fetch upstream main',
+                'git merge upstream/main',
+                '# resolve conflicts',
+                'git push origin main',
+                '```',
+                '',
+                'See [CONTRIBUTING.md](./CONTRIBUTING.md) for the core/custom boundary rules.',
+                'Conflicts in `apps/krypto/core/` likely mean you edited core files directly.',
+              ].join('\n'),
+              labels: ['maintenance'],
+            })

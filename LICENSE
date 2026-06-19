@@ -1,0 +1,95 @@
+Krypto — Source Available License
+
+Copyright (c) 2026 BowenLabs. All rights reserved.
+
+IMPORTANT: Read this license carefully before using this software.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMMUNITY USE — FREE
+
+This software may be used, modified, and deployed at no cost if you are:
+
+  (a) An individual using Krypto for personal or professional projects,
+      regardless of whether those projects generate revenue for you
+      personally as a sole trader or freelancer;
+
+  (b) An organisation, company, or entity whose annual gross revenue
+      for the most recent fiscal year is less than USD $1,000,000; or
+
+  (c) A verified nonprofit organisation (see Nonprofit Exemption below).
+
+Community use includes the right to:
+  - Deploy Krypto for your own use or for clients
+  - Modify Krypto for your own use
+  - Fork Krypto and contribute changes back
+
+Community use does NOT include the right to:
+  - Resell or redistribute Krypto as a competing product or service
+  - Remove or obscure BowenLabs copyright notices
+  - White-label Krypto and represent it as your own product
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMMERCIAL USE — LICENSE REQUIRED
+
+If you are an organisation, company, or entity whose annual gross revenue
+for the most recent fiscal year equals or exceeds USD $1,000,000, you
+must obtain a commercial license from BowenLabs before deploying this
+software in any production capacity.
+
+To obtain a commercial license, contact: licensing@bowenlabs.com
+
+A commercial license grants:
+  - The right to deploy Krypto in production for commercial purposes
+  - The right to modify Krypto for internal use
+  - Access to priority support (terms negotiated per agreement)
+
+A commercial license does NOT grant:
+  - The right to resell or redistribute Krypto as a competing product
+  - The right to white-label Krypto and remove BowenLabs attribution
+  - The right to sublicense Krypto to third parties
+
+Using this software in production without a required commercial license
+is a violation of this license and of BowenLabs's copyright.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NONPROFIT EXEMPTION
+
+Verified nonprofit organisations are permanently exempt from the
+commercial license requirement, regardless of revenue, provided they
+maintain verified nonprofit status.
+
+Qualifying organisations include:
+  - 501(c)(3) organisations or equivalent tax-exempt status
+  - Registered charities and NGOs in any jurisdiction
+  - Educational institutions operating as nonprofits
+
+To apply for nonprofit exemption: licensing@bowenlabs.com
+Provide documentation of your nonprofit status. Exemption is granted
+per organisation and must be updated if your status changes.
+
+Government agencies and for-profit entities with charitable programs
+do not qualify for the nonprofit exemption.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DISCLAIMER
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL BOWENLABS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NOTE: This license has not yet been reviewed by an attorney. It
+represents BowenLabs's licensing intent and will be replaced with
+attorney-reviewed language before Krypto reaches public availability.
+The intent described here governs in the interim.
+
+For questions: licensing@bowenlabs.com

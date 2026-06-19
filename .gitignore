@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.astro/
+.wrangler/
+
+# Local secrets — never commit
+.dev.vars
+*.dev.vars
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+
+# Drizzle
+# migrations are committed — do not ignore migrations/
+# but ignore local D1 state
+.wrangler/state/
+
+# Internal docs — never in public repo
+IP_AND_LICENSING.md

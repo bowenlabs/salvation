@@ -1,0 +1,38 @@
+{
+  "name": "salvation",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Cadmus framework + Krypto reference app",
+  "scripts": {
+    "dev:site": "cd apps/krypto/workers/site && wrangler dev --port 3000",
+    "dev:panel": "cd apps/krypto/workers/panel && wrangler dev --port 3001",
+    "dev": "concurrently \"pnpm dev:site\" \"pnpm dev:panel\"",
+    "build:cadmus": "cd packages/cadmus && pnpm build",
+    "build:site": "cd apps/krypto/workers/site && astro build",
+    "build:panel": "cd apps/krypto/workers/panel && vite build",
+    "build": "pnpm build:cadmus && pnpm build:site && pnpm build:panel",
+    "deploy:site": "cd apps/krypto/workers/site && wrangler deploy",
+    "deploy:panel": "cd apps/krypto/workers/panel && wrangler deploy",
+    "deploy": "pnpm build && pnpm deploy:site && pnpm deploy:panel",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply krypto-db --local",
+    "db:migrate:prod": "wrangler d1 migrations apply krypto-db --remote",
+    "db:studio": "drizzle-kit studio",
+    "seed": "tsx apps/krypto/seed.ts",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "test": "pnpm test:cadmus && pnpm test:int && pnpm test:e2e",
+    "test:cadmus": "cd packages/cadmus && vitest run",
+    "test:int": "vitest run tests/int",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "latest",
+    "@playwright/test": "latest",
+    "concurrently": "latest",
+    "drizzle-kit": "latest",
+    "tsx": "latest",
+    "vitest": "latest",
+    "wrangler": "latest"
+  }
+}
