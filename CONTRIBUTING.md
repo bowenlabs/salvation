@@ -3,6 +3,10 @@
 Thank you for your interest in contributing. Both Cadmus and Krypto
 welcome contributions — please read this before opening a PR.
 
+All contributions are welcome regardless of background, and all
+participants are expected to follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
 ---
 
 ## Before you start

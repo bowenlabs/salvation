@@ -92,6 +92,11 @@ Cadmus is MIT licensed. Contributions welcome — read
 
 Krypto uses a dual license. See [apps/krypto/LICENSE](./apps/krypto/LICENSE).
 
+All contributors and operators are expected to follow the
+[Code of Conduct & Acceptable Use](./CODE_OF_CONDUCT.md) — all
+contributions are welcome, and Krypto may not be used for hateful,
+discriminatory, or harassing purposes.
+
 ---
 
 ## Maintained by
