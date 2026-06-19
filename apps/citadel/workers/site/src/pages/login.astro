@@ -1,0 +1,18 @@
+---
+import Layout from "../layouts/layout.astro";
+
+// Magic-link auth (token request + send) is Phase 3 — see CLAUDE.md
+// "Authentication". This page exists now to satisfy Phase 0 milestone 0.6:
+// the login page must live in Worker 1 (Astro SSR), with Worker 2's
+// `/admin/*` guard redirecting here via an absolute cross-Worker URL
+// rather than a same-app route.
+const redirectTarget = Astro.url.searchParams.get("redirect") ?? "/admin";
+---
+
+<Layout title="Log in — Citadel">
+	<main>
+		<h1>Log in</h1>
+		<p>Magic-link sign-in is implemented in Phase 3.</p>
+		<p>You'll be returned to <code>{redirectTarget}</code> after signing in.</p>
+	</main>
+</Layout>

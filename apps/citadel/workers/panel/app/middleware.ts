@@ -38,3 +38,16 @@ export const requireAuth = createServerFn({ method: "GET" }).handler(
     return JSON.parse(session) as { email: string };
   },
 );
+
+// The login page lives in Worker 1 (Astro SSR), not Worker 2 — see
+// CLAUDE.md "Authentication" and Phase 0 milestone 0.6. `env.SERVER_URL`
+// is only readable server-side, so the absolute redirect target is built
+// here rather than inlined in the route's `beforeLoad`.
+export const getLoginUrl = createServerFn({ method: "GET" })
+  .validator((redirectTo: string) => redirectTo)
+  .handler(async ({ data: redirectTo }) => {
+    const { env } = await import("cloudflare:workers");
+    const url = new URL("/login", env.SERVER_URL);
+    url.searchParams.set("redirect", redirectTo);
+    return url.toString();
+  });

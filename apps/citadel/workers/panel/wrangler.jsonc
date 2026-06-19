@@ -30,5 +30,11 @@
   },
   "send_email": [{
     "name": "EMAIL"
-  }]
+  }],
+  "vars": {
+    // Worker 1's public origin. Not a secret — just the site's own URL —
+    // so it lives in wrangler.jsonc rather than .dev.vars. Override per
+    // environment when custom domains are configured (Section 1 GA).
+    "SERVER_URL": "http://localhost:3000"
+  }
 }

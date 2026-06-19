@@ -27,6 +27,28 @@ app.post("/api/cache/purge", async (c) => {
   return c.json({ ok: true, ms: Date.now() - start });
 });
 
+// POC 4 — explicit `caches.default.match()`/`.put()` in the request path.
+// A `Cache-Control` header alone (see test-cache.astro) does not populate
+// the Workers Cache API for a custom Worker fetch handler; this route is
+// what actually proves "served from cache, fresh after purge" (Phase 0,
+// milestone 0.12). Purge this URL via POST /api/cache/purge with this
+// route's own URL to invalidate it.
+app.get("/api/cache/test", async (c) => {
+  const cacheKey = new Request(c.req.url);
+  const cached = await caches.default.match(cacheKey);
+  if (cached) {
+    const res = new Response(cached.body, cached);
+    res.headers.set("X-Cache", "HIT");
+    return res;
+  }
+
+  const fresh = c.json({ generatedAt: new Date().toISOString() });
+  fresh.headers.set("Cache-Control", "public, max-age=60");
+  await caches.default.put(cacheKey, fresh.clone());
+  fresh.headers.set("X-Cache", "MISS");
+  return fresh;
+});
+
 // 2. Astro SSR — fallback for everything else
 app.all("*", async (c) => {
   // @ts-expect-error — Hono's bundled ExecutionContext type lacks the

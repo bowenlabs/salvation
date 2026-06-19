@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TestRouteImport } from './routes/test'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -19,11 +18,6 @@ import { Route as AdminPagesIndexRouteImport } from './routes/admin/pages/index'
 const TestRoute = TestRouteImport.update({
   id: '/test',
   path: '/test',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -51,7 +45,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/about': typeof AboutRoute
-  '/login': typeof LoginRoute
   '/test': typeof TestRoute
   '/admin/pages/': typeof AdminPagesIndexRoute
 }
@@ -59,7 +52,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/about': typeof AboutRoute
-  '/login': typeof LoginRoute
   '/test': typeof TestRoute
   '/admin/pages': typeof AdminPagesIndexRoute
 }
@@ -68,30 +60,21 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/about': typeof AboutRoute
-  '/login': typeof LoginRoute
   '/test': typeof TestRoute
   '/admin/pages/': typeof AdminPagesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/about' | '/login' | '/test' | '/admin/pages/'
+  fullPaths: '/' | '/admin' | '/about' | '/test' | '/admin/pages/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/about' | '/login' | '/test' | '/admin/pages'
-  id:
-    | '__root__'
-    | '/'
-    | '/admin'
-    | '/about'
-    | '/login'
-    | '/test'
-    | '/admin/pages/'
+  to: '/' | '/admin' | '/about' | '/test' | '/admin/pages'
+  id: '__root__' | '/' | '/admin' | '/about' | '/test' | '/admin/pages/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
-  LoginRoute: typeof LoginRoute
   TestRoute: typeof TestRoute
 }
 
@@ -102,13 +85,6 @@ declare module '@tanstack/solid-router' {
       path: '/test'
       fullPath: '/test'
       preLoaderRoute: typeof TestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -158,7 +134,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   AboutRoute: AboutRoute,
-  LoginRoute: LoginRoute,
   TestRoute: TestRoute,
 }
 export const routeTree = rootRouteImport

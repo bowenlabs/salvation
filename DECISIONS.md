@@ -9,6 +9,44 @@
 
 ---
 
+## 2026-06-19 — Phase 0 close-out: milestones 0.6 and 0.12 completed
+
+**Decision:** The two milestones deliberately left open in the prior
+close-out entry (below) are now done, closing out Phase 0 entirely.
+
+**0.6 — login page moved to Worker 1.** Added `src/pages/login.astro` to
+the site Worker (Astro SSR), accepting a `?redirect=` query param. The
+Panel's `/admin` `beforeLoad` guard (`src/routes/admin/route.tsx`) no
+longer redirects to a same-app TanStack route — it calls a new
+`getLoginUrl` server function (`app/middleware.ts`) that reads
+`env.SERVER_URL` server-side and returns an absolute URL into Worker 1,
+then throws `redirect({ href })` (not `redirect({ to })`, which only
+resolves same-app routes). `env.SERVER_URL` is a non-secret public origin,
+so it's set in `wrangler.jsonc`'s `vars` block rather than `.dev.vars`.
+The placeholder `src/routes/login.tsx` in Panel (POC-only, see prior entry)
+is deleted — nothing targets it anymore.
+
+**0.12 — POC 4 cache match/put proven.** Added `GET /api/cache/test` to
+the site Worker's Hono entrypoint (`src/app.ts`), with explicit
+`caches.default.match()`/`.put()` calls — the missing piece identified in
+the prior entry, since a `Cache-Control` header alone never populates the
+Workers Cache API for a custom fetch handler. Verified against
+`wrangler dev`: first request `X-Cache: MISS`, second request `X-Cache:
+HIT` with an identical body, `POST /api/cache/purge` against the same
+URL, then a third request `X-Cache: MISS` again with a new timestamp.
+"Purge after a real `wrangler deploy`" (the other unverified half of POC
+4) is intentionally left for whoever runs that deploy — it isn't
+something a local dev loop can confirm.
+
+**Also fixed in passing:** the Panel Worker had no `.dev.vars`, so
+`wrangler types` had silently dropped `SESSION_SECRET`/`OWNER_EMAIL`/
+`MEDIA_URL` from the generated `Env` interface for anyone running a fresh
+checkout. Added a local `.dev.vars` (gitignored, placeholder values) so
+the full env interface regenerates correctly — replace the placeholder
+`SESSION_SECRET` before relying on auth locally.
+
+---
+
 ## 2026-06-19 — POC 3/4 fixes, bundle size measurement, two milestone corrections
 
 **Decision:** POC 3 uses a TanStack Router `beforeLoad` guard (not
