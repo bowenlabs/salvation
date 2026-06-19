@@ -9,6 +9,191 @@
 
 ---
 
+## 2026-06-19 — DaisyUI v5 token names: confirmed `--color-primary`, not `--p`
+
+**Decision:** All theme CSS files and brand-color override `<style>` tags
+use DaisyUI v5's actual variable names (`--color-primary`,
+`--color-primary-content`, etc.), not the DaisyUI v4 short names (`--p`,
+`--pc`) that older tutorials and the original G12 gotcha write-up assumed.
+
+**What broke:** Manually verifying POC 2 (Phase 0, token injection — see
+`SECTION_1_PLAN.md` G12), a `theme-test.css` + `token-test.astro` pair built
+exactly per the documented pattern (correct `<link>`/`<style>` source
+order, no FOUC, no console errors) produced **no visible color change at
+all**. The override appeared to silently do nothing.
+
+**Root cause:** The test fixture set `--p`/`--pc`, but DaisyUI v5's
+Tailwind-v4-native plugin generates utility CSS against `--color-primary`/
+`--color-primary-content` — confirmed by inspecting the actual built
+output:
+```css
+.bg-primary { background-color: var(--color-primary); }
+.text-primary-content { color: var(--color-primary-content); }
+```
+Setting `--p` is not an error — it's a valid CSS custom property that
+simply nothing reads. This is exactly the failure mode G12 already warned
+about in the abstract ("DaisyUI v5 OKLCH token names differ from v4 —
+confirm correct variable names before writing theme files") but the
+original gotcha write-up's own example code used the old names anyway.
+
+**A second, unrelated bug compounded the confusion while debugging this:**
+`src/assets/app.css` had been left empty (the Step 4 `@import "tailwindcss";
+@plugin "daisyui";` directives were never actually written to it), and the
+test page never imported it. Both failures look identical from the
+outside — "the color doesn't change" — but have different fixes. Checklist
+for diagnosing this class of bug going forward:
+1. Confirm `app.css` has content and is imported by the page under test.
+2. Confirm the generated CSS (inspect the page, or grep built `_astro/*.css`)
+   actually contains the utility classes you expect (`.bg-primary` etc.).
+3. Only then check the override's variable names against what those
+   generated rules actually reference.
+
+**Fixed in:** `public/themes/theme-test.css`, `src/pages/token-test.astro`,
+`SECTION_1_PLAN.md` (G12 + POC 2 example), `GETTING_STARTED.md` (Steps 4 + 9).
+
+**Revisit if:** Upgrading DaisyUI major versions — re-verify variable names
+against the new version's generated CSS before assuming they carried over.
+
+---
+
+## 2026-06-19 — astro/hono advanced routing is broken for custom Cloudflare entrypoints; use `@astrojs/cloudflare/handler` instead
+
+**Decision:** Worker 1's `src/app.ts` does not use Astro's experimental
+`astro/hono` advanced-routing exports (`middleware()`, `pages()`, etc.). It
+uses a plain Hono app with custom routes checked first, falling through to
+`handle()` from `@astrojs/cloudflare/handler` for everything else (Astro
+SSR). `experimental.advancedRouting` is not set in `astro.config.mjs`, and
+the (non-existent on this adapter version) `entrypoint` option is not passed
+to `cloudflare()`.
+
+**Versions:** `astro@6.4.8`, `@astrojs/cloudflare@13.7.0`.
+
+**What broke:** Following the documented pattern (`CLAUDE.md`/
+`SECTION_1_PLAN.md` originally specified `cf()` → `middleware()` → `pages()`
+in that order) produced, on every single request:
+
+```
+Error: FetchState(request) called on a request without an attached app.
+Ensure it runs inside Astro's request pipeline.
+```
+
+**Root cause:** `astro/hono`'s `middleware()` and `pages()` (and
+`@astrojs/cloudflare/hono`'s `cf()`) all call `getFetchState(context)`,
+which constructs `new FetchState(context.req.raw)`. That constructor reads
+`Reflect.get(request, appSymbol)` and throws if the Astro `App` instance was
+never attached to the request. Nothing in the build output ever attaches
+it — `dist/server/entry.mjs` literally does `export { app as default }`
+with no wrapping logic around it. This is part of Astro's *experimental*
+"Advanced Routing" feature; it does not work as documented for a custom
+Cloudflare Worker entrypoint in this version combination.
+
+**How this was confirmed as a real bug, not local misconfiguration:**
+- Reproduced with **zero custom code** — Astro's own officially blogged
+  minimal example (`middleware()` + `pages()` only, no `cf()`, no custom
+  routes) fails identically.
+- Reproduced in both `astro dev` (Vite SSR) **and** a real `wrangler dev`
+  run directly against the production-built `dist/server/entry.mjs` — not
+  a dev-server-only artifact.
+- Enabling `experimental.advancedRouting: true` (which the feature is
+  gated behind) made no difference — the generated bundle was byte-for-byte
+  the same `export { app as default }` with no attachment wrapper.
+- Removing the (apparently non-existent) `entrypoint` option from
+  `cloudflare()` made no difference either — Astro auto-detects
+  `src/app.ts` regardless.
+- No existing GitHub issue was found describing this exact error message
+  as of this investigation (2026-06-19) — worth filing one, or watching
+  `astro` / `@astrojs/cloudflare` release notes for advanced-routing fixes.
+
+**The fix:**
+```typescript
+// apps/krypto/workers/site/src/app.ts
+import { Hono } from 'hono'
+import { handle } from '@astrojs/cloudflare/handler'
+
+const app = new Hono<{ Bindings: Env }>()
+
+// 1. Custom API routes — checked first
+app.get('/api/ping', async (c) => { /* ... */ })
+
+// 2. Astro SSR — fallback for everything else
+app.all('*', async (c) => handle(c.req.raw, c.env, c.executionCtx))
+
+export default app
+```
+`handle()` is the stable, documented public API for exactly this "custom
+Worker + Astro fallback" use case — it does not depend on the experimental
+advanced-routing wiring and is what Astro's own Cloudflare deploy docs
+recommend for custom entrypoints.
+
+Options considered:
+- Keep debugging the experimental feature until it works — rejected: it's
+  explicitly labeled experimental, the bug reproduces with zero custom code
+  across both dev and built-output execution, and there's no indication
+  it's something fixable from our side rather than upstream.
+- Downgrade `astro`/`@astrojs/cloudflare` to an older version pair —
+  not attempted; `handle()` is the documented stable path regardless of
+  version, so there was no reason to chase a version pin instead.
+
+**Revisit if:** `astro/hono`'s advanced routing matures out of experimental
+status and a changelog entry specifically addresses custom Cloudflare
+entrypoint + `appSymbol` attachment — at that point `cf()`/`middleware()`/
+`pages()` may be worth reconsidering for the cleaner composition syntax.
+
+---
+
+## 2026-06-19 — Component framework tiering: React, Alpine, and extension flexibility
+
+**Decision:** Standardize on React as the only UI component framework inside
+`core/` and the Panel. Use Alpine.js for lightweight sprinkle-on interactivity
+on the public site that doesn't justify a full island. Allow operator/community
+extensions to bring their own framework (Vue, Svelte, etc.) for their own
+isolated islands, since extensions sit outside the `core`/`custom` boundary.
+
+Options considered:
+- Single framework everywhere (React only) — rejected for the public site's
+  small interactive bits: pulling in a full React island for something like a
+  dropdown or dismissible banner is disproportionate, and the nav already
+  avoids JS entirely via CSS-only `<details>/<summary>`.
+- Svelte or Vue for the Panel instead of React — rejected: TanStack Start is
+  React-specific (not just TanStack Router, which has experimental
+  Solid/Vue adapters), and TipTap/Flowbite Charts are scoped as React
+  dependencies. Switching frameworks here means abandoning the Phase 0
+  framework decision, not swapping a library.
+- Svelte or Vue for the public site's own islands — rejected: the public
+  site already ships near-zero JS by design; the few islands it has are
+  better kept in React for consistency with the Panel, since this is a
+  one-person-maintained codebase and "which framework is this component in"
+  is real cognitive overhead not worth paying for marginal bundle savings.
+- Lock extensions to React only — rejected: extensions are isolated islands
+  by nature (no shared reactivity with the rest of the page), live outside
+  `core/`'s maintained surface, and Astro's whole multi-framework islands
+  model exists for exactly this case. Forcing React narrows the contributor
+  pool with no real benefit to Krypto's own maintenance burden.
+
+**Chosen tiering:**
+- `core/` and the Panel: React only — Astro/TanStack Start dependencies are
+  already React-shaped, no exceptions.
+- Public site sprinkle-on interactivity (dropdowns, banners, anything past
+  what pure CSS can express): Alpine.js via `@astrojs/alpinejs` — no
+  component file, no `client:*` hydration directive, just `x-data`/`x-show`/
+  `x-on:click` attributes on existing markup, ~7-15kb runtime.
+- Operator/community extensions: any Astro-supported framework (React, Vue,
+  Svelte, Solid, Lit, Alpine) at the extension author's discretion.
+
+**Known cost:** if an operator installs two extensions on the same page that
+use different frameworks, that page ships two component runtimes instead of
+zero or one — eroding the "near-zero JS" pitch for that specific page.
+Accepted as a rare edge case rather than a reason to lock extensions to one
+framework. Extension-authoring docs should nudge toward Svelte/Alpine/vanilla
+for size-sensitive widgets when no other framework is already in use on the
+page.
+
+**Revisit if:** TanStack Start ships a stable non-React adapter, or the
+extension ecosystem grows large enough that multi-framework runtime bloat
+becomes a measured problem rather than a theoretical one.
+
+---
+
 ## 2026-06-18 — Cadmus framework design decisions
 
 **Decision:** Locked a set of foundational decisions governing Cadmus's

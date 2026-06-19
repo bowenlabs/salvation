@@ -1,0 +1,4 @@
+:root[data-theme="test"] {
+    --color-primary: oklch(62% 0.18 145);
+    --color-primary-content: oklch(100% 0 0);
+}

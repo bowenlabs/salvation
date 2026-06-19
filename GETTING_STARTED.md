@@ -24,7 +24,8 @@ Study these before building — they show confirmed working patterns:
 | Resource | What it shows |
 |---|---|
 | [Cloudflare Astro guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/astro/) | Official Cloudflare Astro on Workers — scaffold + bindings |
-| [Astro 6.4 blog post](https://astro.build/blog/astro-640/) | Hono + Astro native integration — the `cf()` helper |
+| [`@astrojs/cloudflare` adapter docs](https://docs.astro.build/en/guides/integrations-guide/cloudflare/) | `handle()` — the stable pattern for custom Cloudflare Worker entrypoints (use this, not the `astro/hono` example below) |
+| [Astro 6.3 blog post](https://astro.build/blog/astro-630/) | `astro/hono` advanced routing — confirmed **broken** for custom Cloudflare entrypoints in this version combo; see DECISIONS.md |
 | [Cloudflare TanStack Start guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/) | Official TanStack Start on Workers — scaffold + bindings |
 | [aaronksaunders/tanstack-start-drizzle-app](https://github.com/aaronksaunders/tanstack-start-drizzle-app) | TanStack Start + Drizzle — confirmed server function pattern |
 | [bskimball/tanstack-hono](https://github.com/bskimball/tanstack-hono) | TanStack Router + Hono — useful for the Hono public API entrypoint pattern |
@@ -60,7 +61,7 @@ Cloudflare Account
 │                                                  │ wrangler.jsonc files
 ├── Worker 1: Astro public site ←─────────────────┘
 │   apps/krypto/workers/site/
-│   ├── Hono entrypoint — cf(), middleware(), pages()
+│   ├── Hono entrypoint — custom routes → handle()
 │   ├── Astro SSR pages — bindings via Astro.locals.runtime.env
 │   └── Serves: /, /[slug], /about, /contact, /coming-soon
 │
@@ -101,42 +102,52 @@ When prompted: TypeScript yes, Git yes, Deploy now no.
 
 ### Step 2 — Install Hono
 
-Hono lives in Worker 1 as the entry point — it wires Cloudflare bindings
-into Astro via the official `cf()` helper introduced in Astro 6.4.
+Hono lives in Worker 1 as the entry point — it routes custom API requests
+(like `/api/ping`) and falls through to Astro SSR for everything else.
 
 ```bash
 pnpm add hono
 ```
 
-### Step 3 — Wire Hono into Astro (Astro 6.4 native pattern)
+### Step 3 — Wire Hono into Astro
 
-`@astrojs/cloudflare/hono` ships a `cf()` middleware that handles all
-Cloudflare wiring. This is the correct pattern — not the older catch-all
-API route approach from pre-6.4 tutorials.
+**Do not use `astro/hono`'s `middleware()`/`pages()`, or `cf()` from
+`@astrojs/cloudflare/hono`.** That composition is documented in Astro's own
+6.3 blog post, but it's part of the *experimental* "Advanced Routing"
+feature, and as of `astro@6.4.8` + `@astrojs/cloudflare@13.7.0` it's
+confirmed broken: every request throws `Error: FetchState(request) called
+on a request without an attached app.` — reproduced with zero custom code,
+in both `astro dev` and a real built `wrangler dev`. Full investigation and
+root cause in [DECISIONS.md](./DECISIONS.md).
 
-Create `apps/krypto/workers/site/src/app.ts`:
+Use the stable, documented `handle()` export instead — a plain Hono app
+that checks custom routes first, then falls through to Astro SSR:
 
 ```typescript
 // apps/krypto/workers/site/src/app.ts
 import { Hono } from 'hono'
-import { middleware, pages } from 'astro/hono'
-import { cf } from '@astrojs/cloudflare/hono'
+import { handle } from '@astrojs/cloudflare/handler'
 
 const app = new Hono<{ Bindings: Env }>()
 
-// 1. Cloudflare wiring — bindings injection, ASSETS, client address
-app.use(cf())
+// 1. Custom API routes — checked first
+app.get('/api/ping', async (c) => {
+  const result = await c.env.DB.prepare('SELECT 1 as ok').first()
+  await c.env.KV.put('ping', 'pong')
+  const kv = await c.env.KV.get('ping')
+  return c.json({ db: result, kv, worker: 'site' })
+})
 
-// 2. Astro middleware
-app.use(middleware())
-
-// 3. Astro SSR — must be last
-app.use(pages())
+// 2. Astro SSR — fallback for everything else, must be last
+app.all('*', async (c) => handle(c.req.raw, c.env, c.executionCtx))
 
 export default app
 ```
 
-Update `apps/krypto/workers/site/astro.config.mjs`:
+Update `apps/krypto/workers/site/astro.config.mjs`. No `entrypoint` option
+(it doesn't exist on this adapter version — Astro auto-detects `src/app.ts`
+as the Worker entry regardless), and no `experimental.advancedRouting`
+flag (that's what gates the broken `astro/hono` feature):
 
 ```javascript
 import { defineConfig } from 'astro/config'
@@ -144,15 +155,18 @@ import cloudflare from '@astrojs/cloudflare'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  adapter: cloudflare({
-    entrypoint: './src/app.ts',
-  }),
+  adapter: cloudflare(),
   output: 'server',
   vite: {
     plugins: [tailwindcss()],
   },
 })
 ```
+
+**Resources:**
+- [`@astrojs/cloudflare` adapter docs](https://docs.astro.build/en/guides/integrations-guide/cloudflare/) — `handle()` is the documented pattern for custom Cloudflare Worker entrypoints
+- [Astro 6.3 blog post](https://astro.build/blog/astro-630/) — the `astro/hono` advanced-routing example that does **not** work for custom Cloudflare entrypoints in this version combo; kept here for context on what to avoid
+- [DECISIONS.md](./DECISIONS.md), "astro/hono advanced routing is broken for custom Cloudflare entrypoints" — full repro steps and root cause
 
 ### Step 4 — Install DaisyUI for Astro
 
@@ -180,18 +194,26 @@ import "../assets/app.css"
 
 No `tailwind.config.js`. No PostCSS. The `@tailwindcss/vite` plugin handles everything.
 
+**Verify `app.css` actually has content** (`wc -l src/assets/app.css` should
+show 2, not 0) **and that every page that needs DaisyUI classes either uses
+`Layout.astro` or imports `app.css` directly.** A blank or unimported
+`app.css` produces no error — DaisyUI/Tailwind class names just render as
+plain, unstyled text, which is easy to mistake for a token-cascade bug
+rather than a missing-import bug. See Step 9 for the gotcha this caused
+during Phase 0.
+
 ### Step 5 — Configure Worker 1 wrangler.jsonc
 
 ```jsonc
 // apps/krypto/workers/site/wrangler.jsonc
 {
   "name": "krypto-site",
-  "main": "./dist/_worker.js/index.js",
+  "main": "./src/app.ts",
   "compatibility_date": "2026-06-17",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "binding": "ASSETS",
-    "directory": "./dist"
+    "directory": "./dist/client"
   },
   "observability": { "enabled": true },
   "d1_databases": [{
@@ -202,19 +224,47 @@ No `tailwind.config.js`. No PostCSS. The `@tailwindcss/vite` plugin handles ever
   "kv_namespaces": [{
     "binding": "KV",
     "id": "placeholder"             // replace after: wrangler kv namespace create KV
+  }, {
+    "binding": "SESSION",
+    "id": "placeholder"             // replace after: wrangler kv namespace create SESSION
   }],
   "r2_buckets": [{
     "binding": "R2",
     "bucket_name": "krypto-media"
+  }],
+  "images": {
+    "binding": "IMAGES"
+  },
+  "send_email": [{
+    "name": "EMAIL"
   }]
 }
 ```
 
+**`main` points at the source entrypoint (`./src/app.ts`), not a build output path.**
+The Cloudflare Vite plugin resolves `main` before `astro build` produces any
+output — pointing it at `./dist/...` fails with "doesn't point to an existing
+file" on a clean checkout. `astro build && wrangler deploy` bundles the
+source entrypoint correctly without any extra config swap.
+
+**`assets.directory` is `./dist/client`, not `./dist`.** Confirmed by
+inspecting actual build output — `@astrojs/cloudflare` 13.x puts static
+assets in `dist/client/` and the server bundle in `dist/server/`. There is
+no `dist/_worker.js/` in this adapter version.
+
+**`SESSION` (KV) and `IMAGES` bindings are required by the adapter**, even
+though Section 1 doesn't use Cloudflare Images or Astro Sessions directly —
+`@astrojs/cloudflare` auto-enables both and will inject a default binding
+name if you don't declare one yourself. Declaring them explicitly here
+avoids relying on the adapter's auto-injection and keeps both binding names
+under your control.
+
 Create bindings (run once — IDs go into both Workers):
 
 ```bash
-wrangler d1 create krypto-db          # copy database_id
-wrangler kv namespace create KV       # copy id
+wrangler d1 create krypto-db              # copy database_id
+wrangler kv namespace create KV           # copy id
+wrangler kv namespace create SESSION      # copy id
 wrangler r2 bucket create krypto-media
 ```
 
@@ -252,18 +302,16 @@ MEDIA_URL=http://localhost:3001/media
 
 ### Step 8 — POC 1a: verify bindings in Astro
 
-Add a test route to `apps/krypto/workers/site/src/app.ts`:
+The `/api/ping` route added in Step 3 already verifies D1 + KV bindings work
+from a custom Hono route. Confirm with:
 
-```typescript
-app.get('/api/ping', async (c) => {
-  const result = await c.env.DB.prepare('SELECT 1 as ok').first()
-  await c.env.KV.put('ping', 'pong')
-  const kv = await c.env.KV.get('ping')
-  return c.json({ db: result, kv, worker: 'site' })
-})
+```bash
+curl http://localhost:4321/api/ping
+# {"db":{"ok":1},"kv":"pong","worker":"site"}
 ```
 
-And confirm bindings work from an Astro page:
+And confirm bindings also work from an Astro page (a separate code path —
+`Astro.locals.runtime.env`, populated by `handle()`, not by Hono's `c.env`):
 
 ```astro
 ---
@@ -282,18 +330,35 @@ Visit `http://localhost:3000/api/ping` — both `db` and `kv` populated = **POC 
 
 ### Step 9 — POC 2: design token injection
 
+**Confirmed during Phase 0 (2026-06-19): two things are easy to miss here.**
+
+1. `src/assets/app.css` must actually contain the Step 4 directives
+   (`@import "tailwindcss"; @plugin "daisyui";`) — an empty file produces
+   no errors, it just silently means `bg-primary`/`text-primary-content`
+   render as plain, unstyled class names. Any page using DaisyUI utility
+   classes must import it: `import '../assets/app.css'` in the frontmatter.
+2. **DaisyUI v5 uses `--color-primary` / `--color-primary-content`, not
+   the DaisyUI v4 short names `--p` / `--pc`.** The generated utility CSS
+   is `.bg-primary { background-color: var(--color-primary); }`. Using the
+   old names produces no error at all — the override `<style>` tag just
+   sets a variable nothing reads, and the page silently fails to show the
+   color change. If a token-injection test "does nothing" with otherwise
+   correct markup order, check the variable names first. Full repro in
+   [DECISIONS.md](./DECISIONS.md).
+
 ```css
 /* apps/krypto/workers/site/public/themes/theme-test.css */
 :root[data-theme="test"] {
-  --p: oklch(62% 0.18 145);
-  --pc: oklch(100% 0 0);
+  --color-primary: oklch(62% 0.18 145);
+  --color-primary-content: oklch(100% 0 0);
 }
 ```
 
 ```astro
 ---
 // apps/krypto/workers/site/src/pages/token-test.astro
-const tokenStyle = `:root[data-theme="test"] { --p: oklch(42% 0.12 145); }`
+import '../assets/app.css'
+const tokenStyle = `:root[data-theme="test"] { --color-primary: oklch(42% 0.12 145); }`
 ---
 <html data-theme="test">
   <head>
@@ -310,6 +375,9 @@ const tokenStyle = `:root[data-theme="test"] { --p: oklch(42% 0.12 145); }`
 ```
 
 Disable JS and reload — color must still be correct. No FOUC = **POC 2 complete**.
+
+Verify without a browser: `curl http://localhost:3000/token-test | grep -o '\-\-color-primary:[^;]*'`
+should show the darker override value (`42%`), not the theme file's value (`62%`).
 
 ---
 
@@ -781,10 +849,10 @@ krypto/
 ├── workers/
 │   ├── site/                          Worker 1 — Astro public site
 │   │   ├── wrangler.jsonc             bindings: DB, KV, R2
-│   │   ├── astro.config.ts            Cloudflare adapter, entrypoint: src/app.ts
+│   │   ├── astro.config.mjs           Cloudflare adapter (no entrypoint option)
 │   │   ├── .dev.vars                  local secrets
 │   │   ├── src/
-│   │   │   ├── app.ts                 Hono entry — cf(), middleware(), pages()
+│   │   │   ├── app.ts                 Hono entry — custom routes → handle()
 │   │   │   ├── env.d.ts               Env + App.Locals types
 │   │   │   ├── pages/                 .astro pages
 │   │   │   ├── layouts/
@@ -881,12 +949,20 @@ krypto/
 
 **Worker 1 — Astro:**
 
-**`cf() is not exported from @astrojs/cloudflare/hono`**
-Astro is below 6.4. Run `pnpm upgrade astro --latest && pnpm upgrade @astrojs/cloudflare --latest`.
+**`Error: FetchState(request) called on a request without an attached app`**
+You're using `astro/hono`'s `middleware()`/`pages()` or `cf()` from
+`@astrojs/cloudflare/hono`. That's the experimental Advanced Routing
+pattern from Astro's 6.3 blog post — confirmed broken for custom Cloudflare
+entrypoints (reproduces with zero custom code, in both `astro dev` and a
+built `wrangler dev`). Switch to `handle()` from
+`@astrojs/cloudflare/handler` per Step 3. Full root cause in
+[DECISIONS.md](./DECISIONS.md).
 
 **`Astro.locals.runtime` is undefined**
-`cf()` must be the first middleware in `src/app.ts` before `middleware()`.
-Confirm `entrypoint: './src/app.ts'` is set in `astro.config.mjs`.
+Confirm `src/app.ts`'s catch-all route calls `handle(c.req.raw, c.env,
+c.executionCtx)` and that it's registered last, after your custom routes.
+`handle()` is what populates `Astro.locals.runtime` — there's no separate
+middleware step required.
 
 **DaisyUI classes not applying**
 Remove any `tailwind.config.js` or PostCSS config. Use only

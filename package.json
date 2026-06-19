@@ -3,6 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "description": "Cadmus framework + Krypto reference app",
+  "packageManager": "pnpm@11.8.0",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=11.8.0"
+  },
   "scripts": {
     "dev:site": "cd apps/krypto/workers/site && wrangler dev --port 3000",
     "dev:panel": "cd apps/krypto/workers/panel && wrangler dev --port 3001",

@@ -83,7 +83,7 @@
 │  Worker 1: Astro (apps/krypto/workers/site/)    │  │  Worker 2: TanStack Start            │
 │                                     │  │  (apps/krypto/workers/panel/)                    │
 │  Hono entrypoint (src/app.ts)       │  │                                      │
-│    cf() → middleware() → pages()    │  │  Custom entrypoint (app/server.ts)   │
+│    custom routes → handle()         │  │  Custom entrypoint (app/server.ts)   │
 │                                     │  │    Hono /api/* (public, unauthed)    │
 │  Public site routes:                │  │    TanStack Start /admin/*, /login   │
 │    / homepage                       │  │                                      │
@@ -154,9 +154,11 @@ Incoming request to Worker 1 (Astro — public site)
       │
       ▼
 apps/krypto/workers/site/src/app.ts (Hono)
-  ├── cf()           — injects bindings into Astro.locals.runtime.env
-  ├── middleware()   — Astro middleware
-  └── pages()        — Astro SSR handler (must be last)
+  ├── custom routes  — checked first (e.g. /api/ping)
+  └── handle()       — Astro SSR fallback, from @astrojs/cloudflare/handler
+                         (must be last; not astro/hono — see DECISIONS.md,
+                         "astro/hono advanced routing is broken for custom
+                         Cloudflare entrypoints")
         ├── Astro.locals.runtime.env.DB → Drizzle query
         ├── resolve design tokens from site_settings
         ├── render HTML with server-side <style> token injection
@@ -624,12 +626,23 @@ by the theme file and the brand color will not apply.
 theme file (`:root[data-theme="{name}"]`). Source order wins at equal
 specificity.
 
+**Confirmed during Phase 0 (2026-06-19):** DaisyUI v5's Tailwind-v4-native
+plugin reads `--color-primary` / `--color-primary-content`, **not** the
+DaisyUI v4 short names `--p` / `--pc`. The generated utility CSS is
+`.bg-primary { background-color: var(--color-primary); }`. Using the old
+`--p`/`--pc` names produces no visible error — the override `<style>` tag
+just silently sets a CSS variable nothing reads. Always verify against the
+actual generated CSS (inspect the page or grep the built `_astro/*.css`
+output for `.bg-primary`) rather than assuming v4-era variable names still
+apply. See `DECISIONS.md`, "DaisyUI v5 token names" for the full repro.
+
 ```html
 <!-- Correct order in <head> -->
 <link rel="stylesheet" href="/themes/theme-krypto.css" />  <!-- DaisyUI theme -->
 <style>
   :root[data-theme="krypto"] {
-    --p: oklch(62% 0.18 145);  /* primary override */
+    --color-primary: oklch(62% 0.18 145);          /* primary override */
+    --color-primary-content: oklch(100% 0 0);
     /* ... rest of brand scale */
   }
 </style>
@@ -781,9 +794,9 @@ const { data: pages } = useQuery({
 Worker 1: Astro (apps/krypto/workers/site/) — public site
 │
 ├── apps/krypto/workers/site/src/app.ts (Hono entrypoint)
-│     ├── cf()         — bindings → Astro.locals.runtime.env
-│     ├── middleware() — Astro middleware
-│     └── pages()      — Astro SSR (must be last)
+│     ├── custom routes — checked first (e.g. /api/ping)
+│     └── handle()       — Astro SSR fallback, @astrojs/cloudflare/handler
+│                            (must be last — not astro/hono, see DECISIONS.md)
 │
 └── Routes: /*, /[slug], /about, /contact, /login
       └── Astro.locals.runtime.env.DB → Drizzle → render HTML
@@ -878,7 +891,7 @@ const tokenStyle = buildTokenStyle(settings)
     <style set:html={tokenStyle} />
   </head>
   <body>
-    <h1 style="color: var(--p)">Token injection works</h1>
+    <h1 style="color: var(--color-primary)">Token injection works</h1>
   </body>
 </html>
 ```
@@ -1168,7 +1181,7 @@ salvation/
 │       │   │   ├── .dev.vars          ← local secrets (never commit)
 │       │   │   ├── .dev.vars.example  ← committed, all keys, no values
 │       │   │   ├── src/
-│       │   │   │   ├── app.ts         ← Hono: cf(), middleware(), pages()
+│       │   │   │   ├── app.ts         ← Hono: custom routes → handle()
 │       │   │   │   ├── env.d.ts       ← Env + App.Locals types
 │       │   │   │   ├── pages/         ← Astro SSR pages
 │       │   │   │   ├── layouts/
@@ -1442,8 +1455,8 @@ That all comes in Phase 2+.
 ### Milestones
 
 **Worker 1 — Astro public site (`apps/krypto/workers/site/`):**
-- [ ] **1.1** Promote Phase 0 Astro scaffold to permanent structure — confirm `apps/krypto/workers/site/src/app.ts` Hono entrypoint with `cf()`, `middleware()`, `pages()` in correct order
-- [ ] **1.2** Confirm `apps/krypto/workers/site/astro.config.ts` has `entrypoint: './src/app.ts'`, `output: 'server'`, `@tailwindcss/vite` plugin
+- [ ] **1.1** Promote Phase 0 Astro scaffold to permanent structure — confirm `apps/krypto/workers/site/src/app.ts` Hono entrypoint checks custom routes first, then falls through to `handle()` from `@astrojs/cloudflare/handler` (must be last). Do not use `astro/hono`'s `middleware()`/`pages()` — confirmed broken for custom Cloudflare entrypoints, see `DECISIONS.md`.
+- [ ] **1.2** Confirm `apps/krypto/workers/site/astro.config.mjs` has `adapter: cloudflare()` (no `entrypoint` option — it doesn't exist on this adapter version), `output: 'server'`, `@tailwindcss/vite` plugin, and no `experimental.advancedRouting` flag
 - [ ] **1.3** Confirm `apps/krypto/workers/site/wrangler.jsonc` has all bindings: D1, KV, R2, Email Workers (`send_email`), `nodejs_compat` flag, `observability: true`
 - [ ] **1.4** Install Phosphor React in `apps/krypto/workers/site/`
 - [ ] **1.5** Create `apps/krypto/workers/site/src/layouts/Layout.astro` — bare HTML shell, imports `app.css`, `<ViewTransitions />`, accepts `title` prop

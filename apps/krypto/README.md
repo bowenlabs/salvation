@@ -62,10 +62,10 @@ Both built on `@bowenlabs/cadmus` primitives.
 Krypto uses a dual license. See [LICENSE](./LICENSE) for full terms.
 
 - **Free** — individuals and orgs under $1M annual revenue
-- **Free** — verified nonprofits (apply at licensing@bowenlabs.com)
+- **Free** — verified nonprofits (apply at licensing@bowenlabs.io)
 - **Commercial license required** — orgs over $1M annual revenue
 
-Contact: licensing@bowenlabs.com
+Contact: licensing@bowenlabs.io
 
 ---
 

@@ -1,0 +1,17 @@
+---
+import '../assets/app.css'
+const tokenStyle = `:root[data-theme="test"] { --color-primary: oklch(42% 0.12 145); }`
+---
+
+<html data-theme="test">
+<head>
+    <link rel="stylesheet" href="/themes/theme-test.css" />
+    <!-- style tag MUST come after the link — source order wins -->
+    <style set:html={tokenStyle} />
+</head>
+<body>
+<div class="bg-primary text-primary-content p-8">
+    If dark green: token injection working
+</div>
+</body>
+</html>

@@ -1,0 +1,6 @@
+---
+const { env } = Astro.locals.runtime
+const result = await env.DB.prepare('SELECT 1 as ok').first()
+---
+
+<p>D1 from Astro: {JSON.stringify(result)}</p>
