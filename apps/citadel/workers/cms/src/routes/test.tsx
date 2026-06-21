@@ -1,5 +1,5 @@
 import { db } from "@bowenlabs/cadmus/db";
-import { pages } from "@core/db/schema";
+import { pages } from "@core/db/schema.generated";
 import { createFileRoute } from "@tanstack/solid-router";
 import { createServerFn } from "@tanstack/solid-start";
 

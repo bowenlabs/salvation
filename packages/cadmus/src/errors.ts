@@ -107,3 +107,11 @@ export class CadmusQueueError extends CadmusError {
     this.name = "CadmusQueueError";
   }
 }
+
+/** Thrown by @bowenlabs/cadmus/cms primitives */
+export class CadmusCmsError extends CadmusError {
+  constructor(message: string, cause?: unknown) {
+    super(message, "CMS_ERROR", cause);
+    this.name = "CadmusCmsError";
+  }
+}

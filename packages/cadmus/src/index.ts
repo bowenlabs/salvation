@@ -5,6 +5,7 @@
 // Import this root only when you need multiple primitives
 export * from "./auth/index.js";
 export * from "./cache/index.js";
+export * from "./cms/index.js";
 export * from "./db/index.js";
 export * from "./email/index.js";
 // Errors — always export first so consumers can catch typed errors

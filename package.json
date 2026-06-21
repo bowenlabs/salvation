@@ -13,13 +13,13 @@
     "dev:cms": "cd apps/citadel/workers/cms && wrangler dev --port 3001 --persist-to ../../../../.wrangler/state",
     "dev": "concurrently \"pnpm dev:site\" \"pnpm dev:cms\"",
     "build:cadmus": "cd packages/cadmus && pnpm build",
-    "build:site": "cd apps/citadel/workers/site && astro build",
-    "build:cms": "cd apps/citadel/workers/cms && vite build",
+    "build:site": "cd apps/citadel/workers/site && pnpm build",
+    "build:cms": "cd apps/citadel/workers/cms && pnpm build",
     "build": "pnpm build:cadmus && pnpm build:site && pnpm build:cms",
     "deploy:site": "cd apps/citadel/workers/site && wrangler deploy",
     "deploy:cms": "cd apps/citadel/workers/cms && wrangler deploy",
     "deploy": "pnpm build && pnpm deploy:site && pnpm deploy:cms",
-    "db:generate": "drizzle-kit generate",
+    "db:generate": "tsx apps/citadel/scripts/generate-schema.ts && drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply citadel-db --local --config apps/citadel/workers/site/wrangler.jsonc --persist-to ./.wrangler/state",
     "db:migrate:prod": "wrangler d1 migrations apply citadel-db --remote --config apps/citadel/workers/site/wrangler.jsonc",
     "db:studio": "drizzle-kit studio",
@@ -41,6 +41,8 @@
     "wrangler": "latest"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.2"
+    "@bowenlabs/cadmus": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "solid-js": "^1.9.13"
   }
 }

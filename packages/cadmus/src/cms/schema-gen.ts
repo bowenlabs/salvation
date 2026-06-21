@@ -1,0 +1,156 @@
+// Copyright (c) 2026 BowenLabs. All rights reserved.
+// Cadmus is MIT licensed. See LICENSE in the repo root.
+
+import { CadmusCmsError } from "../errors.js";
+import type { CmsConfig, CollectionConfig, FieldConfig } from "./types.js";
+
+function toSnakeCase(value: string): string {
+  return value.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+}
+
+function quote(value: string): string {
+  return JSON.stringify(value);
+}
+
+// Mirrors codegen.ts's fieldToColumn switch, emitting drizzle-orm
+// source text instead of building a runtime column. Kept as its own
+// switch (not shared code) since the two have different outputs
+// (Column vs. string) — codegen.test.ts's schema-parity assertions are
+// what keep this in sync with codegen.ts's actual runtime behavior.
+function fieldToColumnSource(
+  key: string,
+  field: FieldConfig,
+  usedBuilders: Set<string>,
+): string {
+  const columnName = field.name ?? toSnakeCase(key);
+
+  switch (field.type) {
+    case "text":
+    case "upload": {
+      usedBuilders.add("text");
+      let source = `text(${quote(columnName)})`;
+      if (field.required) source += ".notNull()";
+      if (field.unique) source += ".unique()";
+      if (field.defaultValue !== undefined) {
+        source += `.default(${quote(field.defaultValue)})`;
+      }
+      return source;
+    }
+    case "richText":
+    case "array": {
+      usedBuilders.add("text");
+      let source = `text(${quote(columnName)}, { mode: "json" })`;
+      if (field.required) source += ".notNull()";
+      if (field.defaultValue !== undefined) {
+        source += `.default(${JSON.stringify(field.defaultValue)})`;
+      }
+      return source;
+    }
+    case "relationship": {
+      // hasMany relationship fields never reach here — collectionToTableSource
+      // filters them out (see its own comment).
+      usedBuilders.add("integer");
+      let source = `integer(${quote(columnName)})`;
+      if (field.required) source += ".notNull()";
+      return source;
+    }
+    case "select": {
+      usedBuilders.add("text");
+      const options = field.options.map(quote).join(", ");
+      let source = `text(${quote(columnName)}, { enum: [${options}] })`;
+      if (field.required) source += ".notNull()";
+      if (field.defaultValue !== undefined) {
+        source += `.default(${quote(field.defaultValue)})`;
+      }
+      return source;
+    }
+    case "number": {
+      if (field.autoIncrement) {
+        usedBuilders.add("integer");
+        return `integer(${quote(columnName)}).primaryKey({ autoIncrement: true })`;
+      }
+      usedBuilders.add("real");
+      let source = `real(${quote(columnName)})`;
+      if (field.required) source += ".notNull()";
+      if (field.defaultValue !== undefined) {
+        source += `.default(${field.defaultValue})`;
+      }
+      return source;
+    }
+    case "date": {
+      usedBuilders.add("integer");
+      const mode = field.mode === "timestamp_ms" ? "timestamp_ms" : "timestamp";
+      let source = `integer(${quote(columnName)}, { mode: ${quote(mode)} })`;
+      if (field.required) source += ".notNull()";
+      if (field.defaultValue === "now") {
+        source += ".$defaultFn(() => new Date())";
+      } else if (field.defaultValue instanceof Date) {
+        source += `.$defaultFn(() => new Date(${field.defaultValue.getTime()}))`;
+      }
+      return source;
+    }
+    default:
+      throw new CadmusCmsError(
+        `Field type "${(field as FieldConfig).type}" is not yet supported by cadmus/cms schema-gen`,
+      );
+  }
+}
+
+function collectionToTableSource(
+  config: CollectionConfig,
+  usedBuilders: Set<string>,
+): string {
+  const fields = Object.entries(config.fields)
+    // hasMany relationships have no column on this table — emitted as a
+    // separate join table instead (see relationshipJoinTableSource).
+    .filter(([, field]) => !(field.type === "relationship" && field.hasMany))
+    .map(
+      ([key, field]) =>
+        `  ${key}: ${fieldToColumnSource(key, field, usedBuilders)},`,
+    )
+    .join("\n");
+  return `export const ${config.slug} = sqliteTable(${quote(config.slug)}, {\n${fields}\n});`;
+}
+
+// Mirrors codegen.ts's relationshipJoinTables, emitting one
+// sqliteTable() source block per hasMany relationship field.
+function relationshipJoinTableSources(
+  config: CollectionConfig,
+  usedBuilders: Set<string>,
+): string[] {
+  const blocks: string[] = [];
+  for (const [key, field] of Object.entries(config.fields)) {
+    if (field.type !== "relationship" || !field.hasMany) continue;
+    usedBuilders.add("integer");
+    const tableName = `${config.slug}_${key}`;
+    const ownColumn = `${config.slug}_id`;
+    const relatedColumn = `${field.relationTo}_id`;
+    blocks.push(
+      `export const ${tableName} = sqliteTable(${quote(tableName)}, {\n` +
+        `  ${ownColumn}: integer(${quote(ownColumn)}).notNull(),\n` +
+        `  ${relatedColumn}: integer(${quote(relatedColumn)}).notNull(),\n` +
+        "});",
+    );
+  }
+  return blocks;
+}
+
+// Generates the full TS source for apps/citadel/core/db/schema.generated.ts
+// from a CmsConfig. Pure string generation — the caller (a script run via
+// tsx) is responsible for writing the result to disk (and formatting it).
+export function generateSchemaSource(config: CmsConfig): string {
+  const usedBuilders = new Set<string>(["sqliteTable"]);
+  const blocks = config.collections.flatMap((collection) => [
+    collectionToTableSource(collection, usedBuilders),
+    ...relationshipJoinTableSources(collection, usedBuilders),
+  ]);
+  const importList = [...usedBuilders].sort().join(", ");
+  return [
+    "// Generated by @bowenlabs/cadmus/cms — do not hand-edit.",
+    "// Source: apps/citadel/citadel.config.ts",
+    `import { ${importList} } from "drizzle-orm/sqlite-core";`,
+    "",
+    blocks.join("\n\n"),
+    "",
+  ].join("\n");
+}

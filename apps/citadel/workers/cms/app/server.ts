@@ -3,6 +3,8 @@
 import startHandler from "@tanstack/solid-start/server-entry";
 import { Hono } from "hono";
 
+export { CmsService } from "./service.js";
+
 const app = new Hono<{ Bindings: Env }>();
 
 // 1. Custom API routes — checked first

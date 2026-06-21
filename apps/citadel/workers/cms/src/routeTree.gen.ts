@@ -14,6 +14,8 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminPagesIndexRouteImport } from './routes/admin/pages/index'
+import { Route as AdminPagesNewRouteImport } from './routes/admin/pages/new'
+import { Route as AdminPagesPageIdRouteImport } from './routes/admin/pages/$pageId'
 
 const TestRoute = TestRouteImport.update({
   id: '/test',
@@ -40,12 +42,24 @@ const AdminPagesIndexRoute = AdminPagesIndexRouteImport.update({
   path: '/pages/',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminPagesNewRoute = AdminPagesNewRouteImport.update({
+  id: '/pages/new',
+  path: '/pages/new',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPagesPageIdRoute = AdminPagesPageIdRouteImport.update({
+  id: '/pages/$pageId',
+  path: '/pages/$pageId',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/test': typeof TestRoute
+  '/admin/pages/$pageId': typeof AdminPagesPageIdRoute
+  '/admin/pages/new': typeof AdminPagesNewRoute
   '/admin/pages/': typeof AdminPagesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +67,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/test': typeof TestRoute
+  '/admin/pages/$pageId': typeof AdminPagesPageIdRoute
+  '/admin/pages/new': typeof AdminPagesNewRoute
   '/admin/pages': typeof AdminPagesIndexRoute
 }
 export interface FileRoutesById {
@@ -61,14 +77,38 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/test': typeof TestRoute
+  '/admin/pages/$pageId': typeof AdminPagesPageIdRoute
+  '/admin/pages/new': typeof AdminPagesNewRoute
   '/admin/pages/': typeof AdminPagesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/about' | '/test' | '/admin/pages/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/about'
+    | '/test'
+    | '/admin/pages/$pageId'
+    | '/admin/pages/new'
+    | '/admin/pages/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/about' | '/test' | '/admin/pages'
-  id: '__root__' | '/' | '/admin' | '/about' | '/test' | '/admin/pages/'
+  to:
+    | '/'
+    | '/admin'
+    | '/about'
+    | '/test'
+    | '/admin/pages/$pageId'
+    | '/admin/pages/new'
+    | '/admin/pages'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/about'
+    | '/test'
+    | '/admin/pages/$pageId'
+    | '/admin/pages/new'
+    | '/admin/pages/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -115,14 +155,32 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AdminPagesIndexRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/pages/new': {
+      id: '/admin/pages/new'
+      path: '/pages/new'
+      fullPath: '/admin/pages/new'
+      preLoaderRoute: typeof AdminPagesNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/pages/$pageId': {
+      id: '/admin/pages/$pageId'
+      path: '/pages/$pageId'
+      fullPath: '/admin/pages/$pageId'
+      preLoaderRoute: typeof AdminPagesPageIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
   }
 }
 
 interface AdminRouteRouteChildren {
+  AdminPagesPageIdRoute: typeof AdminPagesPageIdRoute
+  AdminPagesNewRoute: typeof AdminPagesNewRoute
   AdminPagesIndexRoute: typeof AdminPagesIndexRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminPagesPageIdRoute: AdminPagesPageIdRoute,
+  AdminPagesNewRoute: AdminPagesNewRoute,
   AdminPagesIndexRoute: AdminPagesIndexRoute,
 }
 

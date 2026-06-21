@@ -12,6 +12,7 @@ export default defineConfig({
     "session/index": "src/session/index.ts",
     "queues/index": "src/queues/index.ts",
     "hono/index": "src/hono/index.ts",
+    "cms/index": "src/cms/index.ts",
   },
   format: ["esm", "cjs"],
   dts: true,

@@ -45,5 +45,12 @@
 		{
 			"name": "EMAIL"
 		}
+	],
+	"services": [
+		{
+			"binding": "CMS",
+			"service": "citadel-cms",
+			"entrypoint": "CmsService"
+		}
 	]
 }

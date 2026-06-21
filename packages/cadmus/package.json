@@ -62,6 +62,10 @@
     "./hono": {
       "types": "./dist/hono/index.d.ts",
       "default": "./dist/hono/index.js"
+    },
+    "./cms": {
+      "types": "./dist/cms/index.d.ts",
+      "default": "./dist/cms/index.js"
     }
   },
   "scripts": {
