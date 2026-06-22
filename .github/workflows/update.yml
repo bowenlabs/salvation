@@ -58,7 +58,7 @@ jobs:
                 '```',
                 '',
                 'See [CONTRIBUTING.md](./CONTRIBUTING.md) for the core/custom boundary rules.',
-                'Conflicts in `apps/citadel/core/` likely mean you edited core files directly.',
+                'Conflicts in `app/core/` likely mean you edited core files directly.',
               ].join('\n'),
               labels: ['maintenance'],
             })

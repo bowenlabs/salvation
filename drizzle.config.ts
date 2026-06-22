@@ -6,10 +6,10 @@ import { defineConfig } from 'drizzle-kit'
 // root .env (gitignored), see .env.example.
 export default defineConfig({
 	schema: [
-		'./apps/citadel/core/db/schema.ts',
-		'./apps/citadel/core/db/schema.generated.ts',
+		'./app/core/db/schema.ts',
+		'./app/core/db/schema.generated.ts',
 	],
-	out: './apps/citadel/core/db/migrations',
+	out: './app/core/db/migrations',
 	dialect: 'sqlite',
 	driver: 'd1-http',
 	dbCredentials: {

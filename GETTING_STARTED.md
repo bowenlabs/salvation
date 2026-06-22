@@ -1,5 +1,5 @@
 # Getting Started
-## Thebes — Cadmus Framework + Citadel Reference App
+## Thebes — Cadmus Framework + Cadmea Reference App
 ## Astro + TanStack Start + Cloudflare Workers
 
 > This guide walks you through Phase 0 — validating the two-Worker VMFE
@@ -10,7 +10,7 @@
 > Cadmus primitive structure in place.
 >
 > **Monorepo:** `thebes/` contains `packages/cadmus/` (the framework)
-> and `apps/citadel/` (the reference app). Worker 1 is Astro (public site).
+> and `app/` (the reference app). Worker 1 is Astro (public site).
 > Worker 2 is TanStack Start (Panel). Both Workers share the same D1, KV,
 > and R2 binding IDs. Hono lives inside Worker 2's custom server entrypoint.
 > All shared primitives live in `@bowenlabs/cadmus` — imported by both Workers.
@@ -60,13 +60,13 @@ Cloudflare Account
 ├── R2 Bucket ────────────────────────────────────┤ same IDs in both
 │                                                  │ wrangler.jsonc files
 ├── Worker 1: Astro public site ←─────────────────┘
-│   apps/citadel/workers/site/
+│   app/workers/site/
 │   ├── Hono entrypoint — custom routes → handle()
 │   ├── Astro SSR pages — bindings via env (cloudflare:workers)
 │   └── Serves: /, /[slug], /about, /contact, /coming-soon
 │
 └── Worker 2: TanStack Start Panel ←─────────────┘
-    apps/citadel/workers/cms/
+    app/workers/cadmea/
     ├── Custom server entrypoint (app/server.ts)
     │   └── Hono — /api/form/:slug, /api/auth/*, /api/media/upload
     ├── TanStack Start — all /admin/* routes
@@ -93,8 +93,8 @@ yet and will need to revisit that config later.
 ### Step 1 — Scaffold Astro Worker
 
 ```bash
-mkdir -p apps/citadel/workers/site
-cd apps/citadel/workers/site
+mkdir -p app/workers/site
+cd app/workers/site
 pnpm create cloudflare@latest . --framework=astro
 ```
 
@@ -124,7 +124,7 @@ Use the stable, documented `handle()` export instead — a plain Hono app
 that checks custom routes first, then falls through to Astro SSR:
 
 ```typescript
-// apps/citadel/workers/site/src/app.ts
+// app/workers/site/src/app.ts
 import { Hono } from 'hono'
 import { handle } from '@astrojs/cloudflare/handler'
 
@@ -144,7 +144,7 @@ app.all('*', async (c) => handle(c.req.raw, c.env, c.executionCtx))
 export default app
 ```
 
-Update `apps/citadel/workers/site/astro.config.mjs`. No `entrypoint` option
+Update `app/workers/site/astro.config.mjs`. No `entrypoint` option
 (it doesn't exist on this adapter version — Astro auto-detects `src/app.ts`
 as the Worker entry regardless), and no `experimental.advancedRouting`
 flag (that's what gates the broken `astro/hono` feature):
@@ -176,7 +176,7 @@ DaisyUI v5 uses Tailwind v4 as a Vite plugin, not PostCSS:
 pnpm add tailwindcss @tailwindcss/vite daisyui
 ```
 
-Create `apps/citadel/workers/site/src/assets/app.css`:
+Create `app/workers/site/src/assets/app.css`:
 
 ```css
 @import "tailwindcss";
@@ -187,7 +187,7 @@ Import in your layout:
 
 ```astro
 ---
-// apps/citadel/workers/site/src/layouts/Layout.astro
+// app/workers/site/src/layouts/Layout.astro
 import "../assets/app.css"
 ---
 ```
@@ -205,9 +205,9 @@ during Phase 0.
 ### Step 5 — Configure Worker 1 wrangler.jsonc
 
 ```jsonc
-// apps/citadel/workers/site/wrangler.jsonc
+// app/workers/site/wrangler.jsonc
 {
-  "name": "citadel-site",
+  "name": "thebes-site",
   "main": "./src/app.ts",
   "compatibility_date": "2026-06-17",
   "compatibility_flags": ["nodejs_compat"],
@@ -218,8 +218,8 @@ during Phase 0.
   "observability": { "enabled": true },
   "d1_databases": [{
     "binding": "DB",
-    "database_name": "citadel-db",
-    "database_id": "placeholder"    // replace after: wrangler d1 create citadel-db
+    "database_name": "thebes-db",
+    "database_id": "placeholder"    // replace after: wrangler d1 create thebes-db
   }],
   "kv_namespaces": [{
     "binding": "KV",
@@ -230,7 +230,7 @@ during Phase 0.
   }],
   "r2_buckets": [{
     "binding": "R2",
-    "bucket_name": "citadel-media"
+    "bucket_name": "thebes-media"
   }],
   "images": {
     "binding": "IMAGES"
@@ -262,15 +262,15 @@ under your control.
 Create bindings (run once — IDs go into both Workers):
 
 ```bash
-wrangler d1 create citadel-db              # copy database_id
+wrangler d1 create thebes-db              # copy database_id
 wrangler kv namespace create KV           # copy id
 wrangler kv namespace create SESSION      # copy id
-wrangler r2 bucket create citadel-media
+wrangler r2 bucket create thebes-media
 ```
 
 ### Step 6 — TypeScript types for Worker 1
 
-Create `apps/citadel/workers/site/src/env.d.ts`:
+Create `app/workers/site/src/env.d.ts`:
 
 ```typescript
 interface Env {
@@ -294,7 +294,7 @@ declare namespace App {
 ### Step 7 — Local secrets
 
 ```bash
-# apps/citadel/workers/site/.dev.vars — never commit
+# app/workers/site/.dev.vars — never commit
 SESSION_SECRET=dev-secret-change-in-production
 ADMIN_EMAIL=you@yourdomain.com
 MEDIA_URL=http://localhost:3001/media
@@ -321,7 +321,7 @@ See [DECISIONS.md](./DECISIONS.md).
 
 ```astro
 ---
-// apps/citadel/workers/site/src/pages/test.astro
+// app/workers/site/src/pages/test.astro
 import { env } from 'cloudflare:workers'
 const result = await env.DB.prepare('SELECT 1 as ok').first()
 ---
@@ -329,7 +329,7 @@ const result = await env.DB.prepare('SELECT 1 as ok').first()
 ```
 
 ```bash
-cd apps/citadel/workers/site && pnpm dev    # starts on :3000
+cd app/workers/site && pnpm dev    # starts on :3000
 ```
 
 Visit `http://localhost:3000/api/ping` — both `db` and `kv` populated = **POC 1a complete**.
@@ -353,7 +353,7 @@ Visit `http://localhost:3000/api/ping` — both `db` and `kv` populated = **POC 
    [DECISIONS.md](./DECISIONS.md).
 
 ```css
-/* apps/citadel/workers/site/public/themes/theme-test.css */
+/* app/workers/site/public/themes/theme-test.css */
 :root[data-theme="test"] {
   --color-primary: oklch(62% 0.18 145);
   --color-primary-content: oklch(100% 0 0);
@@ -362,7 +362,7 @@ Visit `http://localhost:3000/api/ping` — both `db` and `kv` populated = **POC 
 
 ```astro
 ---
-// apps/citadel/workers/site/src/pages/token-test.astro
+// app/workers/site/src/pages/token-test.astro
 import '../assets/app.css'
 const tokenStyle = `:root[data-theme="test"] { --color-primary: oklch(42% 0.12 145); }`
 ---
@@ -404,8 +404,8 @@ with its real non-interactive flags instead:
 
 ```bash
 cd ../..   # back to repo root
-mkdir -p apps/citadel/workers/cms
-cd apps/citadel/workers/cms
+mkdir -p app/workers/cadmea
+cd app/workers/cadmea
 pnpm dlx @tanstack/cli@0.69.3 create panel \
   --framework solid \
   --deployment cloudflare \
@@ -417,7 +417,7 @@ pnpm dlx @tanstack/cli@0.69.3 create panel \
 
 **Two more things to do immediately after scaffolding:**
 
-1. `apps/citadel/workers/cms` sits **three** levels under `apps/`, but the
+1. `app/workers/cadmea` sits **three** levels under `apps/`, but the
    root `pnpm-workspace.yaml`'s `apps/*` glob only matches one level deep —
    `panel` is silently invisible to the workspace until you fix this.
    Add an explicit deeper pattern:
@@ -426,7 +426,7 @@ pnpm dlx @tanstack/cli@0.69.3 create panel \
    packages:
      - 'packages/*'
      - 'apps/*'
-     - 'apps/citadel/workers/*'
+     - 'app/workers/*'
      - 'docs'
      - 'examples/*'
    ```
@@ -453,10 +453,10 @@ no custom routes, but once you add the Hono entrypoint in Step 17, `main`
 must point at that file instead:
 
 ```jsonc
-// apps/citadel/workers/cms/wrangler.jsonc
+// app/workers/cadmea/wrangler.jsonc
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "citadel-cms",
+  "name": "thebes-cadmea",
   "main": "./app/server.ts",
   "compatibility_date": "2026-06-17",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -467,19 +467,19 @@ must point at that file instead:
   "observability": { "enabled": true },
   "d1_databases": [{
     "binding": "DB",
-    "database_name": "citadel-db",
-    "database_id": "same-id-as-site-worker"    // copy from apps/citadel/workers/site/wrangler.jsonc
+    "database_name": "thebes-db",
+    "database_id": "same-id-as-site-worker"    // copy from app/workers/site/wrangler.jsonc
   }],
   "kv_namespaces": [{
     "binding": "KV",
-    "id": "same-id-as-site-worker"             // copy from apps/citadel/workers/site/wrangler.jsonc
+    "id": "same-id-as-site-worker"             // copy from app/workers/site/wrangler.jsonc
   }, {
     "binding": "SESSION",
-    "id": "same-id-as-site-worker"             // copy from apps/citadel/workers/site/wrangler.jsonc
+    "id": "same-id-as-site-worker"             // copy from app/workers/site/wrangler.jsonc
   }],
   "r2_buckets": [{
     "binding": "R2",
-    "bucket_name": "citadel-media"
+    "bucket_name": "thebes-media"
   }],
   "images": {
     "binding": "IMAGES"
@@ -505,7 +505,7 @@ Add the plugin line to the **existing** `src/styles.css` (don't create a
 new file — the scaffold already imports this one from `src/routes/__root.tsx`):
 
 ```css
-/* apps/citadel/workers/cms/src/styles.css */
+/* app/workers/cadmea/src/styles.css */
 @import "tailwindcss";
 @plugin "daisyui";
 ```
@@ -560,7 +560,7 @@ pnpm wrangler types    # generates worker-configuration.d.ts
 ### Step 14 — Local secrets
 
 ```bash
-# apps/citadel/workers/cms/.dev.vars — never commit
+# app/workers/cadmea/.dev.vars — never commit
 SESSION_SECRET=dev-secret-change-in-production
 ADMIN_EMAIL=you@yourdomain.com
 MEDIA_URL=http://localhost:3001/media
@@ -580,7 +580,7 @@ that directory doesn't exist here. `app/` is reserved for the custom Hono
 entrypoint added in Step 17.
 
 ```typescript
-// apps/citadel/workers/cms/src/routes/test.tsx
+// app/workers/cadmea/src/routes/test.tsx
 import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 
@@ -603,7 +603,7 @@ function Test() {
 
 ```bash
 pnpm run generate-routes   # regenerates src/routeTree.gen.ts for the new route
-cd apps/citadel/workers/cms && pnpm dev    # starts on :3000, per package.json
+cd app/workers/cadmea && pnpm dev    # starts on :3000, per package.json
 ```
 
 Visit `http://localhost:3000/test` — result populated = **POC 1b complete**.
@@ -615,12 +615,12 @@ Drizzle — no `any` anywhere. Same `cloudflare:workers` pattern as Step 15.
 
 **Requires Steps 19 and 20 (Drizzle install + `core/db/schema.ts` +
 `@core/*` alias) to be done first** — do those now if you haven't.
-The path alias is **`@core/*`, not `@apps/citadel/core/*`** — confirmed
+The path alias is **`@core/*`, not `@app/core/*`** — confirmed
 during Phase 0 (2026-06-19), see [DECISIONS.md](./DECISIONS.md) for the
 exact `Cannot find module` error this produces if you use the wrong one:
 
 ```typescript
-// apps/citadel/workers/cms/src/server-functions/pages.ts
+// app/workers/cadmea/src/server-functions/pages.ts
 import { createServerFn } from '@tanstack/solid-start'
 import { db } from '@core/lib/db'
 import { pages } from '@core/db/schema'
@@ -637,7 +637,7 @@ export const getPages = createServerFn({ method: 'GET' })
 Use with @tanstack/solid-query in a Panel route:
 
 ```typescript
-// apps/citadel/workers/cms/src/routes/admin/pages/index.tsx
+// app/workers/cadmea/src/routes/admin/pages/index.tsx
 import { createFileRoute } from '@tanstack/solid-router'
 import { createQuery } from '@tanstack/solid-query'
 import { Show } from 'solid-js'
@@ -677,10 +677,10 @@ own type: `(request: Request, opts?: RequestOptions) => Promise<Response>`.
 Don't pass `env`/`ctx` through — TanStack Start reads bindings via
 `cloudflare:workers` inside server functions instead, same as Step 15.
 
-Create `apps/citadel/workers/cms/app/server.ts`:
+Create `app/workers/cadmea/app/server.ts`:
 
 ```typescript
-// apps/citadel/workers/cms/app/server.ts
+// app/workers/cadmea/app/server.ts
 import { Hono } from 'hono'
 import startHandler from '@tanstack/solid-start/server-entry'
 
@@ -730,7 +730,7 @@ You'll also need `hono` installed in `panel/` — it isn't a dependency of
 the vanilla scaffold:
 
 ```bash
-cd apps/citadel/workers/cms && pnpm add hono
+cd app/workers/cadmea && pnpm add hono
 ```
 
 `wrangler.jsonc` already points at `./app/server.ts` from Step 11.
@@ -755,7 +755,7 @@ Public Hono route reachable = **Hono public API confirmed**.
 Confirm Web Crypto works in the Worker runtime (critical — no Node.js crypto):
 
 ```typescript
-// add to apps/citadel/workers/cms/app/server.ts temporarily
+// add to app/workers/cadmea/app/server.ts temporarily
 app.get('/api/crypto-test', async (c) => {
   const bytes = crypto.getRandomValues(new Uint8Array(32))
   const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
@@ -790,12 +790,12 @@ SPA navigation; wrapping it in a server function guarantees it always
 executes server-side via RPC regardless of where `beforeLoad` runs:
 
 ```typescript
-// apps/citadel/workers/cms/app/middleware.ts
+// app/workers/cadmea/app/middleware.ts
 import { createServerFn } from '@tanstack/solid-start'
 import { getCookie } from '@tanstack/solid-start/server'
 
 export const requireAuth = createServerFn({ method: 'GET' }).handler(async () => {
-  const cookieValue = getCookie('citadel_session')
+  const cookieValue = getCookie('cadmea_session')
   if (!cookieValue) return null
 
   const [sessionId, sig] = cookieValue.split('.')
@@ -826,7 +826,7 @@ export const requireAuth = createServerFn({ method: 'GET' }).handler(async () =>
 Guard `/admin/*` with a layout route at `src/routes/admin/route.tsx`:
 
 ```typescript
-// apps/citadel/workers/cms/src/routes/admin/route.tsx
+// app/workers/cadmea/src/routes/admin/route.tsx
 import { createFileRoute, Outlet, redirect } from '@tanstack/solid-router'
 import { requireAuth } from '../../../app/middleware'
 
@@ -861,7 +861,7 @@ These files live in `core/` — imported by both Workers.
 ### Step 19 — Install Drizzle
 
 **Install `drizzle-orm` at the repo root, not just in each Worker.**
-Confirmed during Phase 0 (2026-06-19): `apps/citadel/core/` is not itself a
+Confirmed during Phase 0 (2026-06-19): `app/core/` is not itself a
 workspace package — when Vite resolves a bare import like `drizzle-orm/d1`
 from a file there, it walks up the directory tree looking for
 `node_modules`, and lands on the **root** `node_modules`, not either
@@ -884,7 +884,7 @@ placement.
 ### Step 20 — Schema and db helper
 
 ```typescript
-// apps/citadel/core/db/schema.ts
+// app/core/db/schema.ts
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 
 export const pages = sqliteTable('pages', {
@@ -905,7 +905,7 @@ export const pages = sqliteTable('pages', {
 ```
 
 ```typescript
-// apps/citadel/core/lib/db.ts
+// app/core/lib/db.ts
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '../db/schema'
 
@@ -919,8 +919,8 @@ export function db(d1: D1Database) {
 import { defineConfig } from 'drizzle-kit'
 
 export default defineConfig({
-  schema: './apps/citadel/core/db/schema.ts',
-  out: './apps/citadel/core/db/migrations',
+  schema: './app/core/db/schema.ts',
+  out: './app/core/db/migrations',
   dialect: 'sqlite',
   driver: 'd1-http',
 })
@@ -946,10 +946,10 @@ Add `migrations_dir` to **one** Worker's `wrangler.jsonc` (the
 Drizzle's actual output location:
 
 ```jsonc
-// apps/citadel/workers/site/wrangler.jsonc
+// app/workers/site/wrangler.jsonc
 "d1_databases": [{
   "binding": "DB",
-  "database_name": "citadel-db",
+  "database_name": "thebes-db",
   "database_id": "...",
   "migrations_dir": "../../core/db/migrations"
 }]
@@ -957,17 +957,17 @@ Drizzle's actual output location:
 
 **Confirmed during Phase 0 (2026-06-19): `wrangler dev`'s local D1
 persistence is scoped to its own working directory by default.** Running
-`dev:site` and `dev:cms` from their own folders gives each one a
+`dev:site` and `dev:cadmea` from their own folders gives each one a
 *separate* local D1 emulation — sharing the same `database_id` in
 `wrangler.jsonc` does **not** make them share local data. They only share
 data with an explicit, identical `--persist-to` path. Update the root
 `package.json` scripts:
 
 ```json
-"dev:site":  "cd apps/citadel/workers/site && wrangler dev --port 3000 --persist-to ../../../../.wrangler/state",
-"dev:cms": "cd apps/citadel/workers/cms && wrangler dev --port 3001 --persist-to ../../../../.wrangler/state",
-"db:migrate": "wrangler d1 migrations apply citadel-db --local --config apps/citadel/workers/site/wrangler.jsonc --persist-to ./.wrangler/state",
-"db:migrate:prod": "wrangler d1 migrations apply citadel-db --remote --config apps/citadel/workers/site/wrangler.jsonc"
+"dev:site":  "cd app/workers/site && wrangler dev --port 3000 --persist-to ../../../.wrangler/state",
+"dev:cadmea": "cd app/workers/cadmea && wrangler dev --port 3001 --persist-to ../../../.wrangler/state",
+"db:migrate": "wrangler d1 migrations apply thebes-db --local --config app/workers/site/wrangler.jsonc --persist-to ./.wrangler/state",
+"db:migrate:prod": "wrangler d1 migrations apply thebes-db --remote --config app/workers/site/wrangler.jsonc"
 ```
 
 `db:migrate` also needed `--config` added — it has no wrangler config of
@@ -975,7 +975,7 @@ its own to read at the repo root, so it has nothing to tell it which D1
 database (or migrations folder) to target without one.
 
 ```bash
-pnpm db:generate    # creates apps/citadel/core/db/migrations/
+pnpm db:generate    # creates app/core/db/migrations/
 pnpm db:migrate     # applies to local D1 in the shared --persist-to path
 pnpm db:studio      # verify tables in Drizzle Studio
 ```
@@ -1003,11 +1003,11 @@ older wrangler versions or other runtimes like `vitest-pool-workers`), but
 don't rely on it actually triggering — confirm with a direct check before
 assuming "no console log" means something's broken.
 
-This helper goes in `apps/citadel/core/lib/cache.ts` and is imported by
+This helper goes in `app/core/lib/cache.ts` and is imported by
 both Workers:
 
 ```typescript
-// apps/citadel/core/lib/cache.ts
+// app/core/lib/cache.ts
 const isDev = typeof caches === 'undefined' || typeof caches.default === 'undefined'
 
 export async function purgeCache(url: string): Promise<void> {
@@ -1053,24 +1053,24 @@ pnpm add -D concurrently
 // package.json (repo root)
 {
   "scripts": {
-    "dev:site":       "cd apps/citadel/workers/site && wrangler dev --port 3000",
-    "dev:cms":      "cd apps/citadel/workers/cms && wrangler dev --port 3001",
-    "dev":            "concurrently \"pnpm dev:site\" \"pnpm dev:cms\"",
-    "build:site":     "cd apps/citadel/workers/site && astro build",
-    "build:cms":    "cd apps/citadel/workers/cms && vite build",
-    "build":          "pnpm build:site && pnpm build:cms",
-    "deploy:site":    "cd apps/citadel/workers/site && wrangler deploy",
-    "deploy:cms":   "cd apps/citadel/workers/cms && wrangler deploy",
-    "deploy":         "pnpm build && pnpm deploy:site && pnpm deploy:cms",
+    "dev:site":       "cd app/workers/site && wrangler dev --port 3000",
+    "dev:cadmea":      "cd app/workers/cadmea && wrangler dev --port 3001",
+    "dev":            "concurrently \"pnpm dev:site\" \"pnpm dev:cadmea\"",
+    "build:site":     "cd app/workers/site && astro build",
+    "build:cadmea":    "cd app/workers/cadmea && vite build",
+    "build":          "pnpm build:site && pnpm build:cadmea",
+    "deploy:site":    "cd app/workers/site && wrangler deploy",
+    "deploy:cadmea":   "cd app/workers/cadmea && wrangler deploy",
+    "deploy":         "pnpm build && pnpm deploy:site && pnpm deploy:cadmea",
     "db:generate":    "drizzle-kit generate",
-    "db:migrate":     "wrangler d1 migrations apply citadel-db --local",
-    "db:migrate:prod":"wrangler d1 migrations apply citadel-db --remote",
+    "db:migrate":     "wrangler d1 migrations apply thebes-db --local",
+    "db:migrate:prod":"wrangler d1 migrations apply thebes-db --remote",
     "db:studio":      "drizzle-kit studio"
   }
 }
 ```
 
-`pnpm dev` starts both Workers. `pnpm dev:site` and `pnpm dev:cms` work
+`pnpm dev` starts both Workers. `pnpm dev:site` and `pnpm dev:cadmea` work
 independently. Never run `wrangler dev` directly inside a Worker directory
 as your primary workflow — always use root scripts.
 
@@ -1079,7 +1079,7 @@ as your primary workflow — always use root scripts.
 ## Project structure after Phase 0
 
 ```
-citadel/
+thebes/  (app/)
 │
 ├── workers/
 │   ├── site/                          Worker 1 — Astro public site
@@ -1141,10 +1141,10 @@ citadel/
 │   ├── themes/
 │   └── seed/
 │
-├── drizzle.config.ts                  points at apps/citadel/core/db/schema.ts
+├── drizzle.config.ts                  points at app/core/db/schema.ts
 ├── biome.json                         linter + formatter (all dirs)
 ├── package.json                       root scripts: dev, build, deploy, db:*
-├── citadel.config.ts                   operator config — never overwritten
+├── cadmea.config.ts                    operator config — never overwritten
 ├── DECISIONS.md
 └── .github/
     └── workflows/
@@ -1175,8 +1175,8 @@ citadel/
 
 **Shared:**
 - [ ] **Same D1** — Both Workers read/write the same rows (same `database_id`)
-- [ ] **Shared schema** — `apps/citadel/core/db/schema.ts` imports without errors in both Workers
-- [ ] **Dev commands** — `pnpm dev:site` and `pnpm dev:cms` work independently
+- [ ] **Shared schema** — `app/core/db/schema.ts` imports without errors in both Workers
+- [ ] **Dev commands** — `pnpm dev:site` and `pnpm dev:cadmea` work independently
 - [ ] **Dev commands** — `pnpm dev` starts both Workers from repo root
 
 ---
@@ -1233,11 +1233,11 @@ Run `pnpm db:migrate` from the repo root. If it fails with "No
 configuration file found" or "No migrations present," `db:migrate` needs
 `--config` (pointing at a Worker's `wrangler.jsonc`) and that config needs
 `migrations_dir` pointing at Drizzle's actual output
-(`apps/citadel/core/db/migrations`), not the default `./migrations`
+(`app/core/db/migrations`), not the default `./migrations`
 relative to the Worker's own folder.
 
 If migrations applied cleanly but you still get this error from one Worker
-and not the other: `dev:site`/`dev:cms` (and `db:migrate`) all need the
+and not the other: `dev:site`/`dev:cadmea` (and `db:migrate`) all need the
 **same** `--persist-to` path. Sharing a `database_id` in `wrangler.jsonc`
 does not make two `wrangler dev` instances share local D1 data — each
 defaults to its own working directory's local state unless told otherwise.
@@ -1249,7 +1249,7 @@ Confirm `tailwindcss()` is in `vite.config.ts` plugins and
 `@plugin "daisyui"` is in your CSS file imported from `__root.tsx`.
 
 **`caches is not defined`**
-You called `caches.default` directly. Always use `apps/citadel/core/lib/cache.ts`.
+You called `caches.default` directly. Always use `app/core/lib/cache.ts`.
 
 **Custom entrypoint not picked up**
 `wrangler.jsonc` must have `"main": "./app/server.ts"` — not
@@ -1262,8 +1262,8 @@ entry and bypasses your custom Hono routes entirely.
 
 When all POC items are checked and `DECISIONS.md` updated:
 
-1. Expand `apps/citadel/core/db/schema.ts` to the full Section 1 schema (Phase 2) — including the domain fields on `site_settings` (`primaryDomain`, `domainProvider`, `nameserverDelegated`, `domainRegisteredViaCitadel`, `cfAccountId`, `cfApiTokenScoped`). These are nullable/default-false in Section 1 and populated by the Orchestrator in Section 2. See DECISIONS.md for the full domain onboarding strategy.
-2. Expand `apps/citadel/core/lib/` with all shared utilities
+1. Expand `app/core/db/schema.ts` to the full Section 1 schema (Phase 2) — including the domain fields on `site_settings` (`primaryDomain`, `domainProvider`, `nameserverDelegated`, `domainRegisteredViaCitadel`, `cfAccountId`, `cfApiTokenScoped`). These are nullable/default-false in Section 1 and populated by the Orchestrator in Section 2. See DECISIONS.md for the full domain onboarding strategy.
+2. Expand `app/core/lib/` with all shared utilities
 3. Set up Biome at repo root: `pnpm add -D @biomejs/biome && pnpm biome init`
 4. Add boundary rule preventing `core/` from importing `custom/`
 5. Add `.github/workflows/ci.yml` and `update.yml`
@@ -1272,7 +1272,7 @@ When all POC items are checked and `DECISIONS.md` updated:
 **workers.dev URL:** Do not restrict or remove access to the `*.workers.dev`
 URL in production. This is the preview URL that Section 2's zero-downtime
 cutover flow depends on — clients with an existing live site need to review
-their Citadel deployment at the preview URL before their nameserver flip.
+their Cadmea deployment at the preview URL before their nameserver flip.
 
 **TanStack DB:** Do not add in Phase 0 or Section 1. The value compounds
 with relational complexity and team collaboration — both arrive in Section 2.

@@ -8,7 +8,7 @@ import {
 } from "./codegen.js";
 import type { CollectionConfig } from "./types.js";
 
-// Mirrors today's hand-written apps/citadel/core/db/schema.ts `pages` table
+// Mirrors today's hand-written app/core/db/schema.ts `pages` table
 // exactly (id/title/slug/status/createdAt) — see plan for why this is the
 // reproduction target rather than CLAUDE.md's fuller documented spec.
 const pagesCollection: CollectionConfig = {

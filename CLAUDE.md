@@ -18,11 +18,11 @@ first-class citizens. Composable — each primitive is usable independently.
 Designed to make building on Cloudflare so easy and secure that reaching for
 a heavier stack feels like the wrong choice.
 
-**Citadel** — a free, open-source, V8-native headless CMS and admin platform.
-Built on Cadmus. Operators define content as collections in `citadel.config.ts`
+**Cadmea** — a free, open-source, V8-native headless CMS and admin platform.
+Built on Cadmus. Operators define content as collections in `cadmea.config.ts`
 (the equivalent of a `payload.config.ts`) and get a generated admin UI, a
 typed query layer, and a REST API — on infrastructure they own forever.
-Citadel is Cadmus's reference implementation: it proves the framework works
+Cadmea is Cadmus's reference implementation: it proves the framework works
 in production and shows what building on Cadmus looks like end-to-end. It is
 also a deliberate proof of concept for what a Payload-CMS-equivalent product
 looks like with zero Node.js dependency, running natively in Cloudflare's V8
@@ -36,12 +36,14 @@ isolates.
 **Why the names (for context, not load-bearing):** in the myth, Cadmus
 found the Ismenian spring guarded by a dragon, killed it, and from its
 sown teeth built the fortified Cadmea — the citadel around which the
-city of Thebes grew. Map that loosely: V8 is the spring, Cadmus is the
+city of Thebes grew. Map that directly: V8 is the spring, Cadmus is the
 framework that talks to it directly with no heavier runtime in the way,
-Citadel is the hardened CMS admin built on top, Thebes is the monorepo
-that holds it all. Cadmus is also credited with bringing the alphabet to
-Greece — the resonance worth keeping in mind is "communicator/protocol
-designer," not "monster-slayer." See `README.md` for the full version.
+Cadmea is the hardened CMS admin Cadmus built — the citadel itself, not
+just a generic word for one — and Thebes is the monorepo that holds it
+all, the whole city that grew up around the Cadmea. Cadmus is also
+credited with bringing the alphabet to Greece — the resonance worth
+keeping in mind is "communicator/protocol designer," not "monster-slayer."
+See `README.md` for the full version.
 
 ---
 
@@ -49,13 +51,13 @@ designer," not "monster-slayer." See `README.md` for the full version.
 
 | Name | What it is |
 |------|-----------|
-| **Thebes** | The monorepo |
+| **Thebes** | The monorepo, and the single reference app at `app/` |
 | **Cadmus** | The framework (`packages/cadmus/`) |
 | **@bowenlabs/cadmus** | The npm package |
-| **Citadel** | The reference app / product (`apps/citadel/`) |
-| **Citadel CMS** | The owner-facing admin UI at `/admin/*` |
-| **Extensions** | Citadel add-ons (Section 3+, was "thimbles") |
-| **citadel-tooling** | Private Go Orchestrator repo (provisioning, email, distribution) |
+| **Cadmea** | The CMS product (`app/workers/cadmea/`) |
+| **Cadmea Panel** | The owner-facing admin UI at `/admin/*` |
+| **Extensions** | Cadmea add-ons (Section 3+, was "thimbles") |
+| **citadel-tooling** | Private Go Orchestrator repo (provisioning, email, distribution) — separate repo, name unchanged by this rename |
 
 ---
 
@@ -83,37 +85,35 @@ thebes/
 │       ├── package.json         ← name: "@bowenlabs/cadmus", exports map
 │       └── README.md
 │
-├── apps/
-│   └── citadel/                  ← Citadel reference app
-│       ├── workers/
-│       │   ├── site/            ← Worker 1: Astro public site
-│       │   └── cms/             ← Worker 2: TanStack Start CMS/admin (SolidJS)
-│       ├── core/                ← Citadel-specific shared code
-│       │   ├── db/
-│       │   │   ├── schema.ts    ← generated from citadel.config.ts collections
-│       │   │   └── migrations/
-│       │   ├── lib/             ← Citadel utilities (CMS query helpers, design system, etc.)
-│       │   └── components/
-│       │       ├── site/        ← Astro components
-│       │       └── cms/         ← Solid components (generic collection list/edit views)
-│       ├── custom/              ← operator territory — never overwritten by updates
-│       │   ├── components/
-│       │   ├── extensions/      ← operator custom extensions (Section 3+)
-│       │   ├── themes/
-│       │   └── seed/
-│       ├── citadel.config.ts     ← root collections config — the Payload-config equivalent
-│       ├── DECISIONS.md         ← operator architectural decisions
-│       └── seed.ts              ← first-deploy seed script
-│
-├── docs/                        ← Cadmus documentation site (Astro, full skeleton Phase 0)
+├── app/                          ← Thebes — the one reference app
+│   ├── workers/
+│   │   ├── site/                ← Worker 1: Astro public site — docs + marketing
+│   │   │                          for Cadmus and Cadmea, and the example deployment
+│   │   └── cadmea/               ← Worker 2: TanStack Start CMS/admin (SolidJS)
+│   ├── core/                    ← app-specific shared code
+│   │   ├── db/
+│   │   │   ├── schema.ts        ← generated from cadmea.config.ts collections
+│   │   │   └── migrations/
+│   │   ├── lib/                 ← app utilities (CMS query helpers, design system, etc.)
+│   │   └── components/
+│   │       ├── site/            ← Astro components
+│   │       └── cms/             ← Solid components (generic collection list/edit views)
+│   ├── custom/                  ← operator territory — never overwritten by updates
+│   │   ├── components/
+│   │   ├── extensions/          ← operator custom extensions (Section 3+)
+│   │   ├── themes/
+│   │   └── seed/
+│   ├── cadmea.config.ts         ← root collections config — the Payload-config equivalent
+│   ├── DECISIONS.md             ← operator architectural decisions
+│   └── seed.ts                  ← first-deploy seed script
 │
 ├── examples/                    ← standalone Cadmus usage examples
 │   ├── minimal/                 ← smallest possible working Cadmus app (hello world)
 │   ├── with-auth/
 │   └── with-d1/
 │
-├── biome.json                   ← covers all packages + apps
-├── pnpm-workspace.yaml          ← packages/cadmus, apps/citadel, docs, examples/*
+├── biome.json                   ← covers all packages + app
+├── pnpm-workspace.yaml          ← packages/cadmus, app/workers/*, examples/*
 └── package.json                 ← root scripts
 
 ```
@@ -128,15 +128,15 @@ Cloudflare without adapter layers, Node shims, or configuration overhead.
 Each primitive is independently usable — you can use just `cadmus/auth`
 without pulling in `cadmus/db`.
 
-**Citadel is for operators.**
+**Cadmea is for operators.**
 They fork the repo, define their content model as collections in
-`citadel.config.ts` (the root collections config — Citadel's equivalent of
+`cadmea.config.ts` (the root collections config — Cadmea's equivalent of
 a `payload.config.ts`), and deploy. They never touch `core/` or
 `packages/cadmus/`. The CMS admin UI and public site are fully generated from
 that config — no coding required after the initial deploy.
 
-Code in `packages/cadmus/` must not contain anything Citadel-specific.
-Code in `apps/citadel/core/` is Citadel-specific and imports from `@bowenlabs/cadmus`.
+Code in `packages/cadmus/` must not contain anything Cadmea-specific.
+Code in `app/core/` is Cadmea-specific and imports from `@bowenlabs/cadmus`.
 Never let this boundary blur.
 
 ---
@@ -184,7 +184,7 @@ reactive client-side data layer. TanStack Query handles server communication;
 TanStack DB adds cross-collection queries, live queries, and optimistic
 mutations without manual cache wiring.
 
-**Why it matters for Citadel CMS:**
+**Why it matters for Cadmea:**
 - Mark submission archived → UI updates instantly without waiting for server
 - Block canvas saves → related panels update reactively
 - Contacts relate to activities relate to submissions — queryable locally
@@ -202,7 +202,7 @@ Do not add TanStack DB in Section 1. Flag any PR that introduces it early.
 
 ## Authentication
 
-Cadmus provides auth primitives. Citadel implements a magic link flow using
+Cadmus provides auth primitives. Cadmea implements a magic link flow using
 those primitives. No passwords. No third-party auth dependencies in Section 1.
 
 ```
@@ -243,7 +243,7 @@ Never pass `env` through props. Never access bindings at module level.
 **In Astro pages (Worker 1 — public site):**
 ```typescript
 ---
-// apps/citadel/workers/site/src/pages/[slug].astro
+// app/workers/site/src/pages/[slug].astro
 import { env } from 'cloudflare:workers'
 const database = db(env.DB)
 const settings = await database.select().from(siteSettings)
@@ -251,9 +251,9 @@ const settings = await database.select().from(siteSettings)
 ---
 ```
 
-**In TanStack Start server functions (Worker 2 — CMS):**
+**In TanStack Start server functions (Worker 2 — Cadmea):**
 ```typescript
-// apps/citadel/workers/cms/src/server-functions/pages.ts
+// app/workers/cadmea/src/server-functions/pages.ts
 import { createServerFn } from '@tanstack/solid-start'
 import { db } from '@bowenlabs/cadmus/db'
 
@@ -265,9 +265,9 @@ export const getPages = createServerFn({ method: 'GET' })
   })
 ```
 
-**In CMS components (@tanstack/solid-query):**
+**In Cadmea components (@tanstack/solid-query):**
 ```typescript
-// apps/citadel/workers/cms/src/routes/admin/pages/index.tsx
+// app/workers/cadmea/src/routes/admin/pages/index.tsx
 import { createQuery } from '@tanstack/solid-query'
 import { getPages } from '../../../server-functions/pages'
 
@@ -281,9 +281,9 @@ function PagesPage() {
 }
 ```
 
-**In Hono public API routes (Worker 2 — custom server entrypoint):**
+**In Hono public API routes (Worker 2 — Cadmea, custom server entrypoint):**
 ```typescript
-// apps/citadel/workers/cms/app/server.ts
+// app/workers/cadmea/app/server.ts
 api.post('/api/form/:slug', async (c) => {
   const database = db(c.env.DB)
   const kv = c.env.KV
@@ -297,14 +297,14 @@ All binding access happens in server functions or Hono route handlers.
 **Runtime constraint:** Both Workers run in the Cloudflare V8 isolate.
 No Node.js APIs anywhere. All crypto via `crypto.subtle` — never
 `import crypto from 'crypto'`. This is a Cadmus design principle, not
-just a Citadel constraint.
+just a Cadmea constraint.
 
 ---
 
 ## Data layer
 
-Drizzle + D1 underneath, but Citadel no longer hand-writes Drizzle tables.
-Content is modeled as **collections** in `citadel.config.ts`, the
+Drizzle + D1 underneath, but Cadmea no longer hand-writes Drizzle tables.
+Content is modeled as **collections** in `cadmea.config.ts`, the
 equivalent of a `payload.config.ts`. `@bowenlabs/cadmus/cms` turns that
 config into a generated Drizzle schema, a typed Local API (`find` /
 `findByID` / `create` / `update` / `delete`), and the introspection metadata
@@ -329,7 +329,7 @@ export function db<TSchema extends Record<string, unknown>>(
 ```
 
 ```typescript
-// apps/citadel/core/lib/db.ts
+// app/core/lib/db.ts
 import { db } from '@bowenlabs/cadmus/db'
 import * as schema from '../db/schema'
 
@@ -338,15 +338,15 @@ export const createDb = (d1: D1Database) => db(d1, schema)
 
 All reads and writes go through Drizzle, generated from collection config.
 No hand-maintained abstraction layer on top. Both Workers import from
-`apps/citadel/core/` — same generated schema, same Local API, same types.
+`app/core/` — same generated schema, same Local API, same types.
 
 Schema changes:
-1. Edit the `collections` array in `apps/citadel/citadel.config.ts`
-2. `pnpm db:generate` — generates `core/db/schema.generated.ts` and a migration in `apps/citadel/core/db/migrations/`
+1. Edit the `collections` array in `app/cadmea.config.ts`
+2. `pnpm db:generate` — generates `core/db/schema.generated.ts` and a migration in `app/core/db/migrations/`
 3. `pnpm db:migrate` — applies to local D1
 4. `pnpm db:migrate:prod` — applies to production D1
 
-`apps/citadel/core/db/schema.generated.ts` is generated output — never
+`app/core/db/schema.generated.ts` is generated output — never
 hand-edited, same convention as a drizzle-kit migration file.
 
 The `pages` collection is the first real collection, carried over from
@@ -355,19 +355,19 @@ path against data that's already live in production.
 
 ---
 
-## Example collections — `examples/citadel-smb-template/` (not Citadel core)
+## Example collections — `examples/cadmea-smb-template/` (not Cadmea core)
 
-> Everything in this section used to be Citadel's own schema. As of the CMS
-> repositioning, none of it is Citadel-specific anymore — it's a worked
-> example of a small-business site built *using* Citadel, kept as the spec
-> for `examples/citadel-smb-template/`. Treat the shapes below as a content
-> model an operator could define, not as anything Citadel ships by default.
-> Citadel core ships no collections except `pages` (Section 1) as a worked
+> Everything in this section used to be Cadmea's own schema. As of the CMS
+> repositioning, none of it is Cadmea-specific anymore — it's a worked
+> example of a small-business site built *using* Cadmea, kept as the spec
+> for `examples/cadmea-smb-template/`. Treat the shapes below as a content
+> model an operator could define, not as anything Cadmea ships by default.
+> Cadmea core ships no collections except `pages` (Section 1) as a worked
 > example.
 
 ```
 users, sessions, magic_link_tokens, site_settings
-  — infra/identity, not content collections; stay in Citadel core as-is.
+  — infra/identity, not content collections; stay in Cadmea core as-is.
 
 site_settings (singleton — id = 1 always)
 ├── identity:         siteName, tagline, logoUrl, faviconUrl
@@ -388,24 +388,24 @@ site_settings (singleton — id = 1 always)
 │                     cfApiTokenScoped (boolean, default false)
 └── features:         JSON feature toggle map (all false by default)
 
-pages collection (Citadel core, Section 1 — the one example collection Citadel ships)
+pages collection (Cadmea core, Section 1 — the one example collection Cadmea ships)
 ├── id, title, slug (unique), blocks (JSON — TipTap JSON array)
 ├── status: 'draft' | 'published'
 └── createdAt, updatedAt, publishedAt
 
 forms, form_submissions, contacts, activities — example-template collections
   (SMB form builder + lightweight CRM), spec lives in
-  examples/citadel-smb-template/, not in apps/citadel/core/.
+  examples/cadmea-smb-template/, not in app/core/.
 ```
 
 ---
 
-## Block types (example-template content, not Citadel core)
+## Block types (example-template content, not Cadmea core)
 
 Page content is stored as a JSON array of blocks — TipTap JSON is the
 native storage format, no transform layer. This block-type union is the
 template's example field shape for a `richText`/`array` collection field,
-not a Citadel-core concept:
+not a Cadmea-core concept:
 
 ```typescript
 type Block =
@@ -423,11 +423,11 @@ renders them via `<BlockRenderer>`, defined in the example template.
 
 ---
 
-## Form builder (example-template content, not Citadel core)
+## Form builder (example-template content, not Cadmea core)
 
 This is the SMB template's worked example of a `forms` collection with a
 `fields` JSON array — useful as a reference for building array/group fields
-with `cadmus/cms`, not something Citadel ships by default.
+with `cadmus/cms`, not something Cadmea ships by default.
 
 ```typescript
 type FormField =
@@ -477,7 +477,7 @@ Cloudflare Images is available as a paid extension (Section 3+).
 ## Image service interface
 
 Defined in `@bowenlabs/cadmus/storage`. Implemented in
-`apps/citadel/core/lib/image-service.ts`. Never construct image URLs inline.
+`app/core/lib/image-service.ts`. Never construct image URLs inline.
 
 ```typescript
 // packages/cadmus/src/storage/index.ts
@@ -540,8 +540,8 @@ ADMIN_EMAIL=           ← owner email for CMS account + notifications
 MEDIA_URL=             ← public R2 bucket base URL, no trailing slash
 
 # Optional
-CITADEL_SERVICE_KEY=    ← shared secret for internal service calls
-CITADEL_SITE_ID=        ← issued by citadel-tooling, enables managed features
+THEBES_SERVICE_KEY=    ← shared secret for internal service calls
+THEBES_SITE_ID=        ← issued by citadel-tooling, enables managed features
 CF_ANALYTICS_TOKEN=    ← Cloudflare Web Analytics token
 ```
 
@@ -553,13 +553,13 @@ Both Workers have their own `wrangler.jsonc` with **identical binding IDs**.
 Same D1 `database_id`, same KV `id`, same R2 `bucket_name`.
 
 ```jsonc
-// apps/citadel/workers/site/wrangler.jsonc
-// apps/citadel/workers/cms/wrangler.jsonc
+// app/workers/site/wrangler.jsonc
+// app/workers/cadmea/wrangler.jsonc
 // (same binding IDs in both — only "name" differs)
 {
-  "d1_databases": [{ "binding": "DB", "database_name": "citadel-db", "database_id": "..." }],
+  "d1_databases": [{ "binding": "DB", "database_name": "thebes-db", "database_id": "..." }],
   "kv_namespaces": [{ "binding": "KV", "id": "..." }],
-  "r2_buckets": [{ "binding": "R2", "bucket_name": "citadel-media" }],
+  "r2_buckets": [{ "binding": "R2", "bucket_name": "thebes-media" }],
   "send_email": [{ "name": "EMAIL" }]
 }
 ```
@@ -570,30 +570,30 @@ Same D1 `database_id`, same KV `id`, same R2 `bucket_name`.
 
 ```bash
 # From repo root
-pnpm dev:site         # wrangler dev in apps/citadel/workers/site/ — :3000
-pnpm dev:cms        # wrangler dev in apps/citadel/workers/cms/ — :3001
+pnpm dev:site         # wrangler dev in app/workers/site/ — :3000
+pnpm dev:cadmea        # wrangler dev in app/workers/cadmea/ — :3001
 pnpm dev              # both Workers via concurrently
 
 pnpm build:cadmus     # tsup → packages/cadmus/dist/
 pnpm build:site       # astro build
-pnpm build:cms      # vite build
-pnpm build            # cadmus → site → cms (in order)
+pnpm build:cadmea     # vite build
+pnpm build            # cadmus → site → cadmea (in order)
 
 pnpm deploy:site      # wrangler deploy (site)
-pnpm deploy:cms     # wrangler deploy (cms)
+pnpm deploy:cadmea    # wrangler deploy (cadmea)
 pnpm deploy           # both (site first)
 
-pnpm db:generate      # drizzle-kit generate from citadel schema
+pnpm db:generate      # drizzle-kit generate from cadmea schema
 pnpm db:migrate       # apply to local D1
 pnpm db:migrate:prod  # apply to production D1
 pnpm db:studio        # Drizzle Studio
 
 pnpm seed             # seed.ts against local D1
-pnpm lint             # biome check . (all packages + apps)
+pnpm lint             # biome check . (all packages + app)
 pnpm format           # biome format --write .
-pnpm test             # all tests (cadmus + citadel)
+pnpm test             # all tests (cadmus + cadmea)
 pnpm test:cadmus      # Vitest + @cloudflare/vitest-pool-workers on packages/cadmus/
-pnpm test:int         # Citadel integration tests
+pnpm test:int         # Cadmea integration tests
 pnpm test:e2e         # Playwright + axe
 ```
 
@@ -606,9 +606,9 @@ pnpm test:e2e         # Playwright + axe
 2. Does this import from another Cadmus primitive — breaking zero cross-dependency?
 3. Does this require Node.js APIs — breaking V8-first?
 4. Can this be clearly documented in one page — if not, the design is wrong?
-5. Would a developer using a different framework than Citadel benefit from this?
+5. Would a developer using a different framework than Cadmea benefit from this?
 
-**For Citadel features:**
+**For Cadmea features:**
 1. Does this put data in a service the operator doesn't control?
 2. Does this require a new account or subscription for the operator?
 3. Does this break the free-forever promise for core features?
@@ -628,11 +628,11 @@ If yes to any: flag it before proceeding.
 - **Thrown errors:** `CadmusError` and typed subclasses. Never raw `Error`. Never Result types.
 - **Hono is a peer, not a dependency:** `@bowenlabs/cadmus/hono` wraps raw primitives — it never reimplements them.
 - **tsup builds dist/:** The exports map points at `dist/`. TypeScript source is for development only. CI validates both.
-- **Mobile-first CMS:** Citadel CMS is designed for phones and tablets first. Desktop is an enhancement. Bottom navigation, full-screen views, tap-to-reorder. Never retrofit a desktop UI for mobile.
+- **Mobile-first CMS:** Cadmea is designed for phones and tablets first. Desktop is an enhancement. Bottom navigation, full-screen views, tap-to-reorder. Never retrofit a desktop UI for mobile.
 - **SolidJS, not React:** CMS UI is built in SolidJS — fine-grained reactivity, no virtual DOM, minimal compiled payload for fast cold starts in V8 isolates. Use `createSignal`/`createEffect`, not React hooks. When a dependency has no official Solid package (e.g. Phosphor icons), prefer the framework-agnostic build over an unofficial community port.
 - **Scale-appropriate:** Don't build for scale you don't have. No premature abstractions.
 - **No throwaway work:** Every decision should hold up across phases.
-- **Clean boundaries:** Cadmus has no Citadel-specific code. Citadel imports from Cadmus, never the reverse. Extension distribution logic stays in citadel-tooling.
+- **Clean boundaries:** Cadmus has no Cadmea-specific code. Cadmea imports from Cadmus, never the reverse. Extension distribution logic stays in citadel-tooling.
 - **Documentation is the product:** Cadmus should be so well documented that reaching for AI to understand it feels unnecessary. If something can't be documented clearly, the design is wrong.
 
 ---

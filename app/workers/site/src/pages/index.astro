@@ -1,0 +1,24 @@
+---
+import { env } from "cloudflare:workers";
+import { db } from "@bowenlabs/cadmus/db";
+import { pages } from "@core/db/schema.generated";
+import { eq } from "drizzle-orm";
+import Layout from "../layouts/layout.astro";
+
+// `site_settings` (the original milestone 1.6 target) was repositioned to
+// examples/cadmea-smb-template/ during the CMS pivot — see DECISIONS.md's
+// 2026-06-20 entry — and doesn't exist in this schema. `pages` is the one
+// collection Cadmea core ships, so this placeholder reads that instead.
+const publishedPages = await db(env.DB, { pages })
+  .select()
+  .from(pages)
+  .where(eq(pages.status, "published"))
+  .all();
+---
+
+<Layout title="Thebes">
+	<h1>Thebes</h1>
+	<ul>
+		{publishedPages.map((page) => <li>{page.title}</li>)}
+	</ul>
+</Layout>

@@ -17,9 +17,9 @@
     "includes": [
       "**/packages/**/*.ts",
       "**/packages/**/*.tsx",
-      "**/apps/**/*.ts",
-      "**/apps/**/*.tsx",
-      "**/apps/**/*.astro",
+      "**/app/**/*.ts",
+      "**/app/**/*.tsx",
+      "**/app/**/*.astro",
       "**/examples/**/*.ts",
       "**/examples/**/*.tsx",
       "!**/node_modules",
@@ -43,7 +43,7 @@
       }
     },
     {
-      "includes": ["**/apps/citadel/core/**"],
+      "includes": ["**/app/core/**"],
       "linter": {
         "rules": {
           "style": {

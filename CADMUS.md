@@ -203,7 +203,7 @@ packages/cadmus/
 ```
 
 Each primitive has its own `README.md` that is the authoritative source
-of truth for that primitive. The `docs/` site consumes these READMEs.
+of truth for that primitive. The `app/workers/site` docs site consumes these READMEs.
 
 ---
 
@@ -616,7 +616,7 @@ packages maintained by their authors.
 
 **To create a community primitive:**
 A contribution guide and community primitive template will live at
-`docs/community-primitives.md` — forthcoming. Until it exists, open
+a future docs page in `app/workers/site` — forthcoming. Until it exists, open
 a GitHub discussion before building to confirm the primitive fits the
 community scope and isn't already in progress.
 
@@ -629,14 +629,15 @@ scope until the org is created and a governance model is in place.
 ## Versioning and stability
 
 Cadmus follows semantic versioning. During active development alongside
-Citadel (Sections 1–2), breaking changes are expected. Version stays `0.x`.
+Cadmea (Sections 1–2), breaking changes are expected. Version stays `0.x`.
 Stability guarantees begin at `1.0.0`.
 
 `1.0.0` will not be tagged until:
-- All core primitives are proven in production by Citadel
-- The full API surface is documented in `docs/`
+- All core primitives are proven in production by Cadmea
+- The full API surface is documented on `app/workers/site` (the combined
+  Cadmus+Cadmea docs site)
 - A changelog and migration guide process exists
-- At least one app other than Citadel uses Cadmus in production
+- At least one app other than Cadmea uses Cadmus in production
 - The community primitive model has a published contribution guide
 
 Do not rush to `1.0.0`. The `0.x` label is honest and sets correct
@@ -674,7 +675,7 @@ framework to move it to ✅.
 - **Not a hosted CMS.** `cadmus/cms` ships no SaaS, no managed admin, no
   account system. It's a primitive an operator self-hosts entirely, same
   as every other Cadmus primitive.
-- **Not a UI library.** No components. No design system. That's Citadel's job.
+- **Not a UI library.** No components. No design system. That's Cadmea's job.
 - **Not a hosting platform.** Cloudflare is the platform. Cadmus is the
   framework layer that makes Cloudflare feel complete.
 - **Not multi-cloud.** Cadmus is deliberately Cloudflare-specific. Abstractions

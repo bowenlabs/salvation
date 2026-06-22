@@ -1,11 +1,78 @@
 # Decisions
 
-> This file is operator-owned. Citadel will never overwrite it.
+> This file is operator-owned. Cadmea will never overwrite it.
 > Record every significant architectural decision here with date, options
 > considered, decision made, and rationale. This is the first file a new
 > engineer reads after CLAUDE.md.
 >
 > Format: newest decisions at the top.
+
+---
+
+## 2026-06-22 — Rename: Citadel → Cadmea; apps/citadel → app/; docs/ folded into workers/site
+
+**Decision:** "Citadel" was always meant to be the generic word for what
+Cadmus built in the myth — the proper name is **Cadmea**, the actual
+fortified citadel. The product/CMS name never caught up to that, despite
+the root README already explaining the correct mapping. Fixed:
+
+- `apps/citadel/` → `app/` (singular — there's one app, and the old
+  directory had no `package.json` of its own anyway; only the two
+  Workers underneath it are real pnpm packages)
+- `apps/citadel/workers/cms/` → `app/workers/cadmea/`
+- `citadel.config.ts` → `cadmea.config.ts`, `cmsConfig` → `cadmeaConfig`
+- `CmsService` → `CadmeaService` (the Service Binding RPC class)
+- Cookie `citadel_session` → `cadmea_session`
+- Wrangler worker names `citadel-site`/`citadel-cms` →
+  `thebes-site`/`thebes-cadmea`; D1 `citadel-db` → `thebes-db`; R2
+  `citadel-media` → `thebes-media` (labels only — the live D1 resource
+  has been `krypto-db` in the Cloudflare dashboard since an earlier,
+  never-propagated rename; same pattern continues here)
+- `CMS_URL` env var → `CADMEA_URL`; `CITADEL_SERVICE_KEY`/`CITADEL_SITE_ID`
+  → `THEBES_SERVICE_KEY`/`THEBES_SITE_ID` (these identify the project to
+  the external `citadel-tooling` Orchestrator repo, whose own name is
+  unchanged — separate private repo, out of scope for this rename)
+- `app/custom/components/panel/` → `app/custom/components/cadmea/` — this
+  was already stale before today: the 2026-06-20 entry below renamed the
+  Worker "Panel"→"CMS" but never updated this directory
+- `docs/` (a README-only stub, no real content) deleted; `app/workers/site`
+  is now positioned as the combined docs+marketing site for both Cadmus
+  and Cadmea, replacing it. Its planned structure (primitive pages,
+  guides, community-contribution docs) is preserved here rather than
+  lost: `pages/index`, `pages/getting-started`, `pages/primitives/{auth,
+  db,storage,cache,email,rate-limit,session,queues,hono}`,
+  `pages/guides/{astro,tanstack,testing}`,
+  `pages/community/primitives` — still not built, just relocated intent.
+- Fixed a real Cadmus-core boundary leak found along the way:
+  `packages/cadmus/src/cms/schema-gen.ts` hardcoded
+  `apps/citadel/citadel.config.ts` into every generated schema file's
+  header comment — a framework file embedding an app-specific path,
+  which CLAUDE.md's own rules forbid. Genericized regardless of this
+  rename.
+
+**Deferred, not executed this pass:** extracting Cadmea's admin-UI
+SolidJS components (`CollectionList.tsx`/`CollectionEdit.tsx`, currently
+inline in `app/core/components/cms/`) into a separate `@bowenlabs/cadmea`
+package — the Payload-equivalent split between `payload` (engine, already
+done here as `cadmus/cms`) and `@payloadcms/next`+`@payloadcms/ui`
+(UI delivery, not yet extracted here). This is real new-package
+scaffolding (build tooling, an exports map, a route-mounting API for
+TanStack Start consumers), not a rename — worth its own planning pass.
+
+**What does not change:** `@bowenlabs/cadmus` itself (package name,
+exports, the `cadmus/cms` engine subpath) — both packages keep the
+`@bowenlabs/` scope. `domainRegisteredViaCitadel` (a `site_settings`
+column name) and every reference to `citadel-tooling` are deliberately
+left as-is — both name the external Orchestrator repo, not the CMS
+product, and that repo's name is unchanged.
+
+**Verified:** `pnpm test:cadmus` (85/85, package untouched by this
+rename), `wrangler types` regenerated cleanly for both renamed Workers
+confirming `CADMEA`/`CADMEA_URL`/`CadmeaService` resolve correctly.
+
+**Revisit if:** the deferred `@bowenlabs/cadmea` package extraction
+happens — this entry's "what does not change" section will need a
+follow-up.
 
 ---
 

@@ -1,6 +1,6 @@
 # Contributing to Thebes
 
-Thank you for your interest in contributing. Both Cadmus and Citadel
+Thank you for your interest in contributing. Both Cadmus and Cadmea
 welcome contributions — please read this before opening a PR.
 
 All contributions are welcome regardless of background, and all
@@ -45,9 +45,9 @@ pnpm install
 
 ```bash
 # Create Cloudflare resources (first time only)
-wrangler d1 create citadel-db
+wrangler d1 create thebes-db
 wrangler kv namespace create KV
-wrangler r2 bucket create citadel-media
+wrangler r2 bucket create thebes-media
 
 # Update binding IDs in both wrangler.jsonc files, then:
 pnpm db:migrate
@@ -56,14 +56,14 @@ pnpm seed
 # Start development
 pnpm dev          # both Workers
 pnpm dev:site     # Worker 1 only (:3000)
-pnpm dev:cms    # Worker 2 only (:3001)
+pnpm dev:cadmea   # Worker 2 only (:3001)
 ```
 
 ### Local secrets
 
 ```bash
-# apps/citadel/workers/site/.dev.vars
-# apps/citadel/workers/cms/.dev.vars
+# app/workers/site/.dev.vars
+# app/workers/cadmea/.dev.vars
 SESSION_SECRET=dev-secret-change-in-production
 ADMIN_EMAIL=you@yourdomain.com
 MEDIA_URL=http://localhost:3001/media
@@ -84,13 +84,13 @@ shipping. Cookie scoping on `*.workers.dev` differs from production.
 - New primitives — open a Discussion first
 
 **Hard rules for Cadmus PRs:**
-- No Citadel-specific code — ever
+- No Cadmea-specific code — ever
 - No cross-primitive dependencies
 - No Node.js APIs
 - Every change must pass `@cloudflare/vitest-pool-workers` tests
 - Every public function must be documented
 
-### Citadel (`apps/citadel/`)
+### Cadmea (`app/workers/cadmea/`)
 
 - Bug fixes
 - Accessibility improvements (zero axe-core violations is the bar)
@@ -124,7 +124,7 @@ chore(deps): update drizzle-orm to 0.32
 ```
 
 Types: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`
-Scopes: `cadmus`, `citadel`, `auth`, `db`, `storage`, `cache`, `email`,
+Scopes: `cadmus`, `cadmea`, `auth`, `db`, `storage`, `cache`, `email`,
 `queues`, `session`, `rate-limit`, `hono`, `docs`, `examples`
 
 ---

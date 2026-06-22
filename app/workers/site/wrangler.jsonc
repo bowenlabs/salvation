@@ -1,0 +1,64 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "thebes-site",
+	"main": "./src/app.ts",
+	"compatibility_date": "2026-06-17",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./dist/client"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "thebes-db",
+			"database_id": "b6255768-4511-4b62-8801-31090e74ae6f",
+			"migrations_dir": "../../core/db/migrations"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "KV",
+			"id": "d9d92dc6ea9640cba851eeafdd8c1408"
+		},
+		{
+			"binding": "SESSION",
+			"id": "719efd9d411d4594b3abe1491039efcb"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "R2",
+			"bucket_name": "thebes-media"
+		}
+	],
+	"images": {
+		"binding": "IMAGES"
+	},
+	"send_email": [
+		{
+			"name": "EMAIL"
+		}
+	],
+	"services": [
+		{
+			"binding": "CADMEA",
+			"service": "thebes-cadmea",
+			"entrypoint": "CadmeaService"
+		}
+	],
+	"vars": {
+		// Worker 2's (Cadmea) public origin — mirrors the comment in
+		// workers/cadmea/wrangler.jsonc for SERVER_URL. Used to build the
+		// absolute cross-Worker redirect target after magic-link verify
+		// (/admin/dashboard lives in Worker 2, not here). Not a secret —
+		// override per environment when custom domains are configured.
+		"CADMEA_URL": "https://thebes-cadmea.baylee-c3e.workers.dev"
+	}
+}
