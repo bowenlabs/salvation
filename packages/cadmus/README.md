@@ -64,6 +64,47 @@ import { cadmusAuth, cadmusRateLimit } from '@bowenlabs/cadmus/hono'
 
 ---
 
+## Email (`@bowenlabs/cadmus/email`)
+
+Thin wrapper over the CF Email Workers `send_email` binding.
+
+```typescript
+import { sendEmail } from '@bowenlabs/cadmus/email'
+
+await sendEmail(env.EMAIL, {
+  from: 'noreply@yourdomain.com',
+  to: 'owner@example.com',
+  subject: 'Your magic link',
+  html: '<p>Click <a href="https://example.com">here</a></p>',
+})
+```
+
+`sendEmail` throws `CadmusEmailError` on failure — wrap calls in a
+best-effort handler if the surrounding flow shouldn't fail just because
+an email didn't send (e.g. a form submission notification).
+
+**Required setup — before sending anything:**
+
+1. The `from` address must be on a domain with **Cloudflare Email Routing**
+   enabled (Cloudflare dashboard → your domain → Email → Email Routing).
+2. Add the DNS records Cloudflare generates for that domain:
+   - **SPF** — `TXT` record authorizing Cloudflare to send on the domain's behalf
+   - **DKIM** — `TXT` record for signing outbound mail
+   - **DMARC** — `TXT` record (`_dmarc.yourdomain.com`) declaring your policy
+   Cloudflare's Email Routing setup screen lists the exact records to add.
+3. Add `send_email` to the binding's `wrangler.jsonc`:
+   ```jsonc
+   { "send_email": [{ "name": "EMAIL" }] }
+   ```
+
+**Local dev:** `env.EMAIL` is `undefined` in `wrangler dev` unless you
+configure a destination address for it — there is no real routing for
+`localhost`. Callers should check for the binding (or catch
+`CadmusEmailError`) and fall back to logging rather than assuming
+`sendEmail` always succeeds in dev.
+
+---
+
 ## Compatibility
 
 | Framework | Status |
