@@ -73,7 +73,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # same reason as build-site above — dist/ isn't shared across jobs.
       - run: pnpm build:cadmus
-      - run: pnpm build:cms
+      - run: pnpm build:cadmea-pkg
+      - run: pnpm build:cadmea
 
   test-cadmus:
     name: Test Cadmus primitives
