@@ -24,7 +24,7 @@
     "db:migrate:prod": "wrangler d1 migrations apply citadel-db --remote --config apps/citadel/workers/site/wrangler.jsonc",
     "db:studio": "drizzle-kit studio",
     "seed": "tsx apps/citadel/seed.ts",
-    "lint": "biome check .",
+    "lint": "biome check . && tsx apps/citadel/scripts/check-prerender.ts",
     "format": "biome format --write .",
     "test": "pnpm test:cadmus && pnpm test:int && pnpm test:e2e",
     "test:cadmus": "pnpm --filter @bowenlabs/cadmus test",

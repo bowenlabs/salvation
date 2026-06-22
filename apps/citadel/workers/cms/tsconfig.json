@@ -8,7 +8,8 @@
     "paths": {
       "#/*": ["./src/*"],
       "@/*": ["./src/*"],
-      "@core/*": ["../../core/*"]
+      "@core/*": ["../../core/*"],
+      "@custom/*": ["../../custom/*"]
     },
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],

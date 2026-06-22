@@ -52,7 +52,7 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["**/custom/**", "@apps/citadel/custom/**"]
+                    "group": ["**/custom/**", "@custom/**"]
                   }
                 ]
               }

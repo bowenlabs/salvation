@@ -1,5 +1,6 @@
 ---
 import { ClientRouter } from "astro:transitions";
+import phosphorCss from "@phosphor-icons/web/regular?url";
 import "../assets/app.css";
 
 interface Props {
@@ -17,6 +18,7 @@ const { title } = Astro.props;
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
+		<link rel="stylesheet" href={phosphorCss} />
 		<ClientRouter />
 	</head>
 	<body>

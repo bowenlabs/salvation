@@ -1555,134 +1555,78 @@ That all comes in Phase 2+.
 
 ### Milestones
 
+> **Status pass, 2026-06-21.** Checkboxes below reflect a repo audit done
+> against issue #2. Items marked `[x]` are confirmed done as specced. Items
+> marked `[~]` exist but deviate from spec or are incomplete — see the note.
+> Items left `[ ]` are not started. This pass only audited and annotated;
+> it made no code changes. See the catalog appended after the Gotchas
+> section for the prioritized remaining work.
+
 **Worker 1 — Astro public site (`apps/citadel/workers/site/`):**
-- [ ] **1.1** Promote Phase 0 Astro scaffold to permanent structure — confirm `apps/citadel/workers/site/src/app.ts` Hono entrypoint checks custom routes first, then falls through to `handle()` from `@astrojs/cloudflare/handler` (must be last). Do not use `astro/hono`'s `middleware()`/`pages()` — confirmed broken for custom Cloudflare entrypoints, see `DECISIONS.md`. Remove the Phase 0 POC routes left in `app.ts`: `/api/ping`, `/api/cache/check`, `/api/cache/purge`, `/api/cache/test` — all dead code, their job (proving binding access and Cache API behavior) is done.
-- [ ] **1.2** Confirm `apps/citadel/workers/site/astro.config.mjs` has `adapter: cloudflare()` (no `entrypoint` option — it doesn't exist on this adapter version), `output: 'server'`, `@tailwindcss/vite` plugin, and no `experimental.advancedRouting` flag
-- [ ] **1.3** Confirm `apps/citadel/workers/site/wrangler.jsonc` has all bindings: D1, KV, R2, Email Workers (`send_email`), `nodejs_compat` flag, `observability: true`
-- [ ] **1.4** Install @phosphor-icons/web in `apps/citadel/workers/site/`
-- [ ] **1.5** Create `apps/citadel/workers/site/src/layouts/Layout.astro` — bare HTML shell, imports `app.css`, `<ViewTransitions />`, accepts `title` prop
-- [ ] **1.6** Create `apps/citadel/workers/site/src/pages/index.astro` — placeholder reading `site_settings.siteName` from D1, renders in layout
-- [ ] **1.7** Confirm `apps/citadel/workers/site/.dev.vars` exists and is in `.gitignore`; create `apps/citadel/workers/site/.dev.vars.example` with all required keys: `SESSION_SECRET`, `OWNER_EMAIL`, `MEDIA_URL`
+- [x] **1.1** `app.ts` checks custom routes first then falls through to `handle()` correctly. Phase 0 POC routes (`/api/ping`, `/api/cache/check`, `/api/cache/purge`, `/api/cache/test`) removed 2026-06-21. `/api/cms-test` intentionally kept — tracked separately under issue #16, not Phase 0 scaffold debt.
+- [x] **1.2** `astro.config.mjs` confirmed correct (adapter, output, vite plugin)
+- [x] **1.3** `wrangler.jsonc` has D1, KV (+ SESSION), R2, Images, `send_email`, CMS service binding, `nodejs_compat`, `observability: true`
+- [x] **1.4** `@phosphor-icons/web` installed in `workers/site/` 2026-06-21; wired into `layout.astro` matching the `workers/cms/__root.tsx` pattern (`?url` import + `<link rel="stylesheet">`)
+- [~] **1.5** `src/layouts/layout.astro` exists (lowercase filename vs. spec's `Layout.astro` — cosmetic only)
+- [x] **1.6** `index.astro` updated 2026-06-21 to read from D1 — but against `pages`, not `site_settings`: `site_settings` doesn't exist in this schema (repositioned to `examples/citadel-smb-template/`, confirmed empty from `apps/citadel/core/db/schema.generated.ts`). Verified end-to-end with `wrangler dev`: renders "Citadel" + an empty `<ul>` (no pages seeded yet, query runs without error)
+- [x] **1.7** `.dev.vars` confirmed gitignored; `.dev.vars.example` created 2026-06-21 with `SESSION_SECRET`, `OWNER_EMAIL`, `MEDIA_URL`, optional `CF_ANALYTICS_TOKEN`
 
 **Worker 2 — TanStack Start Panel (`apps/citadel/workers/cms/`):**
-- [ ] **1.8** Promote Phase 0 TanStack Start scaffold to permanent structure — confirm `apps/citadel/workers/cms/app/server.ts` custom entrypoint with Hono public API routes and TanStack Start fallback. Remove the Phase 0 POC routes left in `server.ts`: `/api/ping` and `/api/crypto-test` — both dead code, their job (proving binding access and Web Crypto API behavior) is done.
-- [ ] **1.9** Confirm `apps/citadel/workers/cms/vite.config.ts` has `cloudflare({ viteEnvironment: { name: 'ssr' } })`, `tanstackStart()`, `tailwindcss()` in correct order
-- [ ] **1.10** Confirm `apps/citadel/workers/cms/wrangler.jsonc` has same D1, KV, R2 binding IDs as Worker 1, plus Email, `nodejs_compat`, `observability: true`, `"main": "app/server.ts"`
-- [ ] **1.11** Install @phosphor-icons/web in `apps/citadel/workers/cms/`
-- [ ] **1.12** Install TipTap in `apps/citadel/workers/cms/`: `@tiptap/core`, `@tiptap/starter-kit`, `@tiptap/html` (vanilla/framework-agnostic — no official Solid wrapper) — Panel-only dependency, never imported from `apps/citadel/core/`
-- [ ] **1.13** Install Flowbite Charts in `apps/citadel/workers/cms/`: ApexCharts + Flowbite Charts wrapper — Panel-only dependency
-- [ ] **1.14** Create `apps/citadel/workers/cms/src/routes/__root.tsx` — bare TanStack Router root layout, imports `panel.css`
-- [ ] **1.15** Create `apps/citadel/workers/cms/src/routes/admin/dashboard.tsx` — placeholder route, `prerender = false`, calls `requireAuth()` in loader, renders "Dashboard"
-- [ ] **1.16** Create `apps/citadel/workers/cms/src/routes/login.tsx` — placeholder login page (full login implementation is Phase 3)
-- [ ] **1.17** Confirm `apps/citadel/workers/cms/.dev.vars` exists and is in `.gitignore`; create `apps/citadel/workers/cms/.dev.vars.example` with same keys as Worker 1
-- [ ] **1.18** Confirm `export const prerender = false` on all Panel routes that use server functions — add lint comment or Biome rule to catch regressions
+- [x] **1.8** `app/server.ts` has the Hono-first/TanStack-fallback structure correct. Phase 0 POC routes (`/api/ping`, `/api/crypto-test`) removed 2026-06-21. Unimplemented Phase 3/7/11 stub routes (`/api/form/:slug`, `/api/auth/*`, `/api/media/upload`) also removed 2026-06-21 — maintainer call: strip rather than keep, since `/api/auth/verify` redirected to `/admin/dashboard` with no token check at all, which looks functional but isn't. These land for real alongside their actual implementation in the phase that owns them.
+- [x] **1.9** `vite.config.ts` plugin order confirmed
+- [x] **1.10** `wrangler.jsonc` bindings match Worker 1
+- [x] **1.11** `@phosphor-icons/web` installed
+- [x] **1.12** `@tiptap/core`, `@tiptap/starter-kit`, `@tiptap/html` installed 2026-06-21 — install only per milestone scope, no editor wired up yet (that's Phase 6)
+- [x] **1.13** "Flowbite Charts" isn't a real npm package, and `flowbite` itself has no Solid integration (only `flowbite-react`/`flowbite-svelte` exist) — its vanilla-JS DOM-attribute init model also risks fighting Solid's fine-grained DOM updates across route navigation. Installed `apexcharts` alone 2026-06-21; `flowbite` added then removed same day. CLAUDE.md's stack table corrected accordingly.
+- [x] **1.14** `src/routes/__root.tsx` exists
+- [~] **1.15** Route exists at `src/routes/admin/route.tsx` guarding `/admin/*` via `requireAuth()` (not a dedicated `dashboard.tsx` — broader guard at the layout level, arguably better than spec)
+- [x] **1.16** `login.astro` placeholder exists — note it's correctly in Worker 1 (Astro), not Worker 2, per the auth flow decision; plan text above is stale on this point
+- [x] **1.17** `.dev.vars.example` created 2026-06-21 with the same keys as Worker 1 plus `SERVER_URL` and the optional `CITADEL_SERVICE_KEY`/`CITADEL_SITE_ID` keys
+- [x] **1.18** Added `apps/citadel/scripts/check-prerender.ts`, wired into the root `lint` script (and therefore CI). Flags any route file using a server function inside `loader`/`beforeLoad` without `export const prerender = false`. Caught two real violations on first run — `admin/route.tsx` and `test.tsx` — fixed both 2026-06-21
 
 **Shared `apps/citadel/core/` structure:**
-- [ ] **1.19** Establish permanent `apps/citadel/core/` directory structure at repo root:
-  ```
-  core/
-  ├── components/
-  │   ├── site/       ← Astro components shared across public site
-  │   └── panel/      ← Solid components shared across Panel
-  ├── lib/            ← all shared utilities (auth, db, cache, blocks, forms, etc.)
-  └── db/
-      ├── schema.ts   ← canonical Drizzle schema (promoted from Phase 0 minimal)
-      └── migrations/ ← auto-generated, never hand-edit
-  ```
-- [ ] **1.20** Confirm `apps/citadel/core/lib/db.ts` exists (`db(d1: D1Database)` helper) — promoted from Phase 0
-- [ ] **1.21** Confirm `apps/citadel/core/lib/cache.ts` exists with dev bypass — promoted from Phase 0
-- [ ] **1.22** Create `apps/citadel/core/lib/auth.ts` stub — token generation + HMAC sign/verify signatures only, no implementation (Phase 3)
-- [ ] **1.23** Create `apps/citadel/core/lib/session.ts` stub — KV session read/write/delete signatures only (Phase 3)
-- [ ] **1.24** Create `apps/citadel/core/lib/image-service.ts` — full `ImageService` interface + `defaultImageService` R2 implementation (needed from Phase 5 onward, zero cost to add now)
-- [ ] **1.25** Confirm `@core/*` path alias resolves in both Workers' `tsconfig.json` — promoted from Phase 0
+- [x] **1.19** `core/` structure exists (`components/{cms,site}`, `lib/`, `db/{migrations,schema.generated.ts}`)
+- [x] **1.20** `core/lib/db.ts` exists
+- [x] **1.21** `core/lib/cache.ts` exists with dev bypass
+- [x] **1.22** `core/lib/auth.ts` stub added 2026-06-21 — `createMagicLinkToken`/`verifyMagicLinkToken`/`signSessionCookie`/`verifySessionCookie` signatures, all throw "not implemented until Phase 3"
+- [x] **1.23** `core/lib/session.ts` stub added 2026-06-21 — `Session` type + `createSession`/`getSession`/`deleteSession` signatures
+- [x] **1.24** `core/lib/image-service.ts` added 2026-06-21 — per CLAUDE.md, the `ImageService` interface itself was filled in on the Cadmus side (`packages/cadmus/src/storage/index.ts`, previously an empty stub) and `core/lib/image-service.ts` provides `createR2ImageService(bucket, mediaUrl)`. `render()` is a pass-through (no transform layer in Section 1, per CLAUDE.md "Media (R2)")
+- [x] **1.25** `@core/*` resolves in both Workers' `tsconfig.json`
 
 **Operator `apps/citadel/custom/` structure:**
-- [ ] **1.26** Create `apps/citadel/custom/` directory structure:
-  ```
-  apps/citadel/custom/
-  ├── components/
-  │   ├── site/       ← operator Astro component overrides
-  │   └── panel/      ← operator Solid component overrides
-  ├── blocks/         ← operator custom block types (Section 2+)
-  ├── themes/         ← operator CSS theme overrides
-  └── seed/           ← operator seed data overrides
-  ```
-- [ ] **1.27** Add `@apps/citadel/custom/*` path alias to both Workers' `tsconfig.json`
-- [ ] **1.28** Confirm Biome boundary rule (from Phase 0) fires on any `apps/citadel/core/` → `apps/citadel/custom/` import attempt
+- [x] **1.26** `custom/` structure exists (`components/{panel,site}`, `extensions/`, `themes/`, `seed/`, all with `.gitkeep`)
+- [x] **1.27** `@custom/*` alias added to both Workers' `tsconfig.json` 2026-06-21 (matches the `@core/*` convention, not the longer `@apps/citadel/custom/*` form the original plan text used)
+- [x] **1.28** Confirmed `biome.json`'s `noRestrictedImports` rule already blocked `core/` → `custom/` imports — only the pattern string was stale (`@apps/citadel/custom/**`, which nothing actually imports); updated to `@custom/**` 2026-06-21 to match the real alias, and verified it fires with a throwaway violation
 
 **Operator config and public assets:**
-- [ ] **1.29** Create `citadel.config.ts` at repo root with `CitadelConfig` type and documented defaults:
-  ```typescript
-  const config: CitadelConfig = {
-    theme: 'citadel',
-    seed: {
-      siteName: 'My Site',
-      tagline: '',
-      brandColor: '#c45c2a',
-      businessCase: 'general',
-    },
-  }
-  ```
-- [ ] **1.30** Create `apps/citadel/workers/site/public/themes/` — empty directory placeholder for DaisyUI theme CSS files (populated in Phase 4)
-- [ ] **1.31** Create `apps/citadel/workers/site/public/apps/citadel/custom/` — empty directory for operator static assets, add `.gitkeep`
+- [x] **1.29** `citadel.config.ts` exists at repo root
+- [x] **1.30** `workers/site/public/themes/` exists (already has a `theme-test.css`, fine for Phase 1)
+- [x] **1.31** `workers/site/public/custom/` created 2026-06-21 with `.gitkeep` (plan text says `public/apps/citadel/custom/`, a doubled-path slip from the doc's path-prefix convention — the correct path is simply `public/custom/`, mirroring `apps/citadel/custom/`)
 
 **Root tooling and scripts:**
-- [ ] **1.32** Confirm `drizzle.config.ts` at repo root points at `apps/citadel/core/db/schema.ts` and `apps/citadel/core/db/migrations/`
-- [ ] **1.33** Confirm `biome.json` at repo root covers `apps/citadel/core/`, `apps/citadel/workers/site/src/`, `apps/citadel/workers/cms/app/`, `apps/citadel/custom/` — promoted from Phase 0
-- [ ] **1.34** Confirm root `package.json` scripts from Phase 0 are complete and correct. Note `dev:site`/`dev:cms`/`db:migrate` all need a **shared** `--persist-to` path — confirmed during Phase 0 (2026-06-19) that `wrangler dev` defaults its local D1 persistence to its own working directory, so two Workers sharing a `database_id` do *not* automatically share local data without this. `db:migrate` also needs `--config` (no wrangler config exists at the repo root) and the targeted config needs `migrations_dir` pointing at Drizzle's actual output, not the default `./migrations`. See `DECISIONS.md`:
-  ```json
-  "dev:site":        "cd workers/site && wrangler dev --port 3000 --persist-to ../../../../.wrangler/state",
-  "dev:cms":       "cd workers/cms && wrangler dev --port 3001 --persist-to ../../../../.wrangler/state",
-  "dev":             "concurrently \"pnpm dev:site\" \"pnpm dev:cms\"",
-  "build:site":      "cd workers/site && astro build",
-  "build:panel":     "cd workers/cms && vite build",
-  "build":           "pnpm build:site && pnpm build:panel",
-  "deploy:site":     "cd workers/site && wrangler deploy",
-  "deploy:cms":    "cd workers/cms && wrangler deploy",
-  "deploy":          "pnpm build && pnpm deploy:site && pnpm deploy:cms",
-  "db:generate":     "drizzle-kit generate",
-  "db:migrate":      "wrangler d1 migrations apply citadel-db --local --config apps/citadel/workers/site/wrangler.jsonc --persist-to ./.wrangler/state",
-  "db:migrate:prod": "wrangler d1 migrations apply citadel-db --remote --config apps/citadel/workers/site/wrangler.jsonc",
-  "db:studio":       "drizzle-kit studio",
-  "lint":            "biome check .",
-  "format":          "biome format --write ."
-  ```
-- [ ] **1.35** Confirm `pnpm-workspace.yaml` exists at repo root listing both Workers and `apps/citadel/core/`
+- [x] **1.32** `drizzle.config.ts` points at `core/db/schema.generated.ts` and `core/db/migrations/`
+- [x] **1.33** `biome.json` coverage confirmed for `packages/`, `apps/` (`.ts`/`.tsx`/`.astro`), `examples/`
+- [x] **1.34** Root `package.json` scripts present and match the shared-`--persist-to` fix; also adds `build:cadmus` (not in original spec, correctly ordered first) and `test:cadmus`/`test:int`/`test:e2e`
+- [x] **1.35** `pnpm-workspace.yaml` lists `apps/citadel/workers/*` explicitly, avoiding the silent-exclusion bug
 
 **CI and update workflow:**
-- [ ] **1.36** Create `.github/workflows/ci.yml`:
-  - Triggers: push to `main`, PR to `main`
-  - Steps: `pnpm lint` → `pnpm build:site` → `pnpm build:panel` → (test stubs — always pass in Phase 1)
-  - Must pass before any deploy
-- [ ] **1.37** Create `.github/workflows/update.yml`:
-  - Trigger: schedule (weekly, Monday 09:00 UTC)
-  - Steps: fetch `bowenlabs/project-thebes:main` → merge → run CI → push if clean → open GitHub issue if conflicts
-  - Never auto-deploys on conflict — operator resolves manually
-- [ ] **1.38** Create `CONTRIBUTING.md` noting: local dev requires both Workers running (`pnpm dev`), cookie auth must be tested on a custom domain not `workers.dev` (G6), `apps/citadel/core/` is never edited directly
+- [x] **1.36** `ci.yml` exists: `lint` → `build-cadmus` → `build-site`/`build-panel` (parallel, each rebuilds cadmus since dist isn't shared across jobs) → `test-cadmus`
+- [x] **1.37** `update.yml` exists: weekly cron, merge attempt, push if clean, opens issue on conflict — matches spec
+- [x] **1.38** `CONTRIBUTING.md` exists with the custom-domain cookie note
 
 **Security headers:**
-- [ ] **1.39** Add security headers to `apps/citadel/workers/site/src/app.ts` Hono middleware (applies to all Worker 1 responses):
-  - `Strict-Transport-Security: max-age=31536000; includeSubDomains`
-  - `X-Content-Type-Options: nosniff`
-  - `X-Frame-Options: SAMEORIGIN` — never DENY (preview iframes require SAMEORIGIN)
-  - `Referrer-Policy: strict-origin-when-cross-origin`
-  - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
-  - CSP: allowlist Cloudflare Fonts, Cloudflare Analytics, `'self'`
-- [ ] **1.40** Add same security headers to `apps/citadel/workers/cms/app/server.ts` Hono middleware (applies to all Worker 2 API responses)
+- [x] **1.39** Added `core/lib/security-headers.ts` (shared Hono middleware — Citadel-specific, so it lives in `core/` not `packages/cadmus/`) and wired into `workers/site/src/app.ts` 2026-06-21
+- [x] **1.40** Same middleware wired into `workers/cms/app/server.ts` 2026-06-21
 
 **Verification:**
-- [ ] **1.41** `pnpm dev:site` starts Worker 1 on `:3000`, `apps/citadel/workers/site/src/pages/index.astro` renders without errors
-- [ ] **1.42** `pnpm dev:cms` starts Worker 2 on `:3001`, `/admin/dashboard` redirects to `/login` (auth not yet implemented — redirect is correct)
-- [ ] **1.43** `pnpm dev` starts both Workers concurrently with one command
-- [ ] **1.44** `pnpm build` completes without errors for both Workers
-- [ ] **1.45** `pnpm deploy` deploys both Workers to Cloudflare without errors
-- [ ] **1.46** `pnpm lint` passes with zero Biome violations across all directories
-- [ ] **1.47** Record Phase 1 completion in `DECISIONS.md` — note any findings that affect Phase 2
+- [x] **1.41** `pnpm dev:site` confirmed live 2026-06-21 — `index.astro` renders, security headers present on the response (`curl -I` checked)
+- [x] **1.46** `pnpm lint` passes with zero violations, including the new `check-prerender.ts` check
+- [ ] **1.42**–**1.45**, **1.47** Not yet re-verified live this session (Worker 2 dev, both-Workers concurrent dev, full deploy) — see the catalog below for what's left and why 1.47 (`DECISIONS.md` entry) was held until the stub-route question resolved (now resolved — see DECISIONS.md's 2026-06-21 Phase 1 entry).
 
 ### Gotchas
 - G1 (binding access), G5 (both Workers must run for full local dev), G6 (cookie auth needs custom domain for proper testing)
-- Phase 0 scaffold files from `pnpm create cloudflare@latest` may include example routes, test files, or demo content — remove all of these before Phase 1 is considered complete. The skeleton must be clean. (See 1.1, 1.8 for the specific POC routes known to be left behind.)
-- TipTap and Flowbite Charts are Panel-only (`apps/citadel/workers/cms/`) — never import them from `apps/citadel/core/` or `apps/citadel/workers/site/`. Biome boundary rules should catch this.
+- Phase 0 scaffold files from `pnpm create cloudflare@latest` may include example routes, test files, or demo content — remove all of these before Phase 1 is considered complete. The skeleton must be clean. (See 1.1, 1.8 for the specific POC routes known to be left behind.) This bar also applies to unimplemented future-phase routes that land early, not just literal scaffold files — see 1.8's note on the removed auth/form/media stubs.
+- TipTap is Panel-only (`apps/citadel/workers/cms/`) — never import it from `apps/citadel/core/` or `apps/citadel/workers/site/`. Biome boundary rules should catch this. Charts use `apexcharts` directly — there's no separate "Flowbite Charts" package and no `flowbite` runtime dependency (see 1.13's note — `flowbite` has no Solid integration and its DOM-attribute init model can fight Solid's route-driven re-renders).
 - Email Workers `send_email` binding must be in both `wrangler.jsonc` files even though only Worker 2 sends email — binding declarations are per-Worker and Worker 1 may need it in future phases
 - `apps/citadel/workers/site/public/` is served as static assets by Astro — anything placed here is publicly accessible. Never put secrets, `.dev.vars`, or migration files here.
 - Both Workers must have `nodejs_compat` in `compatibility_flags` — missing this causes subtle runtime failures that are hard to debug
@@ -1704,6 +1648,43 @@ That all comes in Phase 2+.
 - No scaffold demo files, example routes, or placeholder content remaining
 - `apps/citadel/workers/site/public/themes/` and `apps/citadel/workers/site/public/apps/citadel/custom/` directories exist
 - Both Workers' `.dev.vars.example` committed; `.dev.vars` gitignored
+
+### Phase 1 remaining-work catalog (audited 2026-06-21, updated same day)
+
+**Resolved 2026-06-21:**
+1. ~~Security headers middleware~~ — `core/lib/security-headers.ts` added, wired into both Workers (1.39, 1.40).
+2. ~~`.dev.vars.example` missing~~ — committed for both Workers (1.7, 1.17).
+3. ~~Biome boundary rule + `@custom/*` alias~~ — alias added to both `tsconfig.json`s; the boundary rule already existed in `biome.json` but referenced a stale pattern (`@apps/citadel/custom/**`) that nothing actually imports — updated to `@custom/**` and confirmed it fires (1.27, 1.28).
+4. ~~Dead POC routes~~ — removed `/api/ping`, `/api/cache/check`, `/api/cache/purge`, `/api/cache/test` from `app.ts` and `/api/ping`, `/api/crypto-test` from `server.ts` (1.1, 1.8). `/api/cms-test` deliberately kept (tracked under issue #16, not scaffold debt).
+
+Verified with `pnpm lint` (zero violations) and `pnpm build:cadmus && pnpm build:site && pnpm build:cms` (all three build clean) after the above changes.
+
+**Resolved 2026-06-21 (batch 2):**
+5. `core/lib/image-service.ts` (1.24) — added, backed by a now-filled-in `ImageService` interface on the Cadmus side (`packages/cadmus/src/storage/index.ts` was an empty stub; CLAUDE.md specs the interface living there). `core/lib/image-service.ts` exports `createR2ImageService(bucket, mediaUrl)`.
+6. `core/lib/auth.ts` and `core/lib/session.ts` stubs (1.22, 1.23) — added, signatures only, all bodies throw "not implemented until Phase 3" per the milestone's intent.
+
+Verified with `pnpm build:cadmus` (storage `.d.ts` now non-trivial), `pnpm lint`, `pnpm build:site`, `pnpm build:cms`, and `pnpm test:cadmus` (68/68 passing) — all clean after this batch.
+
+**Resolved 2026-06-21 (batch 3):**
+7. `@phosphor-icons/web` installed in Worker 1 (1.4), wired into `layout.astro`.
+8. TipTap installed in Worker 2 (1.12). "Flowbite Charts" turned out not to be a real npm package, and `flowbite` itself has no Solid integration (only `flowbite-react`/`flowbite-svelte` exist) — installed `apexcharts` alone (1.13). CLAUDE.md's stack table corrected.
+9. `index.astro` now reads from D1 (1.6) — against `pages`, since `site_settings` doesn't exist in this schema (confirmed empty `schema.generated.ts`, repositioned to the SMB example template). Verified end-to-end with `wrangler dev` + `curl`, including confirming the new security headers are actually present on the response.
+10. `public/custom/` placeholder dir added to Worker 1 (1.31).
+11. Added `apps/citadel/scripts/check-prerender.ts`, wired into `pnpm lint` (1.18) — walks `workers/cms/src/routes/`, flags any route calling a server function from `loader`/`beforeLoad` without `export const prerender = false`. Caught two real violations on its first run (`admin/route.tsx`, `test.tsx`), both fixed.
+
+Verified with `pnpm lint` (zero violations, including the new check), `pnpm build:cadmus`/`build:site`/`build:cms` (all clean), and a live `wrangler dev` smoke test of Worker 1.
+
+**Resolved 2026-06-21 (batch 4):**
+12. `flowbite` removed from Worker 2 — added in batch 3, dropped same day once it became clear it has no Solid integration and isn't needed for charts (see 1.13 above).
+13. The early Phase 3/7/11 stub routes in `server.ts` (`/api/form/:slug`, `/api/auth/magic-link`, `/api/auth/verify`, `/api/auth/logout`, `/api/media/upload`) — removed rather than kept, per maintainer call (1.8). `/api/auth/verify` redirecting to `/admin/dashboard` with zero token validation was the deciding factor: it looked functional, wasn't, and risked masking missing Phase 3 work. These land for real with their phase, not before.
+
+Verified with `pnpm lint`, `pnpm build:cadmus`/`build:site`/`build:cms`, and `pnpm test:cadmus` (68/68) — all clean after this batch. Phase 1 completion logged in `DECISIONS.md`.
+
+**Not yet attempted:**
+14. Live re-verification of 1.42–1.45 (Worker 2 dev alone, both Workers concurrently via `pnpm dev`, and a full `pnpm deploy`) — 1.41 and 1.46 are confirmed live (see Verification section above); 1.42/1.44 have passed incidentally via clean builds and the `/admin` guard's existing logic, but haven't been re-run live this session.
+
+**Observations outside the original milestone list:**
+- `src/routes/admin/route.tsx` guards the whole `/admin` subtree rather than a single `dashboard.tsx` route — a reasonable superset of 1.15, left as-is.
 
 ---
 
@@ -2500,7 +2481,7 @@ Section 1 is complete when every item below is true:
 - [ ] No `@tanstack/db` dependency in either Worker
 - [ ] Biome passes with zero violations on all code across `apps/citadel/core/`, both Workers, `apps/citadel/custom/`
 - [ ] Biome boundary rule enforced — `apps/citadel/core/` never imports from `apps/citadel/custom/`
-- [ ] TipTap and Flowbite Charts never imported outside `apps/citadel/workers/cms/`
+- [ ] TipTap and ApexCharts never imported outside `apps/citadel/workers/cms/`
 - [ ] Cache purge dev bypass in `apps/citadel/core/lib/cache.ts` — never throws in dev
 - [ ] `apps/citadel/core/` and `apps/citadel/custom/` folder structure in place and enforced
 - [ ] `apps/citadel/workers/site/` and `apps/citadel/workers/cms/` are independent deployable Workers with their own `wrangler.jsonc`

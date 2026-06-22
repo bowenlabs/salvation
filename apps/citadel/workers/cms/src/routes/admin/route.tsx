@@ -1,6 +1,10 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/solid-router";
 import { getLoginUrl, requireAuth } from "../../../app/middleware";
 
+// beforeLoad calls requireAuth(), a server function — must never be
+// statically prerendered. See scripts/check-prerender.ts.
+export const prerender = false;
+
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ location }) => {
     const user = await requireAuth();

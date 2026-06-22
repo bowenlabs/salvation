@@ -13,7 +13,8 @@
         "./worker-configuration.d.ts"
     ],
     "paths": {
-        "@core/*": ["../../core/*"]
+        "@core/*": ["../../core/*"],
+        "@custom/*": ["../../custom/*"]
     }
 }
 }

@@ -17,6 +17,7 @@
 	"dependencies": {
 		"@astrojs/cloudflare": "^13.7.0",
 		"@bowenlabs/cadmus": "workspace:*",
+		"@phosphor-icons/web": "^2.1.2",
 		"@tailwindcss/vite": "^4.3.1",
 		"astro": "^6.4.7",
 		"daisyui": "^5.5.23",

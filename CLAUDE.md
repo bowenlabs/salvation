@@ -168,7 +168,7 @@ Never let this boundary blur.
 | Fonts | **Cloudflare Fonts** — link to `fonts.googleapis.com`; CF intercepts at edge |
 | Icons | **@phosphor-icons/web** — everywhere, no other icon library. No official Solid Phosphor package exists; the framework-agnostic web-component/CSS build is used instead of an unofficial community port |
 | UI components | **DaisyUI v5** + **Tailwind v4** — pure CSS, no framework binding required |
-| Charts | **Flowbite Charts** (ApexCharts, MIT) — CMS admin only |
+| Charts | **ApexCharts** (MIT), styled to match Flowbite's chart examples — CMS admin only. "Flowbite Charts" isn't a separate npm package; Flowbite's chart docs are just ApexCharts markup with Tailwind classes, and pulling in the full `flowbite` JS runtime is unnecessary (and risks conflicting with SolidJS's DOM management — see DECISIONS.md's 2026-06-21 entry) |
 | Rich text (CMS) | **TipTap** (`@tiptap/core`, framework-agnostic) — JSON stored natively, no transform layer. No official Solid wrapper; integrate the vanilla core API directly or via the unofficial `solid-tiptap` bindings — decide when Section 2+ builds the editor |
 | Linting / formatting | **Biome** — replaces ESLint + Prettier |
 | Security scanning | **Snyk** (CI) |

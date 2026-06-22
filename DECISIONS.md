@@ -9,6 +9,155 @@
 
 ---
 
+## 2026-06-21 — Phase 1 (project foundation) complete
+
+**Decision:** Phase 1 milestones (issue #2, `SECTION_1_PLAN.md`) are done.
+Both Workers promoted from POC scaffolds to production-ready skeletons;
+all tooling configured; `pnpm lint`/`pnpm build` pass clean; `core/`/
+`custom/` boundary established and enforced.
+
+**What changed, in order:**
+- Added a shared `core/lib/security-headers.ts` Hono middleware (HSTS,
+  `nosniff`, `SAMEORIGIN`, referrer-policy, permissions-policy, CSP) and
+  wired it into both `app.ts` and `server.ts`. It lives in `core/`, not
+  `packages/cadmus/`, since the header set is Citadel's own choice, not a
+  framework-level primitive.
+- Added `.dev.vars.example` for both Workers; Worker 1 had no `.dev.vars`
+  at all and now does.
+- Added the `@custom/*` path alias to both `tsconfig.json`s. Discovered in
+  the process that the Biome `core/` → `custom/` boundary rule already
+  existed in `biome.json` but matched a pattern (`@apps/citadel/custom/**`)
+  nothing actually imports — corrected to `@custom/**` and confirmed it
+  fires on a throwaway violation.
+- Removed the Phase 0 POC routes (`/api/ping`, `/api/cache/*` in Worker 1;
+  `/api/ping`, `/api/crypto-test` in Worker 2) — their job (proving binding
+  access and Cache/Web-Crypto API behavior) was done. `/api/cms-test` in
+  Worker 1 was deliberately kept; it's tracked under issue #16, not Phase 0
+  scaffold debt.
+- Added `core/lib/auth.ts` and `core/lib/session.ts` as signature-only
+  stubs (Phase 3 implements them) and `core/lib/image-service.ts`
+  (`createR2ImageService`), backed by an `ImageService` interface added to
+  `packages/cadmus/src/storage/index.ts` — that primitive was an empty
+  stub before this; CLAUDE.md specs the interface as living in Cadmus and
+  the R2 implementation in Citadel's `core/`.
+- Installed `@phosphor-icons/web` in Worker 1 (already present in Worker
+  2) and wired it into `layout.astro`.
+- Installed TipTap (`@tiptap/core`, `@tiptap/starter-kit`, `@tiptap/html`)
+  in Worker 2 — install only, no editor wired up yet (Phase 6).
+- `index.astro` now reads live data from D1 instead of rendering a static
+  placeholder — see the superseding note below on what it reads and why.
+- Added `apps/citadel/workers/site/public/custom/` for operator static
+  assets.
+- Added `apps/citadel/scripts/check-prerender.ts`, wired into `pnpm lint`.
+  It flags any Panel route calling a server function from `loader`/
+  `beforeLoad` without `export const prerender = false` — caught two real
+  violations on its first run (`admin/route.tsx`, `test.tsx`), both fixed.
+- Removed the early, unimplemented Phase 3/7/11 stub routes that had
+  landed in `server.ts` (`/api/form/:slug`, `/api/auth/magic-link`,
+  `/api/auth/verify`, `/api/auth/logout`, `/api/media/upload`) — see the
+  separate entry below for why.
+
+**Superseding note on `index.astro` (milestone 1.6):** the milestone text
+says "reads `site_settings.siteName`," but `site_settings` doesn't exist
+in this schema — it was repositioned to `examples/citadel-smb-template/`
+in the 2026-06-20 CMS-repositioning entry below, and
+`apps/citadel/core/db/schema.generated.ts` only has `pages`. `index.astro`
+reads `pages` instead, as the one collection Citadel core actually ships.
+
+**Verified:** `pnpm lint` (zero violations, including the new
+`check-prerender.ts` check), `pnpm build:cadmus`/`build:site`/`build:cms`
+(all clean), `pnpm test:cadmus` (68/68 passing), and a live `wrangler dev`
+smoke test of Worker 1 confirming both the new `index.astro` query and the
+security headers are present on the actual response.
+
+**Not re-verified live this session:** `pnpm dev:cms` alone, both Workers
+together via `pnpm dev`, and `pnpm deploy`. Builds for both Workers are
+clean, which is the strongest signal short of a live run, but these three
+should still get an explicit pass before treating Phase 1 as fully closed
+operationally (not just code-complete).
+
+**Revisit if:** Phase 2+ work reveals the `core/lib/auth.ts`/`session.ts`
+stub signatures don't match what the real magic-link flow needs — they
+were written from CLAUDE.md's documented flow, not from an implementation
+attempt, so some signature drift during Phase 3 would be unsurprising.
+
+---
+
+## 2026-06-21 — Drop "Flowbite Charts" as a dependency; use ApexCharts directly
+
+**Decision:** The CMS admin chart stack is ApexCharts alone, styled to
+match Flowbite's chart examples. No `flowbite` package dependency.
+
+**Rationale:** "Flowbite Charts" was never a real npm package — Flowbite's
+chart documentation is just ApexCharts markup with Tailwind classes, not a
+separate library. The `flowbite` package itself has no official SolidJS
+integration (only `flowbite-react` and `flowbite-svelte` exist), and its
+init model — vanilla JS that queries the DOM for `data-*` attributes on
+load — is built around traditional full-page-reload sites. Pulling it into
+a SolidJS app risks stale event listeners or double-init on TanStack
+Router navigation, since Solid's fine-grained DOM updates don't trigger
+the same lifecycle a vanilla-JS library expects. None of that risk buys
+anything charts actually need.
+
+**Options considered:**
+- Keep `flowbite` for its other components (dropdowns, modals) in
+  addition to charts — not evaluated here; this decision is scoped to
+  charts only. If `flowbite` comes up again for other Panel UI, the same
+  Solid-integration question should be asked fresh.
+- `flowbite-react` via a React island inside the Solid Panel — rejected:
+  disproportionate to add a second UI framework just for chart styling
+  when plain ApexCharts + Tailwind achieves the same look.
+
+**What changes:** `apexcharts` is a Worker 2 (`apps/citadel/workers/cms/`)
+dependency; `flowbite` is not. CLAUDE.md's stack table corrected from
+"Flowbite Charts (ApexCharts, MIT)" to "ApexCharts (MIT), styled to match
+Flowbite's chart examples."
+
+**Revisit if:** a future Panel feature wants `flowbite`'s non-chart
+components and Solid compatibility is confirmed safe at that point —
+treat that as its own decision rather than reopening this one.
+
+---
+
+## 2026-06-21 — Remove early Phase 3/7/11 stub routes from `server.ts`
+
+**Decision:** Delete the unimplemented `/api/form/:slug`, `/api/auth/*`,
+and `/api/media/upload` routes that had landed in
+`apps/citadel/workers/cms/app/server.ts` ahead of the phases that actually
+own them, rather than keep them as documented forward stubs.
+
+**Rationale:** Phase 1's own acceptance criteria require "no scaffold/demo
+content remains," and these routes — while not literal `pnpm create
+cloudflare` scaffold output — are the same kind of debt: unimplemented
+surface that looks more finished than it is. The deciding factor was
+`/api/auth/verify`, which unconditionally executed
+`return c.redirect("/admin/dashboard")` with no token check whatsoever.
+A stub that returns `{ ok: true }` is obviously fake; a stub that performs
+a real-looking redirect is not — anyone wiring a login UI against it
+before Phase 3 lands would see what looks like a working flow.
+
+**Options considered:**
+- Keep them as documented forward stubs — rejected: the redirect-without-
+  validation case above means "documented" isn't enough to make them safe
+  to leave in `main`; the risk is in what the code *does*, not whether
+  it's labeled.
+- Keep only the routes that return inert `{ ok: true }`/`{ url: "" }` and
+  remove just `/api/auth/verify` — rejected as inconsistent: all five were
+  added together as a batch for phases that haven't started, so all five
+  go together.
+
+**What changes:** `server.ts` now has a comment at the top of the custom
+routes section explaining why no Phase 3/7/11 stubs are pre-added, and
+pointing at this entry. The real routes get added in Phase 3 (auth),
+Phase 7 (forms), and Phase 11 (media) alongside their actual
+implementations and tests.
+
+**Revisit if:** never — this is a one-time correction, not a standing
+policy question. The standing policy (don't pre-add unimplemented routes
+for future phases) is now captured in the `server.ts` comment itself.
+
+---
+
 ## 2026-06-20 — Citadel relicensed to MIT, dropping the revenue-threshold dual license
 
 **Decision:** Replace the source-available dual license (free under $1M
