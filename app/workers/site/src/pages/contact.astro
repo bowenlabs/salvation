@@ -1,0 +1,59 @@
+---
+export const prerender = false;
+
+import { env } from "cloudflare:workers";
+import { db } from "@bowenlabs/cadmus/db";
+import { pages } from "@core/db/schema.generated";
+import { parseBlocks } from "@core/lib/blocks";
+import { getSiteSettings } from "@core/lib/get-site-settings";
+import { and, eq } from "drizzle-orm";
+import BlockRenderer from "../components/BlockRenderer.astro";
+import Layout from "../layouts/layout.astro";
+
+// <PublicForm> is out of scope here — forms are example-template content
+// (CLAUDE.md "Form builder"), not part of Cadmea core. This route renders
+// the contact page's blocks plus site_settings' contact info only.
+const settings = await getSiteSettings(env.DB);
+const page = await db(env.DB, { pages })
+  .select()
+  .from(pages)
+  .where(and(eq(pages.slug, "contact"), eq(pages.status, "published")))
+  .get();
+
+if (!page) {
+  return Astro.rewrite("/404");
+}
+
+Astro.response.headers.set("Cache-Control", "public, max-age=60");
+
+const blocks = parseBlocks(page.blocks);
+---
+
+<Layout title={page.title}>
+	<article class="container mx-auto max-w-3xl px-[var(--container-padding-x)] py-[var(--section-padding-y)]">
+		<h1 class="font-display text-3xl font-semibold">{page.title}</h1>
+		<div class="mt-8">
+			<BlockRenderer blocks={blocks} />
+		</div>
+		<dl class="mt-8 flex flex-col gap-2">
+			{settings?.contactEmail && (
+				<div>
+					<dt class="sr-only">Email</dt>
+					<dd><a href={`mailto:${settings.contactEmail}`}>{settings.contactEmail}</a></dd>
+				</div>
+			)}
+			{settings?.contactPhone && (
+				<div>
+					<dt class="sr-only">Phone</dt>
+					<dd><a href={`tel:${settings.contactPhone}`}>{settings.contactPhone}</a></dd>
+				</div>
+			)}
+			{settings?.contactAddress && (
+				<div>
+					<dt class="sr-only">Address</dt>
+					<dd>{settings.contactAddress}</dd>
+				</div>
+			)}
+		</dl>
+	</article>
+</Layout>

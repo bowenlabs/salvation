@@ -12,4 +12,5 @@ export const pages = sqliteTable("pages", {
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
     () => new Date(),
   ),
+  blocks: text("blocks", { mode: "json" }),
 });

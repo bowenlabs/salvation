@@ -1,0 +1,15 @@
+---
+Astro.response.status = 500;
+
+import Layout from "../layouts/layout.astro";
+---
+
+<Layout title="Something went wrong" showChrome={false}>
+	<section class="flex min-h-screen flex-col items-center justify-center gap-4 px-[var(--container-padding-x)] text-center">
+		<h1 class="font-display text-4xl font-semibold">500</h1>
+		<p class="text-lg opacity-80">Something went wrong on our end.</p>
+		<a href="/" class="btn btn-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+			Back to home
+		</a>
+	</section>
+</Layout>

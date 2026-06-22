@@ -2,24 +2,48 @@
 import { env } from "cloudflare:workers";
 import { db } from "@bowenlabs/cadmus/db";
 import { pages } from "@core/db/schema.generated";
+import { parseBlocks } from "@core/lib/blocks";
+import { getSiteSettings } from "@core/lib/get-site-settings";
 import { eq } from "drizzle-orm";
+import BlockRenderer from "../components/BlockRenderer.astro";
+import HomepageEditorial from "../components/homepage/HomepageEditorial.astro";
+import HomepageGallery from "../components/homepage/HomepageGallery.astro";
+import HomepageMinimal from "../components/homepage/HomepageMinimal.astro";
+import HomepageStory from "../components/homepage/HomepageStory.astro";
 import Layout from "../layouts/layout.astro";
 
-// `site_settings` stays a hand-written core table (see DECISIONS.md's
-// 2026-06-21 entry, which reverses the 2026-06-20 CMS-pivot framing) and
-// is read by the layout itself for the design-system token cascade.
-// `pages` is the one cadmus/cms collection Cadmea core ships, so this
-// page's own query is just the published-pages list.
-const publishedPages = await db(env.DB, { pages })
+// G4 is unresolved — revalidate stays at 60s, not the eventual 3600s
+// target (see SECTION_1_PLAN.md Phase 5 gotchas).
+Astro.response.headers.set("Cache-Control", "public, max-age=60");
+
+const settings = await getSiteSettings(env.DB);
+const homePage = await db(env.DB, { pages })
   .select()
   .from(pages)
-  .where(eq(pages.status, "published"))
-  .all();
+  .where(eq(pages.slug, "home"))
+  .get();
+
+const heroTitle = homePage?.title ?? settings?.siteName ?? "Welcome";
+const heroBody = settings?.tagline ?? null;
+const blocks = parseBlocks(homePage?.blocks);
+
+const HOMEPAGE_LAYOUTS = {
+  editorial: HomepageEditorial,
+  minimal: HomepageMinimal,
+  gallery: HomepageGallery,
+  story: HomepageStory,
+} as const;
+
+const HomepageVariant =
+  HOMEPAGE_LAYOUTS[settings?.homepageLayout as keyof typeof HOMEPAGE_LAYOUTS] ??
+  HomepageEditorial;
 ---
 
-<Layout title="Thebes">
-	<h1>Thebes</h1>
-	<ul>
-		{publishedPages.map((page) => <li>{page.title}</li>)}
-	</ul>
+<Layout title={settings?.siteName ?? "Thebes"}>
+	<HomepageVariant settings={settings} heroTitle={heroTitle} heroBody={heroBody} />
+	{blocks.length > 0 && (
+		<div class="container mx-auto px-[var(--container-padding-x)] py-[var(--section-padding-y)]">
+			<BlockRenderer blocks={blocks} />
+		</div>
+	)}
 </Layout>

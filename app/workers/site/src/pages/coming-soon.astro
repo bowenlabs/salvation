@@ -1,0 +1,20 @@
+---
+import { env } from "cloudflare:workers";
+import { getSiteSettings } from "@core/lib/get-site-settings";
+import Layout from "../layouts/layout.astro";
+
+const settings = await getSiteSettings(env.DB);
+---
+
+<Layout title={`${settings?.siteName ?? "Thebes"} — Coming soon`} showChrome={false} noindex>
+	<section class="flex min-h-screen flex-col items-center justify-center gap-6 px-[var(--container-padding-x)] text-center">
+		{settings?.logoUrl && (
+			<img src={settings.logoUrl} alt="" width="64" height="64" loading="eager" decoding="async" />
+		)}
+		<h1 class="font-display text-4xl font-semibold">{settings?.siteName ?? "Thebes"}</h1>
+		<p class="text-lg opacity-80">Coming soon.</p>
+		<a href="/" class="btn btn-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+			Back to home
+		</a>
+	</section>
+</Layout>

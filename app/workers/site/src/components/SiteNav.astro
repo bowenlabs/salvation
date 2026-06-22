@@ -1,0 +1,73 @@
+---
+export interface NavLink {
+  label: string;
+  href: string;
+}
+
+interface Props {
+  siteName: string;
+  logoUrl?: string | null;
+  links: NavLink[];
+  activePath: string;
+}
+
+const { siteName, logoUrl, links, activePath } = Astro.props;
+
+// Treats "/" itself as exact, otherwise prefix-matches so a nested route
+// under a top-level link still highlights its parent.
+const isActive = (href: string) =>
+  href === "/" ? activePath === "/" : activePath.startsWith(href);
+---
+
+<header class="navbar bg-[var(--navbar,_var(--color-base-100))] text-[var(--navbar-foreground,_var(--color-base-content))]">
+	<nav class="container mx-auto flex items-center justify-between px-[var(--container-padding-x)] py-2" aria-label="Main">
+		<a href="/" class="flex items-center gap-2 font-display text-lg font-semibold">
+			{logoUrl && <img src={logoUrl} alt="" width="32" height="32" loading="eager" decoding="async" />}
+			<span>{siteName}</span>
+		</a>
+
+		{/* Desktop links — hidden below md, CSS-only via Tailwind utility classes */}
+		<ul class="hidden md:flex items-center gap-6">
+			{links.map((link) => (
+				<li>
+					<a
+						href={link.href}
+						aria-current={isActive(link.href) ? "page" : undefined}
+						class:list={[
+							"focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+							isActive(link.href) ? "font-semibold underline" : "",
+						]}
+					>
+						{link.label}
+					</a>
+				</li>
+			))}
+		</ul>
+
+		{/* Mobile menu — <details>/<summary>, no JavaScript */}
+		<details class="md:hidden relative">
+			<summary
+				class="list-none cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+				aria-label="Open menu"
+			>
+				<i class="ph ph-list text-2xl" aria-hidden="true"></i>
+			</summary>
+			<ul class="absolute right-0 top-full mt-2 flex flex-col gap-2 rounded-box bg-base-100 p-4 shadow-lg z-10">
+				{links.map((link) => (
+					<li>
+						<a
+							href={link.href}
+							aria-current={isActive(link.href) ? "page" : undefined}
+							class:list={[
+								"focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+								isActive(link.href) ? "font-semibold underline" : "",
+							]}
+						>
+							{link.label}
+						</a>
+					</li>
+				))}
+			</ul>
+		</details>
+	</nav>
+</header>

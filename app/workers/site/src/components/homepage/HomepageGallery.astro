@@ -1,0 +1,31 @@
+---
+import type { SiteSettings } from "@core/lib/get-site-settings";
+
+interface Props {
+  settings: SiteSettings | null;
+  heroTitle: string;
+  heroBody?: string | null;
+}
+
+const { settings, heroTitle, heroBody } = Astro.props;
+---
+
+<section class="px-[var(--container-padding-x)] py-[var(--section-padding-y)]">
+	<div class="grid gap-[var(--grid-gap)] md:grid-cols-2 md:items-center">
+		<div>
+			<h1 class="font-display text-4xl font-semibold">{heroTitle}</h1>
+			{heroBody && <p class="mt-4 text-lg opacity-80">{heroBody}</p>}
+		</div>
+		<div class="aspect-square overflow-hidden rounded-box bg-base-200">
+			{settings?.logoUrl && (
+				<img
+					src={settings.logoUrl}
+					alt=""
+					loading="lazy"
+					decoding="async"
+					class="h-full w-full object-cover"
+				/>
+			)}
+		</div>
+	</div>
+</section>

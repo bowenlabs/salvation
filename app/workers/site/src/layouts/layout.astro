@@ -1,23 +1,54 @@
 ---
 import { ClientRouter } from "astro:transitions";
 import { env } from "cloudflare:workers";
+import { db } from "@bowenlabs/cadmus/db";
+import { pages } from "@core/db/schema.generated";
 import { buildTokenStyle } from "@core/lib/design-system/build-token-style";
 import { getFontConfig } from "@core/lib/font-pairing";
 import { getSiteSettings } from "@core/lib/get-site-settings";
 import phosphorCss from "@phosphor-icons/web/regular?url";
+import { eq } from "drizzle-orm";
+import SiteFooter, { type SocialLink } from "../components/SiteFooter.astro";
+import SiteNav, { type NavLink } from "../components/SiteNav.astro";
 import "../assets/app.css";
 
 interface Props {
   title: string;
+  /** Set false for chrome-less pages (coming-soon). Defaults to true. */
+  showChrome?: boolean;
+  /** Renders <meta name="robots" content="noindex">. Defaults to false. */
+  noindex?: boolean;
 }
 
-const { title } = Astro.props;
+const { title, showChrome = true, noindex = false } = Astro.props;
 
 const settings = await getSiteSettings(env.DB);
 const themeName = settings?.theme ?? "citadel";
 const fontConfig = getFontConfig(settings?.fontPairing);
 const tokenStyle = buildTokenStyle(settings ?? {});
 const darkModeClass = settings?.darkMode ? "dark" : undefined;
+
+const configuredNavLinks = Array.isArray(settings?.navLinks)
+  ? (settings.navLinks as NavLink[])
+  : null;
+
+// Falls back to an auto-built nav from published pages when the operator
+// hasn't configured site_settings.navLinks yet (see issue #6 5.1).
+const navLinks: NavLink[] =
+  configuredNavLinks ??
+  (showChrome
+    ? (
+        await db(env.DB, { pages })
+          .select({ title: pages.title, slug: pages.slug })
+          .from(pages)
+          .where(eq(pages.status, "published"))
+          .all()
+      ).map((page) => ({ label: page.title, href: `/${page.slug}` }))
+    : []);
+
+const socialLinks: SocialLink[] = Array.isArray(settings?.socialLinks)
+  ? (settings.socialLinks as SocialLink[])
+  : [];
 ---
 
 <html lang="en" data-theme={`theme-${themeName}`} class={darkModeClass}>
@@ -28,6 +59,7 @@ const darkModeClass = settings?.darkMode ? "dark" : undefined;
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
+		{noindex && <meta name="robots" content="noindex" />}
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link rel="stylesheet" href={`/themes/theme-${themeName}.css`} />
@@ -49,6 +81,23 @@ const darkModeClass = settings?.darkMode ? "dark" : undefined;
 			import { mountPreviewTokenListener } from "../scripts/preview-token-listener";
 			mountPreviewTokenListener();
 		</script>
+		{showChrome && (
+			<SiteNav
+				siteName={settings?.siteName ?? "Thebes"}
+				logoUrl={settings?.logoUrl}
+				links={navLinks}
+				activePath={Astro.url.pathname}
+			/>
+		)}
 		<slot />
+		{showChrome && (
+			<SiteFooter
+				siteName={settings?.siteName ?? "Thebes"}
+				socialLinks={socialLinks}
+				contactEmail={settings?.contactEmail}
+				contactPhone={settings?.contactPhone}
+				contactAddress={settings?.contactAddress}
+			/>
+		)}
 	</body>
 </html>

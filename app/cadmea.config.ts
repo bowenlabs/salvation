@@ -19,6 +19,14 @@ export const pagesCollection = {
       defaultValue: "draft",
     },
     createdAt: { type: "date", mode: "timestamp", defaultValue: "now" },
+    // TipTap-JSON-shaped block array — see app/core/lib/blocks.ts's Block
+    // union. The nested `fields` here is introspection only (not enforced
+    // at write time, see cadmus/cms's array field docs); the real shape
+    // contract lives in blocks.ts.
+    blocks: {
+      type: "array",
+      fields: { type: { type: "text", required: true } },
+    },
   },
 } as const;
 

@@ -22,6 +22,13 @@
       "when": 1782089484323,
       "tag": "0002_loose_lily_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1782108447639,
+      "tag": "0003_ordinary_nick_fury",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,15 @@
+---
+Astro.response.status = 404;
+
+import Layout from "../layouts/layout.astro";
+---
+
+<Layout title="Page not found">
+	<section class="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-[var(--container-padding-x)] text-center">
+		<h1 class="font-display text-4xl font-semibold">404</h1>
+		<p class="text-lg opacity-80">This page could not be found.</p>
+		<a href="/" class="btn btn-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+			Back to home
+		</a>
+	</section>
+</Layout>
