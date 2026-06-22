@@ -1,3 +1,4 @@
+import type { ErrorComponentProps } from "@tanstack/solid-router";
 import { createFileRoute, Outlet, redirect } from "@tanstack/solid-router";
 import {
   getLoginUrl,
@@ -36,6 +37,7 @@ export const Route = createFileRoute("/admin")({
     return { settings, publicSiteUrl, logoutUrl };
   },
   component: AdminLayout,
+  errorComponent: AdminErrorBoundary,
 });
 
 function AdminLayout() {
@@ -49,5 +51,24 @@ function AdminLayout() {
     >
       <Outlet />
     </PanelShell>
+  );
+}
+
+// Catches thrown errors anywhere in /admin/* — loaders, server functions,
+// or render. Reset re-runs the failing route's loader rather than a full
+// page reload, matching TanStack Router's default retry contract.
+function AdminErrorBoundary(props: ErrorComponentProps) {
+  return (
+    <div class="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-[var(--spacing-container-x)] text-center">
+      <h1 class="font-display text-4xl font-semibold">Something went wrong</h1>
+      <p class="text-lg opacity-80">{props.error.message}</p>
+      <button
+        type="button"
+        class="btn btn-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        onClick={() => props.reset()}
+      >
+        Try again
+      </button>
+    </div>
   );
 }
