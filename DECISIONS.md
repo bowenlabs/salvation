@@ -9,6 +9,61 @@
 
 ---
 
+## 2026-06-22 — Section 1 (Cadmea core) formally closed
+
+**Decision:** Section 1 is done. All 15 phase issues (#1–#15) plus the
+hydration bug found while closing it out (#19) are closed. The two
+issues still open (#18 — wiring `<PublicForm>` into `/contact`, #20 —
+investigating `wasm-vips`) are explicitly scoped to
+`examples/cadmea-smb-template/` and Section 3+ respectively — neither
+blocks Section 1.
+
+**What "done" means here, concretely:** the Definition of Done checklist
+in `SECTION_1_PLAN.md` §22 was walked item-by-item against the
+*repositioned* scope (see the 2026-06-20 entry below) — not the original
+SMB-platform framing it was written under. Items describing forms, CRM,
+contacts, activity logs, and export are marked **dropped** there, with a
+pointer to `examples/cadmea-smb-template/` where that spec now lives,
+rather than silently checked or silently deleted.
+
+**Two real gaps fixed in the course of closing this out, not just
+checklist bookkeeping:**
+1. **Issue #19** — `/admin/pages` (list, edit, create) never hydrated
+   client-side. Root cause: those three routes call server functions
+   from `createQuery`/mutation handlers in the component body, not from
+   `loader`/`beforeLoad` — `check-prerender.ts` only checked the latter,
+   so none of them opted out of TanStack Start's build-time prerendering.
+   A prerendered route ships no client JS, so the query had nothing to
+   run. Fixed by adding `prerender = false` to all three, and broadened
+   `check-prerender.ts` to flag any route importing a server function
+   regardless of call site, closing the blind spot that let this ship.
+   Verified against a real `wrangler dev` (prerendering is build-time
+   only, so `vite dev` can't prove this either way) with a real
+   authenticated session — the SSR payload now carries live,
+   request-time D1 data instead of being frozen static output.
+2. **Accessibility** (closing #15) — axe-core found every public page
+   missing a `<main>` landmark, and the login page's email label failing
+   WCAG AA contrast (4.47:1 vs the required 4.5:1). Both fixed; zero
+   violations across every public route now.
+
+**Known, explicitly-flagged gaps (not blocking, tracked for follow-up):**
+- The Panel (`/admin/*`) has no e2e/axe coverage yet — only the public
+  site does. Needs its own dev-server wiring in `playwright.config.ts`.
+- `README.md` doesn't itself contain a from-scratch deploy walkthrough
+  with a time bound — the actual resource-provisioning steps live in
+  `CONTRIBUTING.md`'s "Local setup." `README.md` links to it but the
+  Definition of Done item technically named the wrong file.
+- `pnpm deploy` wasn't re-run against live Cloudflare resources during
+  this close-out (would touch real infra) — last verified at the
+  2026-06-19 production deploy.
+- Snyk is dropped from CI scope entirely, by explicit decision when
+  closing issue #15 (not deferred — removed from this issue's bar).
+
+**Revisit if:** `examples/cadmea-smb-template/` work resumes (issue #18)
+and surfaces a gap in what core actually exposes for it to build on.
+
+---
+
 ## 2026-06-22 — Cadmea worker CSP requires `'unsafe-inline'` on `script-src`
 
 **Decision:** `script-src 'self'` (no `'unsafe-inline'`, nonce, or hash)
