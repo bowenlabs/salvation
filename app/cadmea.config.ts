@@ -20,12 +20,42 @@ export const pagesCollection = {
     },
     createdAt: { type: "date", mode: "timestamp", defaultValue: "now" },
     // TipTap-JSON-shaped block array — see app/core/lib/blocks.ts's Block
-    // union. The nested `fields` here is introspection only (not enforced
-    // at write time, see cadmus/cms's array field docs); the real shape
-    // contract lives in blocks.ts.
+    // union (richText/image/hero/divider — core ships no form/columns
+    // collection to back those example-template-only block types). The
+    // discriminator switches which extra fields CollectionEdit renders
+    // per item based on `type`'s value; storage is still one JSON column
+    // either way (introspection only, not enforced at write time — see
+    // cadmus/cms's array field docs). The real shape contract lives in
+    // blocks.ts.
     blocks: {
       type: "array",
-      fields: { type: { type: "text", required: true } },
+      fields: {
+        type: {
+          type: "select",
+          options: ["richText", "image", "hero", "divider"],
+          required: true,
+        },
+      },
+      discriminator: {
+        key: "type",
+        variants: {
+          richText: {
+            content: { type: "richText" },
+          },
+          image: {
+            url: { type: "upload", required: true },
+            alt: { type: "text", required: true },
+            caption: { type: "text" },
+          },
+          hero: {
+            heading: { type: "text", required: true },
+            subtext: { type: "text" },
+            ctaLabel: { type: "text" },
+            ctaHref: { type: "text" },
+          },
+          divider: {},
+        },
+      },
     },
   },
 } as const;

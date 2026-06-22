@@ -304,12 +304,27 @@ function renderArrayInput(
     );
   }
 
+  function fieldsForItem(
+    item: Record<string, unknown>,
+  ): [string, FieldConfig][] {
+    const base = Object.entries(field.fields);
+    const discriminator = field.discriminator;
+    if (!discriminator) return base;
+
+    const variantValue = item[discriminator.key];
+    const variantFields =
+      typeof variantValue === "string"
+        ? discriminator.variants[variantValue]
+        : undefined;
+    return variantFields ? [...base, ...Object.entries(variantFields)] : base;
+  }
+
   return (
     <div class="flex flex-col gap-3">
       <For each={items()}>
         {(item, index) => (
           <div class="card bg-base-200 flex flex-col gap-2 p-3">
-            <For each={Object.entries(field.fields)}>
+            <For each={fieldsForItem(item)}>
               {([itemKey, itemField]) => {
                 const inputId = `${key}.${index()}.${itemKey}`;
                 return (

@@ -15,6 +15,8 @@ export interface CollectionCreatePageOptions<
   invalidateQueryKey: readonly unknown[];
   /** Called after a successful create+cache-invalidation — wire this to navigate to the new row's edit page. */
   onCreated?: (created: TCreated) => void;
+  /** Forwarded to CollectionEdit — resolves an `upload` field's selected file to a stored URL. */
+  onUploadFile?: (file: File) => Promise<{ url: string }>;
 }
 
 /**
@@ -48,6 +50,7 @@ export function createCollectionCreatePage<
           submitLabel={options.submitLabel ?? "Create"}
           error={error()}
           onSubmit={(values) => create.mutate(values)}
+          onUploadFile={options.onUploadFile}
         />
       </div>
     );

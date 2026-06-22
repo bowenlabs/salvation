@@ -29,6 +29,8 @@ export interface CollectionEditPageOptions {
   invalidateQueryKey: readonly unknown[];
   /** Called after a successful delete+cache-invalidation — wire this to navigate back to the list page. */
   onDeleted?: () => void;
+  /** Forwarded to CollectionEdit — resolves an `upload` field's selected file to a stored URL. */
+  onUploadFile?: (file: File) => Promise<{ url: string }>;
 }
 
 /**
@@ -76,6 +78,7 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
             submitLabel={options.submitLabel ?? "Save changes"}
             error={error()}
             onSubmit={(values) => update.mutate(values)}
+            onUploadFile={options.onUploadFile}
           />
         </Show>
         <button

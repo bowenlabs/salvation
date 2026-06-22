@@ -62,7 +62,29 @@ export interface RelationshipFieldConfig extends BaseFieldConfig {
 
 export interface ArrayFieldConfig extends BaseFieldConfig {
   type: "array";
+  /**
+   * Fields shown for every item, regardless of variant — must include
+   * `discriminator.key`'s own field (typically a `select`) if set.
+   */
   fields: Record<string, FieldConfig>;
+  /**
+   * Lets one array field model a union of item shapes (e.g. page-builder
+   * blocks: image vs hero vs richText vs...) instead of one fixed field
+   * set for every item. `key` names a field already present in `fields`
+   * (rendered as the item's type switcher); `variants` maps each of that
+   * field's possible values to *additional* fields layered on top, shown
+   * only for items whose `key` field currently holds that value. Fields
+   * not listed under any variant (i.e. everything in `fields`) render
+   * unconditionally — that's the place for fields shared across every
+   * variant (e.g. a `caption` every block type has).
+   *
+   * Storage is unaffected either way — `array` is always one JSON column
+   * (see codegen.ts); this only changes what `CollectionEdit` renders.
+   */
+  discriminator?: {
+    key: string;
+    variants: Record<string, Record<string, FieldConfig>>;
+  };
 }
 
 export interface UploadFieldConfig extends BaseFieldConfig {
