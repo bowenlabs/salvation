@@ -1,6 +1,7 @@
 import { createCollectionEditPage } from "@bowenlabs/cadmea/tanstack-start";
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { pagesCollection } from "../../../../../../cadmea.config.js";
+import { uploadMediaFile } from "../../../lib/upload-media";
 import {
   deletePage,
   getPage,
@@ -26,6 +27,7 @@ function EditPagePage() {
     deleteFn: () => deletePage({ data: id() }),
     invalidateQueryKey: ["pages"],
     onDeleted: () => navigate({ to: "/admin/pages" }),
+    onUploadFile: uploadMediaFile,
   });
 
   return <Page />;

@@ -91,6 +91,35 @@ Cloudflare's V8 isolates.
 
 ---
 
+## Media (R2)
+
+Uploaded images go through `POST /api/media/upload` (Worker 2 — Cadmea)
+straight into the `thebes-media` R2 bucket, then are served back from
+`MEDIA_URL` as plain public URLs — no CDN transform layer in Section 1
+(see `app/core/lib/image-service.ts`).
+
+Before relying on uploads in any deployed environment:
+
+1. **Make the bucket public.** `wrangler r2 bucket create thebes-media`
+   only creates the bucket — it isn't reachable over HTTP until you enable
+   public access (R2 dashboard → bucket → Settings → Public access, or
+   attach a custom domain) and confirm in the Cloudflare dashboard.
+2. **Attach a custom domain**, not the default `r2.dev` URL — `r2.dev`
+   URLs are rate-limited and meant for testing only.
+3. **Set `MEDIA_URL`** (a Worker secret in production, `.dev.vars` locally)
+   to that custom domain, with no trailing slash — both Workers read it
+   from the same env var.
+4. **Verify before going live**: upload a test image through the Panel
+   and confirm the returned URL loads directly in a browser, with no
+   auth, before pointing real content at it.
+
+Uploads are validated server-side (image MIME whitelist, 5MB max) before
+ever reaching R2 — never trust a client-reported MIME type beyond that
+whitelist check. See `packages/cadmus/src/storage/index.ts`'s
+`validateImageFile`.
+
+---
+
 ## Philosophy
 
 Cloudflare is an exceptional platform — ethical, privacy-focused, at-cost

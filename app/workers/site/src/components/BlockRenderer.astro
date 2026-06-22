@@ -1,12 +1,18 @@
 ---
+import { env } from "cloudflare:workers";
 import type { Block } from "@core/lib/blocks";
 import { renderRichText } from "@core/lib/blocks";
+import { createR2ImageService } from "@core/lib/image-service";
 
 interface Props {
   blocks: Block[];
 }
 
 const { blocks } = Astro.props;
+// Never read block.url directly — always through ImageService.render(),
+// so swapping in a Cloudflare Images extension later (Section 3+) needs
+// no change here. render() is a pass-through today (see image-service.ts).
+const imageService = createR2ImageService(env.R2, env.MEDIA_URL);
 ---
 
 {
@@ -19,11 +25,17 @@ const { blocks } = Astro.props;
             set:html={renderRichText(block.content)}
           />
         );
-      case "image":
+      case "image": {
+        const rendered = imageService.render({
+          url: block.url,
+          alt: block.alt,
+        });
         return (
           <figure>
             <img
-              src={block.url}
+              src={rendered.src}
+              srcset={rendered.srcset}
+              sizes={rendered.sizes}
               alt={block.alt}
               loading="lazy"
               decoding="async"
@@ -31,6 +43,7 @@ const { blocks } = Astro.props;
             {block.caption && <figcaption>{block.caption}</figcaption>}
           </figure>
         );
+      }
       case "hero":
         return (
           <section class="hero">

@@ -1,6 +1,7 @@
 import { createCollectionCreatePage } from "@bowenlabs/cadmea/tanstack-start";
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { pagesCollection } from "../../../../../../cadmea.config.js";
+import { uploadMediaFile } from "../../../lib/upload-media";
 import { createPage } from "../../../server-functions/pages";
 
 export const Route = createFileRoute("/admin/pages/new")({
@@ -21,6 +22,7 @@ function NewPagePage() {
         to: "/admin/pages/$pageId",
         params: { pageId: String(created.id) },
       }),
+    onUploadFile: uploadMediaFile,
   });
 
   return <Page />;
