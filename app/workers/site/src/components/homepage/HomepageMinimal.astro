@@ -11,7 +11,7 @@ const { settings, heroTitle, heroBody } = Astro.props;
 const ctaHref = settings?.contactEmail ? "/contact" : "/about";
 ---
 
-<section class="flex min-h-[70vh] flex-col items-center justify-center gap-6 px-[var(--container-padding-x)] text-center">
+<section class="flex min-h-[70vh] flex-col items-center justify-center gap-6 px-[var(--spacing-container-x)] text-center">
 	<h1 class="font-display text-5xl font-semibold">{heroTitle}</h1>
 	{heroBody && <p class="max-w-xl text-lg opacity-80">{heroBody}</p>}
 	<a href={ctaHref} class="btn btn-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">

@@ -8,22 +8,47 @@ const redirectTarget = Astro.url.searchParams.get("redirect") ?? "/admin";
 const error = Astro.url.searchParams.get("error");
 ---
 
-<Layout title="Log in — Thebes">
-	<main>
-		<h1>Log in</h1>
+<Layout title="Log in — Thebes" showChrome={false}>
+	<main class="flex min-h-screen flex-col items-center justify-center px-[var(--spacing-container-x)]">
+		<div class="card w-full max-w-sm bg-base-100 shadow-lg">
+			<div class="card-body gap-4">
+				<h1 class="font-display text-2xl font-semibold">Log in</h1>
 
-		{error === "invalid" && <p role="alert">That link is invalid or has expired. Request a new one below.</p>}
-		{error === "unauthorized" && <p role="alert">No account found for that link.</p>}
+				{error === "invalid" && (
+					<p role="alert" class="alert alert-error text-sm">
+						That link is invalid or has expired. Request a new one below.
+					</p>
+				)}
+				{error === "unauthorized" && (
+					<p role="alert" class="alert alert-error text-sm">
+						No account found for that link.
+					</p>
+				)}
 
-		<form id="magic-link-form">
-			<label for="email">Email</label>
-			<input id="email" name="email" type="email" required autocomplete="email" />
-			<input type="hidden" name="redirect" value={redirectTarget} />
-			<button type="submit">Send sign-in link</button>
-		</form>
+				<form id="magic-link-form" class="flex flex-col gap-3">
+					<label for="email" class="label">
+						<span class="label-text">Email</span>
+					</label>
+					<input
+						id="email"
+						name="email"
+						type="email"
+						required
+						autocomplete="email"
+						class="input input-bordered w-full"
+					/>
+					<input type="hidden" name="redirect" value={redirectTarget} />
+					<button type="submit" class="btn btn-primary mt-2">Send sign-in link</button>
+				</form>
 
-		<p id="magic-link-sent" hidden>Check your email for a sign-in link.</p>
-		<p id="magic-link-dev-notice" hidden>Dev mode — the link was logged to the server console instead of emailed.</p>
+				<p id="magic-link-sent" hidden class="text-sm opacity-80">
+					Check your email for a sign-in link.
+				</p>
+				<p id="magic-link-dev-notice" hidden class="text-sm opacity-80">
+					Dev mode — the link was logged to the server console instead of emailed.
+				</p>
+			</div>
+		</div>
 	</main>
 
 	<script>

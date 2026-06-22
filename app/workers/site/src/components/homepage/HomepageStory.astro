@@ -10,7 +10,7 @@ interface Props {
 const { settings, heroTitle, heroBody } = Astro.props;
 ---
 
-<section class="container mx-auto max-w-2xl px-[var(--container-padding-x)] py-[var(--section-padding-y)] text-center">
+<section class="container mx-auto max-w-2xl px-[var(--spacing-container-x)] py-[var(--spacing-section-y)] text-center">
 	{settings?.tagline && <p class="font-display text-sm uppercase tracking-widest opacity-70">{settings.tagline}</p>}
 	<h1 class="mt-4 font-display text-4xl font-semibold">{heroTitle}</h1>
 	{heroBody && <p class="mt-6 text-lg leading-relaxed opacity-80">{heroBody}</p>}

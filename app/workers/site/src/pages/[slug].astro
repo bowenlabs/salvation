@@ -35,7 +35,7 @@ const blocks = parseBlocks(page.blocks);
 ---
 
 <Layout title={page.title}>
-	<article class="container mx-auto max-w-3xl px-[var(--container-padding-x)] py-[var(--section-padding-y)]">
+	<article class="container mx-auto max-w-3xl px-[var(--spacing-container-x)] py-[var(--spacing-section-y)]">
 		<h1 class="font-display text-3xl font-semibold">{page.title}</h1>
 		<div class="mt-8">
 			<BlockRenderer blocks={blocks} />

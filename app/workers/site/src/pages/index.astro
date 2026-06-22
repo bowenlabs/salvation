@@ -42,7 +42,7 @@ const HomepageVariant =
 <Layout title={settings?.siteName ?? "Thebes"}>
 	<HomepageVariant settings={settings} heroTitle={heroTitle} heroBody={heroBody} />
 	{blocks.length > 0 && (
-		<div class="container mx-auto px-[var(--container-padding-x)] py-[var(--section-padding-y)]">
+		<div class="container mx-auto px-[var(--spacing-container-x)] py-[var(--spacing-section-y)]">
 			<BlockRenderer blocks={blocks} />
 		</div>
 	)}
