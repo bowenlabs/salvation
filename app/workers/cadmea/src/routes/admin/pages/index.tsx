@@ -1,4 +1,4 @@
-import { CollectionList } from "@core/components/cms/CollectionList";
+import { CollectionList } from "@bowenlabs/cadmea";
 import { createQuery } from "@tanstack/solid-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Show } from "solid-js";

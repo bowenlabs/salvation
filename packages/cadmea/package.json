@@ -1,0 +1,50 @@
+{
+  "name": "@bowenlabs/cadmea",
+  "version": "0.1.0",
+  "description": "Generic SolidJS admin-UI components for @bowenlabs/cadmus/cms collections",
+  "author": "BowenLabs <hello@bowenlabs.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bowenlabs/project-thebes",
+    "directory": "packages/cadmea"
+  },
+  "keywords": [
+    "cloudflare",
+    "cms",
+    "solidjs",
+    "tanstack-start",
+    "admin-ui"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@bowenlabs/cadmus": "workspace:*",
+    "solid-js": ">=1.9.0"
+  },
+  "devDependencies": {
+    "@solidjs/testing-library": "latest",
+    "@testing-library/dom": "latest",
+    "@testing-library/jest-dom": "latest",
+    "@bowenlabs/cadmus": "workspace:*",
+    "jsdom": "latest",
+    "solid-js": "^1.9.13",
+    "typescript": "latest",
+    "vite-plugin-solid": "latest",
+    "vitest": "latest"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
+}

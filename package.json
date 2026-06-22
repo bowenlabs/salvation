@@ -26,8 +26,9 @@
     "seed": "tsx app/seed.ts",
     "lint": "biome check . && tsx app/scripts/check-prerender.ts",
     "format": "biome format --write .",
-    "test": "pnpm test:cadmus && pnpm test:int && pnpm test:e2e",
+    "test": "pnpm test:cadmus && pnpm test:cadmea-pkg && pnpm test:int && pnpm test:e2e",
     "test:cadmus": "pnpm --filter @bowenlabs/cadmus test",
+    "test:cadmea-pkg": "pnpm --filter @bowenlabs/cadmea test",
     "test:int": "vitest run tests/int",
     "test:e2e": "playwright test"
   },

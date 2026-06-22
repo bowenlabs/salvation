@@ -9,6 +9,63 @@
 
 ---
 
+## 2026-06-22 — `@bowenlabs/cadmea` package extracted; admin-UI components no longer live inline in the app
+
+**Decision:** Executed the extraction deferred in the previous entry. New
+`packages/cadmea/` package, mirroring Payload's split between engine
+(`payload` core, already done here as `cadmus/cms`) and UI delivery
+(`@payloadcms/next`/`@payloadcms/ui`). `CollectionList.tsx` and
+`CollectionEdit.tsx` moved from `app/core/components/cms/` into
+`packages/cadmea/src/`, published as `@bowenlabs/cadmea` (workspace
+package, `@bowenlabs/` scope per the prior rename decision).
+`app/workers/cadmea` now depends on it like any other package rather than
+owning the components directly — the same relationship Payload's own
+example apps have to `@payloadcms/next`.
+
+**Built as source, not a tsup bundle — deliberately different from
+`packages/cadmus`'s build:** Cadmus is pure TS with no JSX, so tsup/esbuild
+compiles it correctly. Cadmea is SolidJS, and Solid's JSX must go through
+`babel-preset-solid` to produce its fine-grained-reactive output — plain
+esbuild JSX transform would silently produce React-style (non-reactive)
+output. Rather than wire up a Solid-aware bundler (e.g. `tsup-preset-solid`)
+for two small components, `package.json`'s `exports` map points directly
+at `./src/index.ts`. Vite (already in `app/workers/cadmea`'s toolchain via
+`vite-plugin-solid`) processes the workspace-linked package's `.tsx`
+source directly — confirmed working: `pnpm build` bundles
+`CollectionEdit-*.js` correctly from the package into the Worker's output.
+Revisit if this is ever published outside the monorepo (an external
+consumer's bundler may not be configured for Solid JSX in a dependency).
+
+**Real pre-existing bug found and fixed while verifying:** `/admin/pages`
+has apparently never actually rendered at runtime — `useQuery`/`useMutation`
+calls throughout the pages routes had no `QueryClientProvider` anywhere in
+the app, throwing `Cannot read properties of undefined (reading
+'defaultQueryOptions')` the moment a query tried to run. Unrelated to
+today's extraction (the crash is in `PagesPage` itself, before
+`CollectionList` ever renders) but only surfaced because verifying the
+extraction required actually checking rendered output, not just HTTP
+status codes. Fixed: `QueryClient` is now created fresh inside
+`getRouter()` (`app/workers/cadmea/src/router.tsx`) — not at module scope,
+since Workers reuse the same isolate (and its module state) across
+requests, and a singleton would leak one admin's query cache into
+another's response — attached to the router context via
+`createRootRouteWithContext`, and provided via `<QueryClientProvider>` in
+`__root.tsx`.
+
+**Verified:** `pnpm test:cadmea-pkg` (8/8, new), `pnpm test:cadmus`
+(85/85, unaffected), `pnpm lint`, `pnpm build` (all three), and a live
+`wrangler dev` check confirming `/admin/pages` now renders the page
+chrome without the prior crash (full query-resolution render is streamed/
+hydration-dependent, not visible in a single `curl`, but the crash itself
+is gone and the correct components are present in the bundle).
+
+**Revisit if:** more collections get added — at that point a real
+route-mounting helper (the part of Payload's `@payloadcms/next` this
+extraction didn't attempt, since one collection doesn't justify designing
+that API yet) becomes worth building.
+
+---
+
 ## 2026-06-22 — Rename: Citadel → Cadmea; apps/citadel → app/; docs/ folded into workers/site
 
 **Decision:** "Citadel" was always meant to be the generic word for what

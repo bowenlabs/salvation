@@ -1,4 +1,4 @@
-import { CollectionEdit } from "@core/components/cms/CollectionEdit";
+import { CollectionEdit } from "@bowenlabs/cadmea";
 import { createMutation, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { createSignal } from "solid-js";

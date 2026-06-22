@@ -1,4 +1,4 @@
-import { CollectionEdit } from "@core/components/cms/CollectionEdit";
+import { CollectionEdit } from "@bowenlabs/cadmea";
 import {
   createMutation,
   createQuery,
