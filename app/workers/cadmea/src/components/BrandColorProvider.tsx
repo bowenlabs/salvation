@@ -3,6 +3,7 @@ import {
   type TokenStyleInput,
 } from "@core/lib/design-system/build-token-style";
 import { createEffect, createSignal, type JSX } from "solid-js";
+import { useDesignPreviewOverrides } from "./design-preview-context";
 
 export interface BrandColorProviderProps extends TokenStyleInput {
   darkMode?: boolean;
@@ -33,12 +34,20 @@ function applyPanelTokens(
 // Sole writer of `data-theme` in the Panel — see ThemeToggle.tsx and
 // __root.tsx's comments on the naming collision this resolves. Mounted in
 // __root.tsx wrapping the route tree, fed by the getCadmeaSiteSettings
-// server function.
+// server function. Merges in any uncommitted edits from the /admin/design
+// route (via DesignPreviewContext) so the Panel re-themes live, before the
+// owner saves — see design-preview-context.tsx.
 export default function BrandColorProvider(props: BrandColorProviderProps) {
+  const [overrides] = useDesignPreviewOverrides();
   const [activeTheme, setActiveTheme] = createSignal(props.theme ?? "citadel");
 
   createEffect(() => {
-    applyPanelTokens(props, setActiveTheme);
+    const effective: BrandColorProviderProps = {
+      ...props,
+      ...overrides(),
+      children: props.children,
+    };
+    applyPanelTokens(effective, setActiveTheme);
   });
 
   return (

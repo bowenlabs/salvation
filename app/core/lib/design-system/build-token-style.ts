@@ -4,6 +4,7 @@
 // override logic exists exactly once instead of being copy-pasted three
 // times the way Louise's prior-art version was.
 import { generateColorScale, pickContentColor } from "../color-scale.js";
+import { getFontConfig } from "../font-pairing.js";
 import {
   buildSpacingTokenStyles,
   resolveSpacingTokens,
@@ -25,6 +26,7 @@ export interface TokenStyleInput {
   surfaceBackground?: string | null;
   spacingPreset?: SpacingPreset | string | null;
   typeTokens?: Partial<TypeTokens> | null;
+  fontPairing?: string | null;
 }
 
 const isHex = (v: string | null | undefined): v is string =>
@@ -101,6 +103,16 @@ export function buildTokenStyle(settings: TokenStyleInput): string {
   ];
   for (const [value, variable] of structuralSlots) {
     if (isHex(value)) overrides.push(`  ${variable}: ${value};`);
+  }
+
+  // fontPairing is a separate owner-facing override on top of whichever
+  // font the theme preset itself bakes into theme-{name}.css's own
+  // --font-display-face/--font-body-face — same source-order-wins
+  // mechanism as the color overrides above.
+  if (settings.fontPairing) {
+    const font = getFontConfig(settings.fontPairing);
+    overrides.push(`  --font-display-face: ${font.displayFamily};`);
+    overrides.push(`  --font-body-face: ${font.bodyFamily};`);
   }
 
   if (overrides.length > 0) {
