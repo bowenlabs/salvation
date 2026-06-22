@@ -3,9 +3,14 @@ import { For, Show } from "solid-js";
 
 // Field types that can be rendered as a plain table cell today.
 // `id` is intentionally excluded — it's never a useful list column.
+// `richText`/`array` are structured content, not a sensible table cell;
+// `relationship` has no resolved label available here (CollectionList
+// only receives raw row data, not the related collection's rows) so it'd
+// show a bare numeric id — excluded until that's worth solving.
 function listableFields(config: CollectionConfig): [string, FieldConfig][] {
+  const excluded = new Set(["richText", "array", "relationship"]);
   return Object.entries(config.fields).filter(
-    ([key, field]) => key !== "id" && field.type !== "richText",
+    ([key, field]) => key !== "id" && !excluded.has(field.type),
   );
 }
 

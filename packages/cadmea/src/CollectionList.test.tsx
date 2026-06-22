@@ -57,4 +57,24 @@ describe("CollectionList", () => {
     fireEvent.click(row);
     expect(clicked).toEqual([{ id: 1, title: "Home", slug: "home" }]);
   });
+
+  it("excludes richText, array, and relationship fields from columns", () => {
+    const config: CollectionConfig = {
+      slug: "posts",
+      fields: {
+        id: { type: "number", autoIncrement: true },
+        title: { type: "text", required: true },
+        body: { type: "richText" },
+        links: { type: "array", fields: { label: { type: "text" } } },
+        authorId: { type: "relationship", relationTo: "users" },
+      },
+    };
+    render(() => (
+      <CollectionList config={config} rows={[{ id: 1, title: "Home" }]} />
+    ));
+    expect(screen.getByText("title")).toBeInTheDocument();
+    expect(screen.queryByText("body")).not.toBeInTheDocument();
+    expect(screen.queryByText("links")).not.toBeInTheDocument();
+    expect(screen.queryByText("authorId")).not.toBeInTheDocument();
+  });
 });

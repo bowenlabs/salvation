@@ -35,17 +35,17 @@ export interface DateFieldConfig extends BaseFieldConfig {
   defaultValue?: "now" | Date;
 }
 
-// Full field-type matrix from issue #16. richText/relationship/array/
-// upload are implemented in codegen.ts as of step 4 (JSON-column,
-// integer-or-join-table, JSON-column, and text-column storage,
-// respectively). checkbox alone remains unimplemented — codegen.ts
-// throws CadmusCmsError if it's encountered.
+// Full field-type matrix from issue #16. All six are implemented in
+// codegen.ts: richText/array → JSON column, upload → text column,
+// relationship → integer column (hasMany:false) or join table
+// (hasMany:true), checkbox → integer column with drizzle's boolean mode.
 export interface RichTextFieldConfig extends BaseFieldConfig {
   type: "richText";
 }
 
 export interface CheckboxFieldConfig extends BaseFieldConfig {
   type: "checkbox";
+  defaultValue?: boolean;
 }
 
 export interface RelationshipFieldConfig extends BaseFieldConfig {

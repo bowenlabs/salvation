@@ -96,10 +96,18 @@ function fieldToColumn(
       }
       return column;
     }
+    case "checkbox": {
+      // Same SQLite-integer-as-boolean mapping as the hand-written
+      // boolean columns in app/core/db/schema.ts (darkMode, etc.) — kept
+      // consistent rather than inventing a second boolean convention.
+      let column = integer(columnName, { mode: "boolean" });
+      if (field.required) column = column.notNull();
+      if (field.defaultValue !== undefined) {
+        column = column.default(field.defaultValue);
+      }
+      return column;
+    }
     default:
-      // checkbox alone remains unimplemented — not in issue #16 step 4's
-      // list (relationship/upload/array/richText). Fail loud rather
-      // than silently stub.
       throw new CadmusCmsError(
         `Field type "${(field as FieldConfig).type}" is not yet supported by cadmus/cms codegen`,
       );

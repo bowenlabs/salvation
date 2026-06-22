@@ -1,6 +1,5 @@
 import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { CadmusCmsError } from "../errors.js";
 import {
   cmsConfigToSchema,
   collectionToTable,
@@ -107,13 +106,14 @@ describe("collectionToTable", () => {
     expect(columns.id.columnType).toBe("SQLiteInteger");
   });
 
-  it("throws CadmusCmsError for field types not yet implemented", () => {
-    expect(() =>
-      collectionToTable({
-        slug: "people",
-        fields: { isActive: { type: "checkbox" } },
-      }),
-    ).toThrow(CadmusCmsError);
+  it("stores checkbox fields as a boolean-mode integer column", () => {
+    const table = collectionToTable({
+      slug: "people",
+      fields: { isActive: { type: "checkbox", required: true } },
+    });
+    const columns = getTableColumns(table);
+    expect(columns.isActive.columnType).toBe("SQLiteBoolean");
+    expect(columns.isActive.notNull).toBe(true);
   });
 
   it("stores upload fields as a text column, same shape as text", () => {

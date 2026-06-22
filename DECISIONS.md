@@ -9,6 +9,81 @@
 
 ---
 
+## 2026-06-22 — `@bowenlabs/cadmea`'s `CollectionEdit`/`CollectionList` render all 9 field types
+
+**Decision:** Closes the gap flagged at the end of Phase 4 (see the entry
+below) — `checkbox`, `upload`, `richText`, `array`, and `relationship`
+(`hasMany:false` only) now render in `CollectionEdit`/`CollectionList`,
+alongside the existing `text`/`select`/`number`/`date`. Blocks issue #11
+otherwise.
+
+**`checkbox` needed a `packages/cadmus` fix first, not just UI:**
+`codegen.ts`'s `fieldToColumn()` had a real, separate gap — it threw
+`CadmusCmsError` for `checkbox` (`richText`/`array`/`upload`/`relationship`
+were already generating real columns; checkbox alone wasn't, per issue
+#16 step 4's original scope). Added a `case "checkbox"` generating
+`integer(columnName, { mode: "boolean" })` — the same convention already
+used by the hand-written boolean columns in `app/core/db/schema.ts`
+(`darkMode`, `disableIndexing`, etc.), rather than inventing a second
+boolean representation. The existing test that asserted this throws was
+flipped to assert the real column shape; drizzle reports its
+`columnType` as `"SQLiteBoolean"`, not `"SQLiteInteger"` — worth knowing
+if anyone else hits this, the docs/types don't make that naming obvious.
+
+**`relationship` scoped to `hasMany:false`:** no collection in the repo
+uses either variant today, so `hasMany:true` (join-table-backed
+multi-select) was deliberately deferred rather than built against nothing
+concrete. `CollectionEdit` renders nothing for `hasMany:true` fields
+rather than guessing at a UI.
+
+**`upload`/`relationship` keep `CollectionEdit` storage- and
+collection-agnostic:** neither field type has `CollectionEdit` reach into
+`cadmus/storage` or query another collection directly. Two new optional
+props instead — `onUploadFile: (file: File) => Promise<{ url: string }>`
+(matching `ImageService["upload"]`'s signature) and
+`relationshipOptions: Partial<Record<string, Array<{id, label}>>>` keyed
+by `relationTo` — both filled in by whatever route consumes the
+component, which already has the actual D1/R2 access.
+
+**`richText` uses `@tiptap/core` directly, lazy-loaded:** per CLAUDE.md's
+preference for the framework-agnostic core API over an unofficial
+community port (same call already made for Phosphor icons), `RichTextEditor.tsx`
+wraps `@tiptap/core`'s vanilla `Editor` class in Solid's
+`onMount`/`onCleanup` — no official Solid binding exists. Added
+`@tiptap/core`/`@tiptap/starter-kit` (`^3.27.1`, matching the version
+already pinned in `app/workers/cadmea/package.json`) as real
+`dependencies` of `@bowenlabs/cadmea`, not peers — they're an
+implementation detail of one component, not a framework choice every
+consumer needs to align on.
+
+**Caught and fixed during implementation, not after — TipTap's bundle
+weight:** a first pass statically imported `RichTextEditor` at
+`CollectionEdit.tsx`'s module top. Building `app/workers/cadmea` showed
+this pulled `@tiptap/core` + `@tiptap/starter-kit` + ProseMirror into
+*every* route that imports `CollectionEdit`, including ones with zero
+richText fields — the `pages` route chunk grew from ~9KB to ~806KB
+(200KB gzipped). Fixed by `lazy()`-loading `RichTextEditor` instead
+(wrapped in `<Suspense>` only around the `richText` case, with a
+DaisyUI spinner fallback) — confirmed via a rebuild that the `pages`
+chunk dropped back to ~13KB with the TipTap weight isolated into its own
+~793KB chunk, fetched only when a richText field is actually rendered.
+
+**Verified:** `pnpm --filter @bowenlabs/cadmus test` (85/85),
+`pnpm --filter @bowenlabs/cadmea test` (15/15, 10 new — one per field
+type plus the hasMany:true no-render case and the array add/fill/remove
+round-trip), `pnpm build` (full pipeline), `pnpm lint`. No collection in
+the repo exercises any of these types yet (`pages` still only uses
+`text`/`select`/`date`/`number`) — tests use throwaway collection configs
+inline, not `pages`.
+
+**Revisit if:** `hasMany:true` relationships get a real use case — needs
+join-table query plumbing that doesn't exist yet. Also revisit if
+`RichTextEditor` ever needs to be used outside `CollectionEdit` — it's
+currently unexported from `packages/cadmea/src/index.ts`, deliberately
+kept internal until something concrete needs it directly.
+
+---
+
 ## 2026-06-22 — Phase 4 (design system) complete
 
 **Decision:** Implemented all 12 milestones of issue #5 — six DaisyUI v5
