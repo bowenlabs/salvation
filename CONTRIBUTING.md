@@ -90,7 +90,17 @@ shipping. Cookie scoping on `*.workers.dev` differs from production.
 - Every change must pass `@cloudflare/vitest-pool-workers` tests
 - Every public function must be documented
 
-### Cadmea (`app/workers/cadmea/`)
+### Cadmea admin-UI components (`packages/cadmea/`)
+
+- Bug fixes in `CollectionList`/`CollectionEdit`
+- New field-type renderers (richText, relationship, etc. — see the
+  "not supported by the generic form yet" cases in `CollectionEdit.tsx`)
+- A route-mounting helper, once more than one collection exists to
+  justify designing that API — see DECISIONS.md's 2026-06-22 entry
+- Tests: `@solidjs/testing-library` + `vitest`, run via `pnpm
+  test:cadmea-pkg`
+
+### Cadmea, the app (`app/workers/cadmea/`)
 
 - Bug fixes
 - Accessibility improvements (zero axe-core violations is the bar)

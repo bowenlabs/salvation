@@ -39,7 +39,8 @@ everything that isn't this.
 ```
 thebes/
 ├── packages/
-│   └── cadmus/        @bowenlabs/cadmus — the framework
+│   ├── cadmus/        @bowenlabs/cadmus — the framework
+│   └── cadmea/        @bowenlabs/cadmea — Cadmea's admin-UI components
 ├── app/
 │   ├── workers/site/   docs + marketing for Cadmus and Cadmea, example deployment
 │   └── workers/cadmea/ Cadmea — the reference CMS admin

@@ -66,38 +66,48 @@ See `README.md` for the full version.
 ```
 thebes/
 ├── packages/
-│   └── cadmus/                  ← @bowenlabs/cadmus framework package
+│   ├── cadmus/                  ← @bowenlabs/cadmus framework package
+│   │   ├── src/
+│   │   │   ├── auth/            ← Web Crypto token gen, HMAC, magic link
+│   │   │   ├── cms/             ← collection/field config, schema codegen, Local API, admin meta
+│   │   │   ├── db/              ← Drizzle + D1 helper
+│   │   │   ├── storage/         ← R2 upload/serve, ImageService interface
+│   │   │   ├── cache/           ← CF Cache API + explicit dev bypass
+│   │   │   ├── email/           ← Email Workers send helper
+│   │   │   ├── rate-limit/      ← KV-based rate limiter
+│   │   │   ├── session/         ← KV session read/write/delete
+│   │   │   ├── queues/          ← producer helper, consumer handler, DLQ pattern
+│   │   │   ├── hono/            ← thin Hono wrappers over raw primitives
+│   │   │   ├── errors.ts        ← CadmusError base class + typed subtypes
+│   │   │   └── index.ts         ← re-exports all primitives
+│   │   ├── dist/                ← tsup output (ESM + CJS + .d.ts) — gitignored
+│   │   ├── tsup.config.ts       ← build config
+│   │   ├── package.json         ← name: "@bowenlabs/cadmus", exports map
+│   │   └── README.md
+│   │
+│   └── cadmea/                  ← @bowenlabs/cadmea — Cadmea's admin-UI package
 │       ├── src/
-│       │   ├── auth/            ← Web Crypto token gen, HMAC, magic link
-│       │   ├── cms/             ← collection/field config, schema codegen, Local API, admin meta
-│       │   ├── db/              ← Drizzle + D1 helper
-│       │   ├── storage/         ← R2 upload/serve, ImageService interface
-│       │   ├── cache/           ← CF Cache API + explicit dev bypass
-│       │   ├── email/           ← Email Workers send helper
-│       │   ├── rate-limit/      ← KV-based rate limiter
-│       │   ├── session/         ← KV session read/write/delete
-│       │   ├── queues/          ← producer helper, consumer handler, DLQ pattern
-│       │   ├── hono/            ← thin Hono wrappers over raw primitives
-│       │   ├── errors.ts        ← CadmusError base class + typed subtypes
-│       │   └── index.ts         ← re-exports all primitives
-│       ├── dist/                ← tsup output (ESM + CJS + .d.ts) — gitignored
-│       ├── tsup.config.ts       ← build config
-│       ├── package.json         ← name: "@bowenlabs/cadmus", exports map
+│       │   ├── CollectionList.tsx  ← generic list view, driven by admin meta
+│       │   ├── CollectionEdit.tsx  ← generic edit/create form
+│       │   └── index.ts
+│       ├── package.json         ← name: "@bowenlabs/cadmea"; exports map points
+│       │                          at src/index.ts directly — shipped as Solid
+│       │                          JSX source, not a tsup bundle (see DECISIONS.md
+│       │                          2026-06-22). Consumed by app/workers/cadmea
+│       │                          via Vite's own workspace-package handling.
 │       └── README.md
 │
 ├── app/                          ← Thebes — the one reference app
 │   ├── workers/
 │   │   ├── site/                ← Worker 1: Astro public site — docs + marketing
 │   │   │                          for Cadmus and Cadmea, and the example deployment
-│   │   └── cadmea/               ← Worker 2: TanStack Start CMS/admin (SolidJS)
+│   │   └── cadmea/               ← Worker 2: TanStack Start CMS/admin (SolidJS),
+│   │                               depends on @bowenlabs/cadmea for admin-UI components
 │   ├── core/                    ← app-specific shared code
 │   │   ├── db/
 │   │   │   ├── schema.ts        ← generated from cadmea.config.ts collections
 │   │   │   └── migrations/
-│   │   ├── lib/                 ← app utilities (CMS query helpers, design system, etc.)
-│   │   └── components/
-│   │       ├── site/            ← Astro components
-│   │       └── cms/             ← Solid components (generic collection list/edit views)
+│   │   └── lib/                 ← app utilities (CMS query helpers, design system, etc.)
 │   ├── custom/                  ← operator territory — never overwritten by updates
 │   │   ├── components/
 │   │   ├── extensions/          ← operator custom extensions (Section 3+)
@@ -113,7 +123,7 @@ thebes/
 │   └── with-d1/
 │
 ├── biome.json                   ← covers all packages + app
-├── pnpm-workspace.yaml          ← packages/cadmus, app/workers/*, examples/*
+├── pnpm-workspace.yaml          ← packages/*, app/workers/*, examples/*
 └── package.json                 ← root scripts
 
 ```
@@ -149,6 +159,7 @@ Never let this boundary blur.
 | Framework build | **tsup** → `dist/` (ESM + CJS + `.d.ts`) |
 | Public site SSR | **Astro** with `@astrojs/cloudflare` adapter — Worker 1 |
 | CMS engine | **@bowenlabs/cadmus/cms** — collections, fields, schema codegen, Local API, admin-UI introspection metadata |
+| CMS admin UI components | **@bowenlabs/cadmea** — generic SolidJS list/edit views, driven by the engine's admin metadata; shipped as source, not a bundle (see DECISIONS.md 2026-06-22) |
 | CMS admin | **TanStack Start** (Solid target) — Worker 2, VMFE architecture |
 | CMS data fetching | **@tanstack/solid-query** — server state, API communication |
 | CMS routing | **@tanstack/solid-router** — built into TanStack Start |
