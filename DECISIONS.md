@@ -9,6 +9,143 @@
 
 ---
 
+## 2026-06-22 — Cadmea worker CSP requires `'unsafe-inline'` on `script-src`
+
+**Decision:** `script-src 'self'` (no `'unsafe-inline'`, nonce, or hash)
+silently broke all client-side hydration in the Cadmea worker — TanStack
+Start ships its hydration payload (the `$_TSR`/`$R` data script) and
+`__root.tsx`'s `THEME_INIT_SCRIPT` as inline `<script>` tags. Under that
+CSP, browsers must drop them: SSR HTML still renders correctly (looks
+fine at a glance), but the client never re-executes route components, no
+event listeners attach, and no client-side query (`createQuery`) ever
+fires. Confirmed via direct instrumentation — a component's own
+`console.log` proved it ran server-side but never again client-side.
+Added `'unsafe-inline'` to `script-src` in `app/core/lib/security-headers.ts`.
+
+**Why not a nonce instead:** `@tanstack/start-server-core` declares a
+`nonce?: string` field on its request context type
+(`request-handler.d.ts`), but no published version actually reads or
+applies it — checked the current stable (`1.169.15`) and the `2.0.0-beta.22`
+prerelease line directly (downloaded both, grepped the dist code): neither
+wires that field into the rendered inline scripts. Upgrading wouldn't have
+helped; the feature is reserved-but-unimplemented upstream.
+
+**This likely explains prior "click doesn't work" observations**
+dismissed as dev-tooling flakiness while building issues #10/#11/#12 in
+earlier sessions (ThemeToggle, theme-preset cards, settings tabs) — same
+root cause, not separate bugs.
+
+**Revisit if:** TanStack Start ships a working `nonce` implementation —
+switch to a per-request nonce instead of `'unsafe-inline'` at that point.
+
+---
+
+## 2026-06-22 — `array` fields support discriminated per-item editing
+
+**Decision:** `ArrayFieldConfig` (`packages/cadmus/src/cms/types.ts`)
+gained an optional `discriminator: { key, variants }`. `fields` still
+renders for every item (including the discriminator's own field, normally
+a `select`); `variants` maps each of that field's values to *additional*
+fields layered on top only for items currently holding that value.
+Storage is unaffected — `array` is still one JSON column either way (see
+codegen.ts); this only changes what `CollectionEdit`'s `renderArrayInput`
+renders. `app/cadmea.config.ts`'s `pages.blocks` now models the real
+`Block` union from `app/core/lib/blocks.ts` (`richText | image | hero |
+divider`) instead of a placeholder `{ type: { type: "text" } }` — image
+blocks get a real `upload` field, wired directly into issue #12's
+MediaUploader/`/api/media/upload` pipeline.
+
+**Deferred, not solved by this:** there is still no way for
+`CollectionEdit` itself to drive a live preview of the rendered page —
+this only fixes what fields show per block type in the editor, not a
+WYSIWYG canvas.
+
+---
+
+## 2026-06-22 — Issue #12 (Phase 11 — Media and R2) shipped
+
+**Decision:** `POST /api/media/upload` (Hono route in
+`app/workers/cadmea/app/server.ts`) — session-cookie auth (re-checked
+independently of the route guard, same reasoning as
+`requireSameOriginOrThrow`), same-origin check, KV rate limit
+(20/hour/user), image MIME whitelist + 5MB cap (`validateImageFile`, new
+in `packages/cadmus/src/storage`), `crypto.randomUUID()` keys (no
+filename leakage into R2 keys — `createR2ImageService.upload()` was
+fixed to drop the raw filename it previously appended), returns the
+public `MEDIA_URL` URL. `<MediaUploader>` (drag-and-drop, progress, XHR
+since the browser has no R2 binding) replaces the logoUrl/faviconUrl text
+inputs in Settings → General, and is wired as `onUploadFile` through
+`createCollectionEditPage`/`createCollectionCreatePage` so *any*
+collection's `upload` fields work, not just pages.
+
+**Also fixed while implementing this:** `BlockRenderer.astro`'s image
+block, `SiteNav`/`HomepageGallery`/`coming-soon`'s logo `<img>` tags all
+now read through `ImageService.render()` instead of a raw stored URL —
+zero visual effect today (`render()` is a pass-through, see the 2026-06-17
+"Image service architecture" entry below), but means a future Cloudflare
+Images extension (Section 3+) can swap the implementation without
+hunting down every direct URL read.
+
+**CSP `img-src` needed the `MEDIA_URL` origin added** — uploaded images
+are served from a different host than `'self'` in most deployments; CSP
+is now built per-request in `security-headers.ts` instead of a static
+module-level string, so it can read `env.MEDIA_URL`.
+
+**Deferred to a separate follow-up, not in scope here:** a real
+block-type-aware page-builder UI beyond generic field editing (tracked as
+a discriminated-array-fields improvement, see the entry above — that one
+*is* done; a true visual block canvas is not).
+
+---
+
+## 2026-06-22 — Issue #11 (Phase 10 — Settings and design CMS admin) shipped
+
+**Decision:** Two new Panel routes — `/admin/settings`
+(General/Contact/SEO/Export tabs) and `/admin/design`
+(Theme/Colors/Typography/Spacing tabs) — hand-built, not
+`CollectionEdit`-driven, since `site_settings` is confirmed to stay a
+hand-written Drizzle table, not a `cadmus/cms` collection (see the
+2026-06-21 "`site_settings` stays a hand-written core table" entry).
+`saveSettings`/`saveDesignSettings` server functions follow `pages.ts`'s
+exact auth/CSRF/rate-limit shape. Both pages share one Save button per
+page (not per tab) and a `useBlocker`-based unsaved-changes guard.
+
+**A real gap found and fixed in shared logic:** `buildTokenStyle()`
+(`app/core/lib/design-system/build-token-style.ts`) never applied
+`site_settings.fontPairing` — it loaded the Google Fonts `<link>` but
+never wrote `--font-display-face`/`--font-body-face`, so picking a font
+pairing had zero visual effect anywhere it was already wired (the public
+site, the Panel, the preview-token listener). Fixed once in the shared
+function; all three existing callers benefit.
+
+**Live preview mechanism:** a small Solid context
+(`design-preview-context.tsx`) lets `/admin/design`'s form push
+uncommitted edits up to the already-mounted `<BrandColorProvider>` in
+`__root.tsx` so the Panel itself re-themes before saving, reverting on
+unsaved navigation-away. `<SettingsPreviewPane>` mirrors the same
+postMessage wire format `preview-token-listener.ts` already expected.
+
+**Known dev-only limitation:** the preview iframe needs both Workers on
+the same origin — `pnpm dev`'s `:3000`/`:3001` split means it won't load
+cross-port locally. Works wherever both Workers share one custom domain.
+
+---
+
+## 2026-06-22 — Issue #10 (Phase 9 — Citadel CMS shell) shipped
+
+**Decision:** `<PanelShell>`/`<PanelNav>`/`<PanelHeader>` — mobile
+sidebar with a real focus trap, metadata-driven nav (built from
+`cadmeaConfig.collections`, not a hardcoded link list — see the issue's
+own reframing comment), `/admin/extensions` static placeholder. Nav scope
+is metadata-driven and core-only: Forms/Inbox/Contacts are
+example-template collections, not Cadmea core, so they're deliberately
+not nav items.
+
+**`__root.tsx` now hides the public Header/Footer under `/admin/*`** —
+`<PanelShell>` owns the entire admin chrome instead.
+
+---
+
 ## 2026-06-22 — `@bowenlabs/cadmea`'s `CollectionEdit`/`CollectionList` render all 9 field types
 
 **Decision:** Closes the gap flagged at the end of Phase 4 (see the entry
