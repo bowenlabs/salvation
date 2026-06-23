@@ -16,4 +16,15 @@ export const pages = sqliteTable("pages", {
   metaTitle: text("meta_title"),
   metaDescription: text("meta_description"),
   ogImage: text("og_image"),
+  publishedVersionId: integer("published_version_id"),
+});
+
+export const pages_versions = sqliteTable("pages_versions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  parentId: integer("parent_id").notNull(),
+  versionData: text("version_data", { mode: "json" }).notNull(),
+  status: text("status", { enum: ["draft", "published"] }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date(),
+  ),
 });

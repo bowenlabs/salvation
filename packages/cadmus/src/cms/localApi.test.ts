@@ -3,8 +3,8 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
-import { collectionToTable } from "./codegen.js";
-import { createLocalApi } from "./localApi.js";
+import { collectionToTable, collectionVersionsTable } from "./codegen.js";
+import { createLocalApi, createVersionedLocalApi } from "./localApi.js";
 import type { CollectionConfig } from "./types.js";
 
 // Mirrors the pagesCollection fixture in codegen.test.ts — duplicated
@@ -355,5 +355,194 @@ describe("createLocalApi hooks", () => {
 
     await expect(api.deleteByID(ctx, 999)).rejects.toThrow(CadmusCmsError);
     expect(calls).toEqual([]);
+  });
+});
+
+describe("createVersionedLocalApi", () => {
+  const versionedCollection: CollectionConfig = {
+    ...pagesCollection,
+    versions: { drafts: true },
+    access: {
+      publish: ({ canPublish }: { canPublish: boolean }) => canPublish,
+    },
+  };
+  // A separate table object (not the outer `pagesTable`) so its Drizzle
+  // column map actually includes `publishedVersionId` — collectionToTable
+  // only adds that column when `versions.drafts` is set. Same physical
+  // "pages" SQL table either way (collectionToTable just names it after
+  // `config.slug`); the beforeEach below ALTERs that table to add the
+  // matching SQL column.
+  const versionedTable = collectionToTable(versionedCollection);
+  const versionsTable = collectionVersionsTable(versionedCollection);
+  const versionedApi = createVersionedLocalApi(
+    db,
+    versionedTable,
+    versionsTable,
+    versionedCollection,
+  );
+
+  beforeEach(async () => {
+    await db.run(sql`
+      CREATE TABLE IF NOT EXISTS pages_versions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        parent_id INTEGER NOT NULL,
+        version_data TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at INTEGER
+      )
+    `);
+    await db.run(
+      sql`ALTER TABLE pages ADD COLUMN published_version_id INTEGER`,
+    );
+  });
+
+  afterEach(async () => {
+    await db.run(sql`DROP TABLE IF EXISTS pages_versions`);
+  });
+
+  it("inherits the plain LocalApi methods unchanged", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+    expect(created.title).toBe("Home");
+    const found = await versionedApi.findByID(ctx, created.id);
+    expect(found).toEqual(created);
+  });
+
+  it("saveDraft inserts a version row without touching the main table", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+
+    const draft = await versionedApi.saveDraft(ctx, created.id, {
+      title: "Home (draft edit)",
+    });
+    expect(draft.status).toBe("draft");
+    expect(draft.parentId).toBe(created.id);
+    expect(draft.versionData).toEqual({ title: "Home (draft edit)" });
+
+    // the main row is untouched — saveDraft never writes to it
+    const stillOriginal = await versionedApi.findByID(ctx, created.id);
+    expect(stillOriginal.title).toBe("Home");
+  });
+
+  it("saveDraft does not require a complete document (drafts may be partial)", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+    // omitting required `slug` — saveDraft should not throw for this
+    const draft = await versionedApi.saveDraft(ctx, created.id, {
+      title: "Updated title only",
+    });
+    expect(draft.versionData).toEqual({ title: "Updated title only" });
+  });
+
+  it("saveDraft throws CadmusCmsError for a missing parent id", async () => {
+    await expect(
+      versionedApi.saveDraft(ctx, 999, { title: "X" }),
+    ).rejects.toThrow(CadmusCmsError);
+  });
+
+  it("findVersions returns saved drafts for a parent, newest first", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+    await versionedApi.saveDraft(ctx, created.id, { title: "Edit 1" });
+    await versionedApi.saveDraft(ctx, created.id, { title: "Edit 2" });
+
+    const versions = await versionedApi.findVersions(ctx, created.id);
+    expect(versions).toHaveLength(2);
+    expect(versions[0]?.versionData).toEqual({ title: "Edit 2" });
+    expect(versions[1]?.versionData).toEqual({ title: "Edit 1" });
+  });
+
+  it("publish copies the version's data onto the main row and sets publishedVersionId", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+    const draft = await versionedApi.saveDraft(ctx, created.id, {
+      title: "Published title",
+      slug: "home",
+    });
+
+    const published = await versionedApi.publish(
+      { canPublish: true },
+      draft.id,
+    );
+    expect(published.title).toBe("Published title");
+    expect(published.publishedVersionId).toBe(draft.id);
+
+    const [versionRow] = await versionedApi.findVersions(ctx, created.id);
+    expect(versionRow?.status).toBe("published");
+  });
+
+  it("publish throws CadmusCmsError when the draft is missing a required field", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+    // draft omits the required `slug` — fine to save, not fine to publish
+    const draft = await versionedApi.saveDraft(ctx, created.id, {
+      title: "No slug",
+    });
+
+    await expect(
+      versionedApi.publish({ canPublish: true }, draft.id),
+    ).rejects.toThrow(CadmusCmsError);
+  });
+
+  it("publish throws CadmusAccessDeniedError when the publish access function rejects", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+    const draft = await versionedApi.saveDraft(ctx, created.id, {
+      title: "Should not publish",
+      slug: "home",
+    });
+
+    await expect(
+      versionedApi.publish({ canPublish: false }, draft.id),
+    ).rejects.toThrow(CadmusAccessDeniedError);
+  });
+
+  it("publish throws CadmusCmsError for a missing version id", async () => {
+    await expect(
+      versionedApi.publish({ canPublish: true }, 999),
+    ).rejects.toThrow(CadmusCmsError);
+  });
+
+  it("unpublish clears publishedVersionId without altering the row's data", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+    const draft = await versionedApi.saveDraft(ctx, created.id, {
+      title: "Published title",
+      slug: "home",
+    });
+    await versionedApi.publish({ canPublish: true }, draft.id);
+
+    const unpublished = await versionedApi.unpublish(
+      { canPublish: true },
+      created.id,
+    );
+    expect(unpublished.publishedVersionId).toBeNull();
+    expect(unpublished.title).toBe("Published title");
+  });
+
+  it("unpublish throws CadmusAccessDeniedError when the publish access function rejects", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+    await expect(
+      versionedApi.unpublish({ canPublish: false }, created.id),
+    ).rejects.toThrow(CadmusAccessDeniedError);
   });
 });

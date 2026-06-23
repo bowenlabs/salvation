@@ -1,8 +1,8 @@
 import { env } from "cloudflare:test";
-import { createLocalApi } from "@bowenlabs/cadmus/cms";
+import { createLocalApi, createVersionedLocalApi } from "@bowenlabs/cadmus/cms";
 import { db } from "@bowenlabs/cadmus/db";
 import { pagesCollection } from "../../app/cadmea.config";
-import { pages } from "@core/db/schema.generated";
+import { pages, pages_versions } from "@core/db/schema.generated";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // Closes the coverage gap flagged on issue #15: app/cadmea.config.ts's
@@ -69,5 +69,56 @@ describe("pages Local API (app wiring)", () => {
     });
     const found = await localApi.findByID(ctx, created.id);
     expect(found.blocks).toEqual(blocks);
+  });
+});
+
+// Closes the same coverage gap as above, specifically for
+// createVersionedLocalApi against the real generated `pages_versions`
+// table and migration (app/core/db/migrations) — not just the in-memory
+// fixture covered by packages/cadmus/src/cms/localApi.test.ts.
+describe("pages versioned Local API (app wiring)", () => {
+  const versionedApi = createVersionedLocalApi(
+    db(env.DB),
+    pages,
+    pages_versions,
+    pagesCollection,
+  );
+
+  const ctx = {
+    session: {
+      userId: 1,
+      email: "test@example.com",
+      role: "owner",
+      createdAt: Date.now(),
+    },
+  };
+
+  beforeEach(async () => {
+    await db(env.DB, { pages, pages_versions }).delete(pages_versions);
+    await db(env.DB, { pages, pages_versions }).delete(pages);
+  });
+
+  it("saves a draft, then publishes it onto the real pages table", async () => {
+    const slug = `versioned-${Date.now()}`;
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug,
+      status: "draft",
+    });
+
+    // publish() validates the version's data the same way create/update
+    // do, so the draft must carry every required field — slug included.
+    const draft = await versionedApi.saveDraft(ctx, created.id, {
+      title: "Home (edited)",
+      slug,
+    });
+    expect(draft.status).toBe("draft");
+
+    const published = await versionedApi.publish(ctx, draft.id);
+    expect(published.publishedVersionId).toBe(draft.id);
+    expect(published.title).toBe("Home (edited)");
+
+    const versions = await versionedApi.findVersions(ctx, created.id);
+    expect(versions[0]?.status).toBe("published");
   });
 });

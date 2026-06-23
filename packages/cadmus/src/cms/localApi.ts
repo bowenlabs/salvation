@@ -2,6 +2,7 @@
 // Cadmus is MIT licensed. See LICENSE in the repo root.
 
 import {
+  desc,
   eq,
   type InferInsertModel,
   type InferSelectModel,
@@ -278,6 +279,154 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
       const [row] = await db.delete(table).where(eq(idColumn, id)).returning();
       if (!row) notFound(config, id);
       await runAfterDelete(config, id);
+      return row as InferSelectModel<TTable>;
+    },
+  };
+}
+
+function notFoundVersion(config: CollectionConfig, id: number): never {
+  throw new CadmusCmsError(`No "${config.slug}" version found with id ${id}`);
+}
+
+/**
+ * Extends {@link LocalApi} with draft/publish operations for a collection
+ * that opted in via `CollectionConfig.versions.drafts` (see codegen.ts's
+ * `collectionVersionsTable`). A separate interface (not a wider
+ * `LocalApi`) so non-versioned collections' types don't grow these methods
+ * — TypeScript can't conditionally widen `createLocalApi`'s return type
+ * off a runtime config value, so this is `createVersionedLocalApi`'s own
+ * factory rather than a branch inside `createLocalApi`.
+ *
+ * Scope, deliberately: a document is always created via the inherited
+ * `create()` first (existing behavior, unaffected by versioning) — these
+ * methods operate against an *existing* row. `saveDraft` never validates
+ * required fields (an incomplete draft is valid); `publish` runs the same
+ * full validation `create`/`update` do, since publishing is what makes a
+ * version the public-facing document. Plain `find`/`findByID` are
+ * unchanged by any of this — they always return the main table's current
+ * row regardless of `publishedVersionId`; filtering reads to
+ * published-only content is not this phase's concern.
+ */
+export interface VersionedLocalApi<
+  TTable extends AnyTable,
+  TVersionsTable extends AnyTable,
+  TContext = unknown,
+> extends LocalApi<TTable, TContext> {
+  findVersions(
+    context: TContext,
+    parentId: number,
+  ): Promise<InferSelectModel<TVersionsTable>[]>;
+  /** Inserts a new version row holding `input` as a draft snapshot. */
+  saveDraft(
+    context: TContext,
+    id: number,
+    input: Partial<InferInsertModel<TTable>>,
+  ): Promise<InferSelectModel<TVersionsTable>>;
+  /** Copies a version's snapshot onto the main row and marks it published. */
+  publish(
+    context: TContext,
+    versionId: number,
+  ): Promise<InferSelectModel<TTable>>;
+  /** Clears the main row's published pointer; the row's data is untouched. */
+  unpublish(context: TContext, id: number): Promise<InferSelectModel<TTable>>;
+}
+
+export function createVersionedLocalApi<
+  TTable extends AnyTable,
+  TVersionsTable extends AnyTable,
+  TContext = unknown,
+>(
+  db: BaseSQLiteDatabase<"async", unknown>,
+  table: TTable,
+  versionsTable: TVersionsTable,
+  config: CollectionConfig,
+): VersionedLocalApi<TTable, TVersionsTable, TContext> {
+  const base = createLocalApi<TTable, TContext>(db, table, config);
+  const idColumn = table.id;
+  const versionsIdColumn = versionsTable.id;
+  const versionsParentIdColumn = versionsTable.parentId;
+
+  return {
+    ...base,
+
+    async findVersions(context, parentId) {
+      await checkAccess(config, "read", context);
+      const rows = await db
+        .select()
+        .from(versionsTable)
+        .where(eq(versionsParentIdColumn, parentId))
+        .orderBy(desc(versionsIdColumn));
+      return rows as InferSelectModel<TVersionsTable>[];
+    },
+
+    async saveDraft(context, id, input) {
+      await checkAccess(config, "update", context);
+      const [parent] = await db.select().from(table).where(eq(idColumn, id));
+      if (!parent) notFound(config, id);
+      const data = await runBeforeChange(
+        config,
+        input as Record<string, unknown>,
+      );
+      rejectUnknownFields(config, data);
+      const insertValues = {
+        parentId: id,
+        versionData: data,
+        status: "draft",
+        // biome-ignore lint/suspicious/noExplicitAny: TVersionsTable is abstract here, same rationale as createLocalApi.create's .values() cast
+      } as any;
+      const [row] = await db
+        .insert(versionsTable)
+        .values(insertValues)
+        .returning();
+      return row as InferSelectModel<TVersionsTable>;
+    },
+
+    async publish(context, versionId) {
+      await checkAccess(config, "publish", context);
+      const [version] = await db
+        .select()
+        .from(versionsTable)
+        .where(eq(versionsIdColumn, versionId));
+      if (!version) notFoundVersion(config, versionId);
+      const versionRecord = version as Record<string, unknown>;
+      const data = await runBeforeChange(
+        config,
+        versionRecord.versionData as Record<string, unknown>,
+      );
+      validateRequiredFields(config, data);
+      rejectUnknownFields(config, data);
+      const parentId = versionRecord.parentId as number;
+      let doc: InferSelectModel<TTable> | undefined;
+      try {
+        const [row] = await db
+          .update(table)
+          // biome-ignore lint/suspicious/noExplicitAny: see createLocalApi.update's .set() cast
+          .set({ ...data, publishedVersionId: versionId } as any)
+          .where(eq(idColumn, parentId))
+          .returning();
+        if (!row) notFound(config, parentId);
+        doc = row as InferSelectModel<TTable>;
+      } catch (error) {
+        wrapWriteError(config, error);
+      }
+      await db
+        .update(versionsTable)
+        // biome-ignore lint/suspicious/noExplicitAny: status is a fixed two-value enum column
+        .set({ status: "published" } as any)
+        .where(eq(versionsIdColumn, versionId));
+      await runAfterChange(config, doc as Record<string, unknown>);
+      return doc as InferSelectModel<TTable>;
+    },
+
+    async unpublish(context, id) {
+      await checkAccess(config, "publish", context);
+      const [row] = await db
+        .update(table)
+        // biome-ignore lint/suspicious/noExplicitAny: publishedVersionId is a bookkeeping column generated by codegen, not part of InferInsertModel<TTable>
+        .set({ publishedVersionId: null } as any)
+        .where(eq(idColumn, id))
+        .returning();
+      if (!row) notFound(config, id);
       return row as InferSelectModel<TTable>;
     },
   };

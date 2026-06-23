@@ -1,7 +1,7 @@
-import { createLocalApi } from "@bowenlabs/cadmus/cms";
+import { createVersionedLocalApi } from "@bowenlabs/cadmus/cms";
 import { db } from "@bowenlabs/cadmus/db";
 import { checkRateLimit } from "@bowenlabs/cadmus/rate-limit";
-import { pages } from "@core/db/schema.generated";
+import { pages, pages_versions } from "@core/db/schema.generated";
 import { createServerFn } from "@tanstack/solid-start";
 import type { PagesAccessContext } from "../../../../cadmea.config.js";
 import { pagesCollection } from "../../../../cadmea.config.js";
@@ -12,11 +12,11 @@ import {
 
 async function pagesApi() {
   const { env } = await import("cloudflare:workers");
-  return createLocalApi<typeof pages, PagesAccessContext>(
-    db(env.DB),
-    pages,
-    pagesCollection,
-  );
+  return createVersionedLocalApi<
+    typeof pages,
+    typeof pages_versions,
+    PagesAccessContext
+  >(db(env.DB), pages, pages_versions, pagesCollection);
 }
 
 // beforeLoad route guards (src/routes/admin/route.tsx) only run during
@@ -73,4 +73,40 @@ export const deletePage = createServerFn({ method: "POST" })
     await requireSameOriginOrThrow();
     await checkWriteRateLimit(session);
     return (await pagesApi()).deleteByID({ session }, id);
+  });
+
+export const getPageVersions = createServerFn({ method: "GET" })
+  .validator((id: number) => id)
+  .handler(async ({ data: id }) => {
+    const session = await requireAuthOrThrow();
+    return (await pagesApi()).findVersions({ session }, id);
+  });
+
+export const saveDraft = createServerFn({ method: "POST" })
+  .validator((input: { id: number; values: Record<string, unknown> }) => input)
+  .handler(async ({ data }) => {
+    const session = await requireAuthOrThrow();
+    await requireSameOriginOrThrow();
+    await checkWriteRateLimit(session);
+    // biome-ignore lint/suspicious/noExplicitAny: validator only constrains the runtime shape, not the Local API's inferred insert type
+    const values = data.values as any;
+    return (await pagesApi()).saveDraft({ session }, data.id, values);
+  });
+
+export const publishPage = createServerFn({ method: "POST" })
+  .validator((versionId: number) => versionId)
+  .handler(async ({ data: versionId }) => {
+    const session = await requireAuthOrThrow();
+    await requireSameOriginOrThrow();
+    await checkWriteRateLimit(session);
+    return (await pagesApi()).publish({ session }, versionId);
+  });
+
+export const unpublishPage = createServerFn({ method: "POST" })
+  .validator((id: number) => id)
+  .handler(async ({ data: id }) => {
+    const session = await requireAuthOrThrow();
+    await requireSameOriginOrThrow();
+    await checkWriteRateLimit(session);
+    return (await pagesApi()).unpublish({ session }, id);
   });

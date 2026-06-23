@@ -122,7 +122,32 @@ export function collectionToTable(config: CollectionConfig) {
     if (field.type === "relationship" && field.hasMany) continue;
     columns[key] = fieldToColumn(key, field);
   }
+  // Bookkeeping column, not a content field — absent from config.fields so
+  // admin-UI introspection (meta.ts) never sees it. Null until the first
+  // publish; createVersionedLocalApi.publish() sets it, .unpublish() clears
+  // it. See collectionVersionsTable below for the table it points into.
+  if (config.versions?.drafts) {
+    columns.publishedVersionId = integer("published_version_id");
+  }
   return sqliteTable(config.slug, columns);
+}
+
+// One row per saved version (draft or published) of a document, keyed by
+// `parentId` (the main table's row id — no SQL FK constraint, same
+// deferred-FK precedent as relationship fields above). `versionData` is
+// the full document snapshot as JSON, independent of the main table's
+// columns — so a draft can hold an incomplete/invalid-for-publish shape
+// without touching the main row at all.
+export function collectionVersionsTable(config: CollectionConfig) {
+  return sqliteTable(`${config.slug}_versions`, {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    parentId: integer("parent_id").notNull(),
+    versionData: text("version_data", { mode: "json" }).notNull(),
+    status: text("status", { enum: ["draft", "published"] }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+  });
 }
 
 // For each hasMany relationship field in a collection, builds a join
@@ -151,11 +176,23 @@ export function relationshipJoinTables(
 
 export function cmsConfigToSchema(
   config: CmsConfig,
-): Record<string, ReturnType<typeof collectionToTable>> {
-  const schema: Record<string, ReturnType<typeof collectionToTable>> = {};
+): Record<
+  string,
+  | ReturnType<typeof collectionToTable>
+  | ReturnType<typeof collectionVersionsTable>
+> {
+  const schema: Record<
+    string,
+    | ReturnType<typeof collectionToTable>
+    | ReturnType<typeof collectionVersionsTable>
+  > = {};
   for (const collection of config.collections) {
     schema[collection.slug] = collectionToTable(collection);
     Object.assign(schema, relationshipJoinTables(collection));
+    if (collection.versions?.drafts) {
+      schema[`${collection.slug}_versions`] =
+        collectionVersionsTable(collection);
+    }
   }
   return schema;
 }

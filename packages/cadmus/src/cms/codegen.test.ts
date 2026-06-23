@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   cmsConfigToSchema,
   collectionToTable,
+  collectionVersionsTable,
   relationshipJoinTables,
 } from "./codegen.js";
 import type { CollectionConfig } from "./types.js";
@@ -173,6 +174,39 @@ describe("collectionToTable", () => {
   });
 });
 
+describe("collectionToTable versioning", () => {
+  it("adds no publishedVersionId column when versions.drafts is unset", () => {
+    const table = collectionToTable(pagesCollection);
+    const columns = getTableColumns(table);
+    expect(columns.publishedVersionId).toBeUndefined();
+  });
+
+  it("adds a nullable publishedVersionId integer column when versions.drafts is true", () => {
+    const table = collectionToTable({
+      ...pagesCollection,
+      versions: { drafts: true },
+    });
+    const columns = getTableColumns(table);
+    expect(columns.publishedVersionId.columnType).toBe("SQLiteInteger");
+    expect(columns.publishedVersionId.notNull).toBe(false);
+  });
+});
+
+describe("collectionVersionsTable", () => {
+  it("builds a versions table keyed by parentId with a JSON snapshot and status", () => {
+    const table = collectionVersionsTable(pagesCollection);
+    const columns = getTableColumns(table);
+    expect(Object.keys(columns).sort()).toEqual(
+      ["id", "parentId", "versionData", "status", "createdAt"].sort(),
+    );
+    expect(columns.id.primary).toBe(true);
+    expect(columns.parentId.notNull).toBe(true);
+    expect(columns.versionData.columnType).toBe("SQLiteTextJson");
+    expect(columns.versionData.notNull).toBe(true);
+    expect(columns.status.enumValues).toEqual(["draft", "published"]);
+  });
+});
+
 describe("relationshipJoinTables", () => {
   it("builds a join table for a hasMany relationship field", () => {
     const config: CollectionConfig = {
@@ -205,6 +239,13 @@ describe("cmsConfigToSchema", () => {
     const directColumns = getTableColumns(collectionToTable(pagesCollection));
     const schemaColumns = getTableColumns(schema.pages);
     expect(Object.keys(schemaColumns)).toEqual(Object.keys(directColumns));
+  });
+
+  it("includes the versions table alongside the main table when versions.drafts is set", () => {
+    const schema = cmsConfigToSchema({
+      collections: [{ ...pagesCollection, versions: { drafts: true } }],
+    });
+    expect(Object.keys(schema).sort()).toEqual(["pages", "pages_versions"]);
   });
 
   it("includes hasMany relationship join tables alongside the main tables", () => {

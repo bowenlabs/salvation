@@ -109,6 +109,31 @@ describe("generateSchemaSource", () => {
     expect(source).toContain('author: integer("author").notNull()');
   });
 
+  it("emits no publishedVersionId column or versions table for a collection without versions.drafts", () => {
+    const source = generateSchemaSource({ collections: [pagesCollection] });
+    expect(source).not.toContain("publishedVersionId");
+    expect(source).not.toContain("pages_versions");
+  });
+
+  it("emits a publishedVersionId column and a versions table when versions.drafts is set", () => {
+    const source = generateSchemaSource({
+      collections: [{ ...pagesCollection, versions: { drafts: true } }],
+    });
+    expect(source).toContain(
+      'publishedVersionId: integer("published_version_id")',
+    );
+    expect(source).toContain(
+      'export const pages_versions = sqliteTable("pages_versions"',
+    );
+    expect(source).toContain('parentId: integer("parent_id").notNull()');
+    expect(source).toContain(
+      'versionData: text("version_data", { mode: "json" }).notNull()',
+    );
+    expect(source).toContain(
+      'status: text("status", { enum: ["draft", "published"] }).notNull()',
+    );
+  });
+
   it("emits no column for a hasMany:true relationship, plus a join table block", () => {
     const source = generateSchemaSource({
       collections: [

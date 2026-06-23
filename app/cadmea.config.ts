@@ -18,6 +18,13 @@ function requireSessionOrInternal({ session, internal }: PagesAccessContext) {
   return internal === true || session !== null;
 }
 
+// Publishing is a separate privilege from editing a draft (Payload's own
+// model) — for Section 1's single-owner setup this is currently the same
+// rule as create/update/delete, but kept as its own access key so a
+// future role split (e.g. "editor" can draft, only "owner" can publish)
+// is a one-line change here, not a new code path.
+const requirePublishPermission = requireSessionOrInternal;
+
 // The base `pages` definition. NOTE: consumers must not import this — they
 // import the resolved `pagesCollection` below, which is this definition
 // *after* plugins have run (e.g. the SEO plugin's injected meta fields and
@@ -36,7 +43,15 @@ const pagesBase = {
     create: requireSessionOrInternal,
     update: requireSessionOrInternal,
     delete: requireSessionOrInternal,
+    publish: requirePublishPermission,
   },
+  // Real draft/published separation with version history — see
+  // packages/cadmus/src/cms/localApi.ts's createVersionedLocalApi. The main
+  // `pages` row always holds the published snapshot (or null content
+  // fields before the first publish); edits go through saveDraft/publish
+  // rather than the inherited update() directly once a page has been
+  // created.
+  versions: { drafts: true },
   fields: {
     id: { type: "number", autoIncrement: true },
     title: { type: "text", required: true },

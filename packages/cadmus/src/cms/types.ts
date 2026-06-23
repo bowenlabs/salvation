@@ -123,6 +123,12 @@ export interface CollectionAccess {
   read?: AccessFn;
   update?: AccessFn;
   delete?: AccessFn;
+  /**
+   * Gates `VersionedLocalApi.publish`/`unpublish` (see createVersionedLocalApi
+   * in localApi.ts). Separate from `update` — publishing is a distinct
+   * privilege from editing a draft, matching Payload's own model.
+   */
+  publish?: AccessFn;
 }
 
 /**
@@ -158,6 +164,19 @@ export interface CollectionConfig {
   access?: CollectionAccess;
   /** Lifecycle hooks, enforced by `createLocalApi`. See {@link CollectionHooks}. */
   hooks?: CollectionHooks;
+  /**
+   * Opts this collection into draft/version history. When `drafts` is
+   * true, codegen (see codegen.ts/schema-gen.ts) generates a companion
+   * `${slug}_versions` table and a nullable `published_version_id` pointer
+   * column on the main table, and `createVersionedLocalApi` (localApi.ts)
+   * becomes usable against it. Collections without this stay exactly as
+   * before — no versions table, no extra column, only `createLocalApi`.
+   */
+  versions?: {
+    drafts?: boolean;
+    /** Reserved for future pruning of old versions; not enforced yet. */
+    maxPerDoc?: number;
+  };
 }
 
 /**

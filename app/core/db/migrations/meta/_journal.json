@@ -36,6 +36,13 @@
       "when": 1782166225596,
       "tag": "0004_shallow_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1782235558877,
+      "tag": "0005_many_hairball",
+      "breakpoints": true
     }
   ]
 }

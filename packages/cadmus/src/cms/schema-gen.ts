@@ -100,16 +100,40 @@ function collectionToTableSource(
   config: CollectionConfig,
   usedBuilders: Set<string>,
 ): string {
-  const fields = Object.entries(config.fields)
+  const fieldLines = Object.entries(config.fields)
     // hasMany relationships have no column on this table — emitted as a
     // separate join table instead (see relationshipJoinTableSource).
     .filter(([, field]) => !(field.type === "relationship" && field.hasMany))
     .map(
       ([key, field]) =>
         `  ${key}: ${fieldToColumnSource(key, field, usedBuilders)},`,
-    )
-    .join("\n");
-  return `export const ${config.slug} = sqliteTable(${quote(config.slug)}, {\n${fields}\n});`;
+    );
+  // Mirrors codegen.ts's collectionToTable: a bookkeeping column, not a
+  // content field, present only when this collection opts into versioning.
+  if (config.versions?.drafts) {
+    usedBuilders.add("integer");
+    fieldLines.push('  publishedVersionId: integer("published_version_id"),');
+  }
+  return `export const ${config.slug} = sqliteTable(${quote(config.slug)}, {\n${fieldLines.join("\n")}\n});`;
+}
+
+// Mirrors codegen.ts's collectionVersionsTable.
+function versionsTableSource(
+  config: CollectionConfig,
+  usedBuilders: Set<string>,
+): string {
+  usedBuilders.add("integer");
+  usedBuilders.add("text");
+  const tableName = `${config.slug}_versions`;
+  return (
+    `export const ${tableName} = sqliteTable(${quote(tableName)}, {\n` +
+    '  id: integer("id").primaryKey({ autoIncrement: true }),\n' +
+    '  parentId: integer("parent_id").notNull(),\n' +
+    '  versionData: text("version_data", { mode: "json" }).notNull(),\n' +
+    '  status: text("status", { enum: ["draft", "published"] }).notNull(),\n' +
+    '  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),\n' +
+    "});"
+  );
 }
 
 // Mirrors codegen.ts's relationshipJoinTables, emitting one
@@ -147,6 +171,9 @@ export function generateSchemaSource(config: CmsConfig): string {
   const blocks = config.collections.flatMap((collection) => [
     collectionToTableSource(collection, usedBuilders),
     ...relationshipJoinTableSources(collection, usedBuilders),
+    ...(collection.versions?.drafts
+      ? [versionsTableSource(collection, usedBuilders)]
+      : []),
   ]);
   const importList = [...usedBuilders].sort().join(", ");
   return [
