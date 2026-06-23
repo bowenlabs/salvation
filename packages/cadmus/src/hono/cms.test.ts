@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { CadmusCmsError } from "../errors.js";
+import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
 import { mountCmsRoutes } from "./cms.js";
 
 interface Widget {
@@ -18,17 +18,17 @@ function createFakeWidgetsApi() {
   let nextId = 3;
 
   return {
-    async find() {
+    async find(_context: unknown) {
       return rows;
     },
-    async findByID(id: number) {
+    async findByID(_context: unknown, id: number) {
       const row = rows.find((r) => r.id === id);
       if (!row) {
         throw new CadmusCmsError(`No "widgets" document found with id ${id}`);
       }
       return row;
     },
-    async create(input: { name: string }) {
+    async create(_context: unknown, input: { name: string }) {
       if (!input.name) {
         throw new CadmusCmsError(
           'Missing required field "name" for collection "widgets"',
@@ -38,7 +38,7 @@ function createFakeWidgetsApi() {
       rows.push(row);
       return row;
     },
-    async update(id: number, input: Partial<Widget>) {
+    async update(_context: unknown, id: number, input: Partial<Widget>) {
       const row = rows.find((r) => r.id === id);
       if (!row) {
         throw new CadmusCmsError(`No "widgets" document found with id ${id}`);
@@ -46,7 +46,7 @@ function createFakeWidgetsApi() {
       Object.assign(row, input);
       return row;
     },
-    async deleteByID(id: number) {
+    async deleteByID(_context: unknown, id: number) {
       const index = rows.findIndex((r) => r.id === id);
       if (index === -1) {
         throw new CadmusCmsError(`No "widgets" document found with id ${id}`);
@@ -55,13 +55,13 @@ function createFakeWidgetsApi() {
       return row;
     },
     // test-only helper to simulate a unique-constraint failure
-    async createDuplicate() {
+    async createDuplicate(_context: unknown) {
       throw new CadmusCmsError(
         'Unique constraint violated for collection "widgets"',
       );
     },
     // test-only helper to simulate a genuine bug, not a CMS-level error
-    async throwUnexpected() {
+    async throwUnexpected(_context: unknown) {
       throw new Error("boom");
     },
   };
@@ -149,6 +149,26 @@ describe("mountCmsRoutes", () => {
       body: JSON.stringify({ name: "Dup" }),
     });
     expect(res.status).toBe(409);
+  });
+
+  it("returns 403 when the Local API rejects access", async () => {
+    const widgetsApi = createFakeWidgetsApi();
+    const app = new Hono();
+    mountCmsRoutes(app, {
+      collections: {
+        widgets: {
+          ...widgetsApi,
+          find: async () => {
+            throw new CadmusAccessDeniedError(
+              'Access denied for "read" on collection "widgets"',
+            );
+          },
+          // biome-ignore lint/suspicious/noExplicitAny: simulating find() throwing CadmusAccessDeniedError
+        } as any,
+      },
+    });
+    const res = await app.request("/api/widgets");
+    expect(res.status).toBe(403);
   });
 
   it("returns 400 for an unknown collection", async () => {

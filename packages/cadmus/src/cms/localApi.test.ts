@@ -1,8 +1,8 @@
 import { env } from "cloudflare:test";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CadmusCmsError } from "../errors.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
 import { collectionToTable } from "./codegen.js";
 import { createLocalApi } from "./localApi.js";
 import type { CollectionConfig } from "./types.js";
@@ -28,6 +28,10 @@ const pagesCollection: CollectionConfig = {
 const pagesTable = collectionToTable(pagesCollection);
 const db = drizzle(env.DB);
 const localApi = createLocalApi(db, pagesTable, pagesCollection);
+// pagesCollection has no `access` configured, so any context is allowed —
+// these tests pass `undefined` throughout since access enforcement itself
+// is covered by the dedicated "createLocalApi access control" suite below.
+const ctx = undefined;
 
 beforeEach(async () => {
   await db.run(sql`
@@ -47,32 +51,32 @@ afterEach(async () => {
 
 describe("createLocalApi", () => {
   it("creates a row and reads it back by id", async () => {
-    const created = await localApi.create({ title: "Home", slug: "home" });
+    const created = await localApi.create(ctx, { title: "Home", slug: "home" });
     expect(created.id).toBeTypeOf("number");
     expect(created.status).toBe("draft");
 
-    const found = await localApi.findByID(created.id);
+    const found = await localApi.findByID(ctx, created.id);
     expect(found).toEqual(created);
   });
 
   it("find() with no options returns all rows", async () => {
-    await localApi.create({ title: "Home", slug: "home" });
-    await localApi.create({ title: "About", slug: "about" });
+    await localApi.create(ctx, { title: "Home", slug: "home" });
+    await localApi.create(ctx, { title: "About", slug: "about" });
 
-    const rows = await localApi.find();
+    const rows = await localApi.find(ctx);
     expect(rows).toHaveLength(2);
   });
 
   it("find({ where }) filters rows", async () => {
-    await localApi.create({
+    await localApi.create(ctx, {
       title: "Home",
       slug: "home",
       status: "published",
     });
-    await localApi.create({ title: "Draft page", slug: "draft-page" });
+    await localApi.create(ctx, { title: "Draft page", slug: "draft-page" });
 
     const { eq } = await import("drizzle-orm");
-    const rows = await localApi.find({
+    const rows = await localApi.find(ctx, {
       where: eq(pagesTable.status, "published"),
     });
     expect(rows).toHaveLength(1);
@@ -83,13 +87,15 @@ describe("createLocalApi", () => {
     await expect(
       // depth is typed as `0 | undefined`; cast simulates a
       // non-type-checked caller passing an unsupported value.
-      localApi.find({ depth: 1 } as Parameters<typeof localApi.find>[0]),
+      localApi.find(ctx, {
+        depth: 1,
+      } as Parameters<typeof localApi.find>[1]),
     ).rejects.toThrow(CadmusCmsError);
   });
 
   it("update() changes only the specified fields", async () => {
-    const created = await localApi.create({ title: "Home", slug: "home" });
-    const updated = await localApi.update(created.id, {
+    const created = await localApi.create(ctx, { title: "Home", slug: "home" });
+    const updated = await localApi.update(ctx, created.id, {
       status: "published",
     });
     expect(updated.title).toBe("Home");
@@ -97,37 +103,39 @@ describe("createLocalApi", () => {
   });
 
   it("deleteByID() removes the row", async () => {
-    const created = await localApi.create({ title: "Home", slug: "home" });
-    await localApi.deleteByID(created.id);
-    await expect(localApi.findByID(created.id)).rejects.toThrow(CadmusCmsError);
+    const created = await localApi.create(ctx, { title: "Home", slug: "home" });
+    await localApi.deleteByID(ctx, created.id);
+    await expect(localApi.findByID(ctx, created.id)).rejects.toThrow(
+      CadmusCmsError,
+    );
   });
 
   it("findByID throws CadmusCmsError for a missing id", async () => {
-    await expect(localApi.findByID(999)).rejects.toThrow(CadmusCmsError);
+    await expect(localApi.findByID(ctx, 999)).rejects.toThrow(CadmusCmsError);
   });
 
   it("update throws CadmusCmsError for a missing id, with no side effects", async () => {
-    await expect(localApi.update(999, { title: "Nope" })).rejects.toThrow(
+    await expect(localApi.update(ctx, 999, { title: "Nope" })).rejects.toThrow(
       CadmusCmsError,
     );
-    expect(await localApi.find()).toHaveLength(0);
+    expect(await localApi.find(ctx)).toHaveLength(0);
   });
 
   it("deleteByID throws CadmusCmsError for a missing id", async () => {
-    await expect(localApi.deleteByID(999)).rejects.toThrow(CadmusCmsError);
+    await expect(localApi.deleteByID(ctx, 999)).rejects.toThrow(CadmusCmsError);
   });
 
   it("create throws CadmusCmsError when a required field is missing", async () => {
     await expect(
       // @ts-expect-error intentionally omitting required `title`
-      localApi.create({ slug: "no-title" }),
+      localApi.create(ctx, { slug: "no-title" }),
     ).rejects.toThrow(CadmusCmsError);
-    expect(await localApi.find()).toHaveLength(0);
+    expect(await localApi.find(ctx)).toHaveLength(0);
   });
 
   it("create throws CadmusCmsError for an unknown field", async () => {
     await expect(
-      localApi.create({
+      localApi.create(ctx, {
         title: "Home",
         slug: "home",
         // @ts-expect-error intentionally passing an unrecognized field
@@ -137,12 +145,96 @@ describe("createLocalApi", () => {
   });
 
   it("create throws CadmusCmsError on a unique constraint violation", async () => {
-    await localApi.create({ title: "Home", slug: "home" });
+    await localApi.create(ctx, { title: "Home", slug: "home" });
     const error = await localApi
-      .create({ title: "Home Again", slug: "home" })
+      .create(ctx, { title: "Home Again", slug: "home" })
       .catch((e) => e);
     expect(error).toBeInstanceOf(CadmusCmsError);
     expect(error.cause).toBeDefined();
+  });
+});
+
+describe("createLocalApi access control", () => {
+  interface Ctx {
+    session: { role: string } | null;
+  }
+
+  function withAccess(access: CollectionConfig["access"]) {
+    return createLocalApi<typeof pagesTable, Ctx>(db, pagesTable, {
+      ...pagesCollection,
+      access,
+    });
+  }
+
+  it("throws CadmusAccessDeniedError when the access function returns false, before touching the DB", async () => {
+    const api = withAccess({ create: () => false });
+    await expect(
+      api.create({ session: null }, { title: "Home", slug: "home" }),
+    ).rejects.toThrow(CadmusAccessDeniedError);
+    expect(await localApi.find(ctx)).toHaveLength(0);
+  });
+
+  it("proceeds normally when the access function returns true", async () => {
+    const api = withAccess({ create: () => true });
+    const created = await api.create(
+      { session: { role: "owner" } },
+      { title: "Home", slug: "home" },
+    );
+    expect(created.title).toBe("Home");
+  });
+
+  it("allows the operation when no access function is configured for it", async () => {
+    const api = withAccess({ create: () => false });
+    // `read` has no access fn — unaffected by the `create` rule above.
+    const rows = await api.find({ session: null });
+    expect(rows).toEqual([]);
+  });
+
+  it("passes the exact context object through to the access function, unmodified", async () => {
+    const spy = vi.fn(() => true);
+    const api = withAccess({ read: spy });
+    const context: Ctx = { session: { role: "viewer" } };
+    await api.find(context);
+    expect(spy).toHaveBeenCalledWith(context);
+  });
+
+  it("gates read via find() and findByID() through the same `read` access function", async () => {
+    const created = await localApi.create(ctx, { title: "Home", slug: "home" });
+    const api = withAccess({ read: () => false });
+    await expect(api.find({ session: null })).rejects.toThrow(
+      CadmusAccessDeniedError,
+    );
+    await expect(api.findByID({ session: null }, created.id)).rejects.toThrow(
+      CadmusAccessDeniedError,
+    );
+  });
+
+  it("gates update() and deleteByID() through their own access functions", async () => {
+    const created = await localApi.create(ctx, { title: "Home", slug: "home" });
+    const api = withAccess({ update: () => false, delete: () => false });
+    await expect(
+      api.update({ session: null }, created.id, { title: "Renamed" }),
+    ).rejects.toThrow(CadmusAccessDeniedError);
+    await expect(api.deleteByID({ session: null }, created.id)).rejects.toThrow(
+      CadmusAccessDeniedError,
+    );
+
+    const found = await localApi.findByID(ctx, created.id);
+    expect(found.title).toBe("Home");
+  });
+
+  it("supports an async access function", async () => {
+    const api = withAccess({
+      create: async ({ session }) => session?.role === "owner",
+    });
+    await expect(
+      api.create({ session: { role: "viewer" } }, { title: "X", slug: "x" }),
+    ).rejects.toThrow(CadmusAccessDeniedError);
+    const created = await api.create(
+      { session: { role: "owner" } },
+      { title: "X", slug: "x" },
+    );
+    expect(created.title).toBe("X");
   });
 });
 
@@ -159,7 +251,7 @@ describe("createLocalApi hooks", () => {
 
     // `title` is required and omitted — the beforeChange hook fills it,
     // so validation passes instead of throwing.
-    const created = await api.create({ slug: "from-hook" });
+    const created = await api.create(ctx, { slug: "from-hook" });
     expect(created.title).toBe("Defaulted");
   });
 
@@ -174,7 +266,7 @@ describe("createLocalApi hooks", () => {
       },
     });
 
-    const created = await api.create({ title: "x", slug: "ordered" });
+    const created = await api.create(ctx, { title: "x", slug: "ordered" });
     expect(created.title).toBe("x-a-b");
   });
 
@@ -192,8 +284,8 @@ describe("createLocalApi hooks", () => {
       },
     });
 
-    const created = await api.create({ title: "Home", slug: "home" });
-    await api.update(created.id, { title: "Renamed" });
+    const created = await api.create(ctx, { title: "Home", slug: "home" });
+    await api.update(ctx, created.id, { title: "Renamed" });
 
     expect(seen).toEqual([
       { id: created.id, title: "Home" },
@@ -214,14 +306,14 @@ describe("createLocalApi hooks", () => {
       },
     });
 
-    const created = await api.create({ title: "Home", slug: "home" });
+    const created = await api.create(ctx, { title: "Home", slug: "home" });
     // create() does not run read hooks — the raw persisted title comes back
     expect(created.title).toBe("Home");
 
-    const found = await api.findByID(created.id);
+    const found = await api.findByID(ctx, created.id);
     expect(found.title).toBe("Home!");
 
-    const [listed] = await api.find();
+    const [listed] = await api.find(ctx);
     expect(listed?.title).toBe("Home!");
   });
 
@@ -243,8 +335,8 @@ describe("createLocalApi hooks", () => {
       },
     });
 
-    const created = await api.create({ title: "Home", slug: "home" });
-    await api.deleteByID(created.id);
+    const created = await api.create(ctx, { title: "Home", slug: "home" });
+    await api.deleteByID(ctx, created.id);
     expect(calls).toEqual(["before", "after"]);
   });
 
@@ -261,7 +353,7 @@ describe("createLocalApi hooks", () => {
       },
     });
 
-    await expect(api.deleteByID(999)).rejects.toThrow(CadmusCmsError);
+    await expect(api.deleteByID(ctx, 999)).rejects.toThrow(CadmusCmsError);
     expect(calls).toEqual([]);
   });
 });

@@ -11,13 +11,20 @@ import type {
   BaseSQLiteDatabase,
   SQLiteTableWithColumns,
 } from "drizzle-orm/sqlite-core";
-import { CadmusCmsError } from "../errors.js";
-import type { CollectionConfig } from "./types.js";
+import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
+import type { CollectionAccess, CollectionConfig } from "./types.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: matches drizzle-orm's own SQLiteTableWithColumns default generic usage
 type AnyTable = SQLiteTableWithColumns<any>;
 
-export interface LocalApi<TTable extends AnyTable> {
+/**
+ * `TContext` is the per-request value passed to every method and forwarded
+ * unchanged to the collection's `access` functions (see {@link CollectionAccess}).
+ * Cadmus doesn't standardize its shape — Cadmea types it as `{ session }`,
+ * other consumers may type it differently. `context` is a required first
+ * argument on every method (not optional) so a call site can't forget it.
+ */
+export interface LocalApi<TTable extends AnyTable, TContext = unknown> {
   /**
    * `depth` reserves the shape for relationship resolution (depth: 0 = no
    * extra queries, depth: 1 = one batched query, depth > 1 throws) — only
@@ -25,17 +32,24 @@ export interface LocalApi<TTable extends AnyTable> {
    * CadmusCmsError. Real resolution is deferred until a collection
    * actually has a relationship field to validate the design against.
    */
-  find(options?: {
-    where?: SQL;
-    depth?: 0;
-  }): Promise<InferSelectModel<TTable>[]>;
-  findByID(id: number): Promise<InferSelectModel<TTable>>;
-  create(input: InferInsertModel<TTable>): Promise<InferSelectModel<TTable>>;
+  find(
+    context: TContext,
+    options?: {
+      where?: SQL;
+      depth?: 0;
+    },
+  ): Promise<InferSelectModel<TTable>[]>;
+  findByID(context: TContext, id: number): Promise<InferSelectModel<TTable>>;
+  create(
+    context: TContext,
+    input: InferInsertModel<TTable>,
+  ): Promise<InferSelectModel<TTable>>;
   update(
+    context: TContext,
     id: number,
     input: Partial<InferInsertModel<TTable>>,
   ): Promise<InferSelectModel<TTable>>;
-  deleteByID(id: number): Promise<InferSelectModel<TTable>>;
+  deleteByID(context: TContext, id: number): Promise<InferSelectModel<TTable>>;
 }
 
 function validateRequiredFields(
@@ -88,9 +102,28 @@ function notFound(config: CollectionConfig, id: number): never {
 // write/read below. Transforming hooks (beforeChange, beforeRead,
 // afterRead) run in array order, each fed the previous one's output; side-
 // effect hooks (afterChange, beforeDelete, afterDelete) run in order for
-// their effects only. All may be async. `config.access` stays reserved and
-// deliberately unread — access enforcement is still deferred.
+// their effects only. All may be async. `config.access` is checked by
+// checkAccess() below, before any hook or DB work runs for that operation.
 type AnyRecord = Record<string, unknown>;
+
+// Runs config.access[operation](context) if configured, throwing
+// CadmusAccessDeniedError when it resolves false. No access function for
+// an operation means that operation is unconditionally allowed — matches
+// the pre-Section-2 default of "no enforcement at all".
+async function checkAccess<TContext>(
+  config: CollectionConfig,
+  operation: keyof CollectionAccess,
+  context: TContext,
+): Promise<void> {
+  const fn = config.access?.[operation];
+  if (!fn) return;
+  const allowed = await fn(context);
+  if (!allowed) {
+    throw new CadmusAccessDeniedError(
+      `Access denied for "${operation}" on collection "${config.slug}"`,
+    );
+  }
+}
 
 async function runBeforeChange(
   config: CollectionConfig,
@@ -150,15 +183,16 @@ async function runAfterDelete(
   }
 }
 
-export function createLocalApi<TTable extends AnyTable>(
+export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
   db: BaseSQLiteDatabase<"async", unknown>,
   table: TTable,
   config: CollectionConfig,
-): LocalApi<TTable> {
+): LocalApi<TTable, TContext> {
   const idColumn = table.id;
 
   return {
-    async find(options) {
+    async find(context, options) {
+      await checkAccess(config, "read", context);
       if (options?.depth !== undefined && options.depth !== 0) {
         throw new CadmusCmsError(
           `Relationship resolution (depth > 0) is not yet implemented for collection "${config.slug}"`,
@@ -175,7 +209,8 @@ export function createLocalApi<TTable extends AnyTable>(
       return hooked as InferSelectModel<TTable>[];
     },
 
-    async findByID(id) {
+    async findByID(context, id) {
+      await checkAccess(config, "read", context);
       const [row] = await db.select().from(table).where(eq(idColumn, id));
       if (!row) notFound(config, id);
       if (!hasReadHooks(config)) return row as InferSelectModel<TTable>;
@@ -185,7 +220,8 @@ export function createLocalApi<TTable extends AnyTable>(
       )) as InferSelectModel<TTable>;
     },
 
-    async create(input) {
+    async create(context, input) {
+      await checkAccess(config, "create", context);
       // beforeChange runs before validation so a hook may supply or default
       // a required field (e.g. the SEO plugin defaulting metaTitle).
       const data = await runBeforeChange(
@@ -212,7 +248,8 @@ export function createLocalApi<TTable extends AnyTable>(
       return doc as InferSelectModel<TTable>;
     },
 
-    async update(id, input) {
+    async update(context, id, input) {
+      await checkAccess(config, "update", context);
       const data = await runBeforeChange(
         config,
         input as Record<string, unknown>,
@@ -235,7 +272,8 @@ export function createLocalApi<TTable extends AnyTable>(
       return doc as InferSelectModel<TTable>;
     },
 
-    async deleteByID(id) {
+    async deleteByID(context, id) {
+      await checkAccess(config, "delete", context);
       await runBeforeDelete(config, id);
       const [row] = await db.delete(table).where(eq(idColumn, id)).returning();
       if (!row) notFound(config, id);

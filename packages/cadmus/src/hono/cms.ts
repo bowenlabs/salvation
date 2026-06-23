@@ -4,7 +4,7 @@
 import { Hono } from "hono";
 import type { ClientErrorStatusCode } from "hono/utils/http-status";
 import type { LocalApi } from "../cms/index.js";
-import { CadmusCmsError } from "../errors.js";
+import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
 
 export interface CmsRoutesOptions {
   // biome-ignore lint/suspicious/noExplicitAny: see above
@@ -18,6 +18,7 @@ export interface CmsRoutesOptions {
 // CadmusCmsError; flagged as a follow-up, not built here (it would
 // ripple across every existing primitive error).
 function statusForError(error: CadmusCmsError): ClientErrorStatusCode {
+  if (error instanceof CadmusAccessDeniedError) return 403;
   if (error.message.includes("document found with id")) return 404;
   if (error.message.includes("Unique constraint violated")) return 409;
   return 400;
@@ -49,30 +50,35 @@ export function mountCmsRoutes(app: Hono, options: CmsRoutesOptions): Hono {
     throw error;
   });
 
+  // `context` is `undefined` for every route below — mountCmsRoutes doesn't
+  // yet resolve a per-request access context (that's `resolveContext`,
+  // landing when this REST surface is actually mounted in an app). Until
+  // then, every collection mounted here must either configure no `access`
+  // rules (unconditionally allowed) or rules that tolerate `undefined`.
   router.get("/:collection", async (c) => {
     const api = getApi(options.collections, c.req.param("collection"));
-    return c.json(await api.find());
+    return c.json(await api.find(undefined));
   });
 
   router.get("/:collection/:id", async (c) => {
     const api = getApi(options.collections, c.req.param("collection"));
-    return c.json(await api.findByID(Number(c.req.param("id"))));
+    return c.json(await api.findByID(undefined, Number(c.req.param("id"))));
   });
 
   router.post("/:collection", async (c) => {
     const api = getApi(options.collections, c.req.param("collection"));
-    return c.json(await api.create(await c.req.json()), 201);
+    return c.json(await api.create(undefined, await c.req.json()), 201);
   });
 
   router.patch("/:collection/:id", async (c) => {
     const api = getApi(options.collections, c.req.param("collection"));
     const id = Number(c.req.param("id"));
-    return c.json(await api.update(id, await c.req.json()));
+    return c.json(await api.update(undefined, id, await c.req.json()));
   });
 
   router.delete("/:collection/:id", async (c) => {
     const api = getApi(options.collections, c.req.param("collection"));
-    return c.json(await api.deleteByID(Number(c.req.param("id"))));
+    return c.json(await api.deleteByID(undefined, Number(c.req.param("id"))));
   });
 
   app.route("/api", router);

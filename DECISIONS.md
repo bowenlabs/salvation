@@ -9,6 +9,84 @@
 
 ---
 
+## 2026-06-22 — Watch item: VoidZero's Void, Vite+, and Rolldown — defer adoption, re-evaluate at GA
+
+**Decision:** No code changes now. Tracking three related VoidZero
+(Evan You's company, **acquired by Cloudflare** in June 2026) projects
+that overlap with this repo's stack, with explicit conditions for
+revisiting each rather than adopting any of them today.
+
+**Why all three belong in one entry:** they're layers of the same
+stack, not three independent choices. Rolldown is the Rust bundler
+engine; Vite+ is the CLI/toolchain (lint/format/test/monorepo-caching/
+library-packaging) built on top of it and on top of Vite 8+; Void is a
+Vite-native deployment platform (provisioning DB/KV/storage/auth/queues/
+cron) built on Cloudflare. Re-evaluating one without the others would
+miss how they compose.
+
+**Vite+** (viteplus.dev) — MIT-licensed, currently alpha. Overlaps
+Biome (vs. its Oxlint+Oxfmt) and `tsup` (vs. its library-packaging/DTS
+generation, which runs on Rolldown). **Not adopted:** alpha-stage, and
+CLAUDE.md already pins Biome and tsup deliberately — swapping either is
+exactly the kind of stack deviation this file says to flag, not casually
+absorb pre-1.0. **Revisit if:** Vite+ reaches a stable release — at that
+point, re-evaluate `tsup` → Vite+ packaging for `packages/cadmus` and
+`packages/cadmea` as one combined decision (since Vite+'s packaging step
+*is* Rolldown), not two.
+
+**Rolldown** (rolldown.rs) — the bundler now powering Vite 8+, Rollup-API-
+compatible with esbuild feature parity. **Not a standalone decision for
+this repo** — it arrives passively via ordinary Vite version bumps (the
+Astro site build, `packages/cadmea`'s Vite-consumed source, Worker 2's
+`vite build`) with no code changes required, or deliberately via the
+Vite+ packaging path above. **Revisit if:** a Vite major-version bump
+(8+) is taken — confirm `wrangler`/Astro/Workers builds still pass, then
+move on; this does not need its own re-evaluation separate from the
+Vite+ entry above.
+
+**Void** (void.cloud) — a Vite-native deployment platform on Cloudflare,
+exposing `void/db`/`void/kv`/`void/storage`/`void/ai`/`void/env`,
+`defineQueue()`, `defineScheduled()` (cron), and Hono middleware (CORS,
+caching, rate-limit, bearer auth) inside `createServerFn()` — directly
+overlapping `cadmus/db`, `cadmus/session`/KV, `cadmus/storage`,
+`cadmus/queues`, `cadmus/rate-limit`, `cadmus/hono`. Confirmed it
+supports a genuine BYO-Cloudflare-account path (`wrangler deploy` against
+your own `wrangler.jsonc`, your own resource IDs, your data stays in your
+infra) — so it does **not** inherently violate Cadmea's free-forever /
+operator-owns-infra charter, contrary to first assumption.
+
+**What Void does not replace, and never should without a separate
+decision:** `cadmus/cms` (the collections → schema → Local API → admin-
+metadata engine — Cadmea's actual product, no Void equivalent),
+`cadmus/auth`/`session` (Cadmea's passwordless magic-link + signed-cookie
+flow — Void's docs show bearer-token middleware only, not the same
+flow), `cadmus/email` (Email Workers — no Void equivalent seen),
+`ImageService` (Void's `storage` is raw blob put/get, not
+`render()`-with-`srcset`/`sizes` semantics).
+
+**Not adopted, for two concrete reasons:**
+1. **No confirmed SolidJS / TanStack-Start-Solid support.** Every Void
+   TanStack Start example seen is React (`@tanstack/react-start/plugin`
+   + `react()`). Cadmea's Worker 2 is the Solid target. `voidPlugin()`
+   operates ahead of the framework plugin in the Vite pipeline, so
+   framework-agnosticism is plausible but unconfirmed — needs a real
+   spike (throwaway TanStack-Start-Solid app + `voidPlugin()` + one
+   `createServerFn` hitting `void/db`) before this is treated as viable.
+2. **Pre-GA, not yet open-sourced.** Cloudflare has said it intends to
+   open-source Void, but hasn't yet. Building Cadmea's foundation on a
+   closed, unpriced, pre-release platform contradicts "no throwaway work
+   — every decision should hold up across phases."
+
+**Revisit if:** (a) the Solid spike above passes, AND (b) Void reaches
+public/OSS availability with clear pricing. At that point, treat it as a
+candidate to *thin* (not replace) the commodity half of Cadmus — `db`,
+`kv`/session storage, `storage`, `queues`, `rate-limit`, generic `hono`
+middleware — while `cms`, the magic-link auth flow, `email`, and
+`ImageService` stay Cadmus-owned regardless, since Void has no
+equivalent for any of them.
+
+---
+
 ## 2026-06-22 — Design system extracted to `@bowenlabs/cadmea-design-system` (a library, not an extension)
 
 **Decision:** The design-token engine (`buildTokenStyle` + color-scale,

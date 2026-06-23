@@ -18,9 +18,9 @@
     "@bowenlabs/cadmea-design-system": "workspace:*",
     "@bowenlabs/cadmea-plugin-seo": "workspace:*",
     "@bowenlabs/cadmus": "workspace:*",
-    "@cloudflare/vite-plugin": "^1.26.0",
+    "@cloudflare/vite-plugin": "1.42.1",
     "@phosphor-icons/web": "^2.1.2",
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.3.1",
     "@tanstack/solid-devtools": "latest",
     "@tanstack/solid-query": "^5.101.0",
     "@tanstack/solid-router": "latest",
@@ -34,21 +34,21 @@
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.26",
     "solid-js": "^1.9.13",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
-    "@tailwindcss/typography": "^0.5.16",
+    "@tailwindcss/typography": "^0.5.20",
     "@tanstack/devtools-vite": "latest",
-    "@tanstack/router-cli": "^1.132.0",
+    "@tanstack/router-cli": "^1.167.17",
     "@testing-library/dom": "^10.4.1",
-    "@types/node": "^22.10.2",
-    "jsdom": "^28.1.0",
-    "typescript": "^6.0.2",
-    "vite": "^8.0.0",
+    "@types/node": "^26.0.0",
+    "jsdom": "^29.1.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
     "vite-plugin-solid": "^2.11.12",
-    "vitest": "^4.1.5",
-    "wrangler": "^4.70.0"
+    "vitest": "^4.1.9",
+    "wrangler": "^4.103.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -19,8 +19,15 @@ describe("pages Local API (app wiring)", () => {
     await db(env.DB, { pages }).delete(pages);
   });
 
+  // pagesCollection's access rules (app/cadmea.config.ts) allow `read`
+  // unconditionally but require a non-null session for writes. This suite
+  // isn't exercising access control, just the generated-schema wiring, so
+  // a fixed authenticated-looking context is used throughout rather than
+  // varying it per call.
+  const ctx = { session: { userId: 1, email: "test@example.com", role: "owner", createdAt: Date.now() } };
+
   it("creates, updates, and deletes a page through the generated schema", async () => {
-    const created = await localApi.create({
+    const created = await localApi.create(ctx, {
       title: "Integration Test Page",
       slug: `int-test-${Date.now()}`,
       status: "draft",
@@ -28,22 +35,24 @@ describe("pages Local API (app wiring)", () => {
     expect(created.id).toBeDefined();
     expect(created.status).toBe("draft");
 
-    const updated = await localApi.update(created.id, { status: "published" });
+    const updated = await localApi.update(ctx, created.id, {
+      status: "published",
+    });
     expect(updated.status).toBe("published");
 
-    const found = await localApi.findByID(created.id);
+    const found = await localApi.findByID(ctx, created.id);
     expect(found.title).toBe("Integration Test Page");
 
-    const deleted = await localApi.deleteByID(created.id);
+    const deleted = await localApi.deleteByID(ctx, created.id);
     expect(deleted.id).toBe(created.id);
-    await expect(localApi.findByID(created.id)).rejects.toThrow();
+    await expect(localApi.findByID(ctx, created.id)).rejects.toThrow();
   });
 
   it("rejects a duplicate slug via the real unique constraint", async () => {
     const slug = `dup-${Date.now()}`;
-    await localApi.create({ title: "First", slug, status: "draft" });
+    await localApi.create(ctx, { title: "First", slug, status: "draft" });
     await expect(
-      localApi.create({ title: "Second", slug, status: "draft" }),
+      localApi.create(ctx, { title: "Second", slug, status: "draft" }),
     ).rejects.toThrow();
   });
 
@@ -52,13 +61,13 @@ describe("pages Local API (app wiring)", () => {
       { type: "hero", heading: "Welcome" },
       { type: "divider" },
     ];
-    const created = await localApi.create({
+    const created = await localApi.create(ctx, {
       title: "Blocks Page",
       slug: `blocks-${Date.now()}`,
       status: "published",
       blocks,
     });
-    const found = await localApi.findByID(created.id);
+    const found = await localApi.findByID(ctx, created.id);
     expect(found.blocks).toEqual(blocks);
   });
 });

@@ -1,5 +1,22 @@
 import { seoPlugin } from "@bowenlabs/cadmea-plugin-seo";
 import { defineCmsConfig } from "@bowenlabs/cadmus/cms";
+import type { Session } from "./core/lib/session.js";
+
+// The context every collection's `access` functions receive, passed
+// through unchanged from each Local API call site. `session` is the
+// logged-in admin's session (null for unauthenticated callers — pages are
+// publicly readable, so `read` never even inspects this). `internal` marks
+// the trusted Service Binding RPC (app/workers/cadmea/app/service.ts,
+// reachable only Worker-to-Worker, never from the internet) so it can
+// perform writes without a real admin session.
+export interface PagesAccessContext {
+  session: Session | null;
+  internal?: boolean;
+}
+
+function requireSessionOrInternal({ session, internal }: PagesAccessContext) {
+  return internal === true || session !== null;
+}
 
 // The base `pages` definition. NOTE: consumers must not import this — they
 // import the resolved `pagesCollection` below, which is this definition
@@ -11,6 +28,15 @@ import { defineCmsConfig } from "@bowenlabs/cadmus/cms";
 // generateSchemaSource) and then runs drizzle-kit generate against it.
 const pagesBase = {
   slug: "pages",
+  // Pages are public content — anyone may read them (the public site reads
+  // through this same Local API, unauthenticated). Writes require either a
+  // real admin session or the internal Service Binding RPC.
+  access: {
+    read: () => true,
+    create: requireSessionOrInternal,
+    update: requireSessionOrInternal,
+    delete: requireSessionOrInternal,
+  },
   fields: {
     id: { type: "number", autoIncrement: true },
     title: { type: "text", required: true },

@@ -13,6 +13,6 @@ overrides:
   # Pinned below latest to clear pnpm's minimum-release-age supply-chain
   # policy (packages published <24h ago get blocked). Bump once the
   # corresponding "latest" version has aged past the cutoff.
-  miniflare: '4.20260616.0'
-  '@cloudflare/vite-plugin': '1.41.0'
-  nanoid: '3.3.12'
+  miniflare: '4.20260617.1'
+  '@cloudflare/vite-plugin': '1.42.1'
+  nanoid: '3.3.14'

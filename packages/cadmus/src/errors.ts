@@ -115,3 +115,16 @@ export class CadmusCmsError extends CadmusError {
     this.name = "CadmusCmsError";
   }
 }
+
+/**
+ * Thrown by @bowenlabs/cadmus/cms's createLocalApi when a collection's
+ * `access` function rejects an operation. A distinct subclass (rather than
+ * a plain CadmusCmsError) so consumers like mountCmsRoutes can map it to
+ * 403 by `instanceof`, not by matching on message text.
+ */
+export class CadmusAccessDeniedError extends CadmusCmsError {
+  constructor(message: string, cause?: unknown) {
+    super(message, cause);
+    this.name = "CadmusAccessDeniedError";
+  }
+}

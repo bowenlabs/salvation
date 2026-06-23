@@ -106,9 +106,12 @@ export type FieldConfig =
 /**
  * Per-operation access check, modeled on Payload's own `access` shape.
  * @returns whether the operation is allowed. Implementations decide their
- * own context shape (auth/session info isn't standardized by Cadmus).
+ * own context shape (auth/session info isn't standardized by Cadmus) — see
+ * {@link LocalApi}'s `TContext` generic, which every operation now requires
+ * a value for.
  *
- * NOT YET ENFORCED — see {@link CollectionConfig.access}.
+ * Enforced by `createLocalApi` since Section 2 — see
+ * {@link CollectionConfig.access}.
  */
 // biome-ignore lint/suspicious/noExplicitAny: the context shape is intentionally caller-defined; Cadmus doesn't standardize auth/session info
 export type AccessFn<TContext = any> = (
@@ -124,7 +127,7 @@ export interface CollectionAccess {
 
 /**
  * Lifecycle hooks, modeled on Payload's own hook points. Each is an
- * ordered array, run in sequence. NOT YET ENFORCED — see
+ * ordered array, run in sequence. Enforced by `createLocalApi` — see
  * {@link CollectionConfig.hooks}.
  */
 export interface CollectionHooks<TDoc = Record<string, unknown>> {
@@ -143,18 +146,17 @@ export interface CollectionConfig {
   slug: string;
   fields: Record<string, FieldConfig>;
   /**
+   * Per-operation access control, enforced by `createLocalApi` (Section 2).
    * Reserved per issue #16 step 7 ("reserve typed config keys now,
-   * implementation deferred to Section 2+"). Setting this has **no
-   * effect** — `createLocalApi`'s `find`/`findByID`/`create`/`update`/
-   * `deleteByID` perform zero access checks. Do not rely on this for
-   * security until enforcement actually lands.
+   * implementation deferred to Section 2+") — that deferral is over: every
+   * `LocalApi` method now requires a `context` argument and runs the
+   * matching access function (`read` for `find`/`findByID`, `create` for
+   * `create`, etc.) before touching the database. No access function
+   * configured for an operation means that operation is unconditionally
+   * allowed, matching the pre-enforcement default.
    */
   access?: CollectionAccess;
-  /**
-   * Reserved per issue #16 step 7, same caveat as {@link CollectionConfig.access}:
-   * setting this has **no effect** yet — no hook in this list is ever
-   * invoked by `createLocalApi`.
-   */
+  /** Lifecycle hooks, enforced by `createLocalApi`. See {@link CollectionHooks}. */
   hooks?: CollectionHooks;
 }
 
