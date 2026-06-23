@@ -120,6 +120,17 @@ Cadmus is Cloudflare-specific by design. It does not abstract over
 multiple hosting providers. Run it on Cloudflare because Cloudflare is
 the right choice — not because Cadmus forces you to.
 
+**Astro is the one deliberate, flagged exception to "no opinion."** A
+planned `@bowenlabs/cadmus/astro` peer-integration layer — same "peer, not a
+dependency" treatment `@bowenlabs/cadmus/hono` already gets, not a hard
+dependency of core — will be the officially recommended frontend for Cadmus's
+"real alternative to React" positioning. Core primitives stay framework-
+agnostic; this one peer layer is allowed an opinion, the same way `cadmus/hono`
+already is. Tracked in
+[issue #32](https://github.com/bowenlabs/project-thebes/issues/32), blocked by
+[issue #30](https://github.com/bowenlabs/project-thebes/issues/30). Not built
+yet — do not add the entrypoint or build wiring until #30 lands.
+
 ### 5. Composing, not wrapping
 
 Cadmus uses Hono for routing rather than reimplementing what it does well.
@@ -665,9 +676,14 @@ expectations for early adopters.
 
 ## Compatibility
 
+Astro is the officially recommended frontend — see design philosophy point 4
+above and the planned `cadmus/astro` peer-integration layer (#32, blocked by
+#30). Other frameworks below remain fully supported; this isn't exclusivity,
+it's a recommendation.
+
 | Framework | Status |
 |---|---|
-| Astro + `@astrojs/cloudflare` | ✅ Tested |
+| Astro + `@astrojs/cloudflare` | ✅ Tested — **officially recommended** |
 | TanStack Start + `@cloudflare/vite-plugin` | ✅ Tested |
 | Hono on Workers | ✅ Tested |
 | Raw Cloudflare Workers | ✅ Tested |

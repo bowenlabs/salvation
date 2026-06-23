@@ -133,6 +133,16 @@ on [issue #30](https://github.com/bowenlabs/project-thebes/issues/30) (the
 VoidZero Void/Vite+/Rolldown migration). See CLAUDE.md and CADMEA.md for the
 full reasoning.
 
+Also planned: **`@bowenlabs/cadmus/astro`**, an official peer-integration
+layer (same "peer, not a dependency" treatment `cadmus/hono` already gets)
+making Astro the officially recommended frontend for Cadmus — the headline
+answer to "what do I build the UI with" for the React-alternative pitch.
+Tracked in
+[issue #32](https://github.com/bowenlabs/project-thebes/issues/32), also
+blocked on #30 for the same reason as Spartoi: building a new build-tool
+entry point now, right as the bundler underneath it changes, risks the
+exact rework #30 exists to avoid.
+
 ---
 
 ## Media (R2)
@@ -172,6 +182,11 @@ that reaching for a heavier stack feels like the wrong choice.
 
 Inspired by Vue's progressive adoption model and Hono's proof that a
 V8-first framework can be tiny, fast, and developer-friendly simultaneously.
+Astro and TanStack (Start, Router, Query) are further proof points worth
+crediting directly: both are framework-agnostic by design and beautifully
+architected — neither locks you into one rendering model or vendor the way
+the React/Next/Vercel stack increasingly does. That's the kind of frontend
+story Cadmus wants to be the backend for.
 
 ---
 

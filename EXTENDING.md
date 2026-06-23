@@ -17,6 +17,13 @@ Payload's `plugin-*` packages.
 Community-maintained extensions on either axis live under `@cadmus-community/*`
 (see CADMUS.md). First-party ones are published from this monorepo.
 
+**Not a third axis:** the planned `@bowenlabs/cadmus/astro` peer-integration
+layer (#32, blocked by #30) is neither an adapter (it doesn't implement a
+Cadmus-defined interface) nor a plugin (it doesn't transform CMS config).
+It's core-shipped peer integration, the same category `@bowenlabs/cadmus/hono`
+is already in — a deep, officially recommended wrapper over existing
+primitives for one specific framework, not an extension point.
+
 ---
 
 ## Axis 1 — Cadmus adapters

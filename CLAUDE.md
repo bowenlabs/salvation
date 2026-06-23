@@ -223,7 +223,7 @@ force a library onto an axis.
 |-------|-----------|
 | Framework | **@bowenlabs/cadmus** — V8-first CF primitives |
 | Framework build | **tsup** → `dist/` (ESM + CJS + `.d.ts`) |
-| Public site SSR | **Astro** with `@astrojs/cloudflare` adapter — Worker 1 |
+| Public site SSR | **Astro** with `@astrojs/cloudflare` adapter — Worker 1. Astro is Cadmus's officially recommended frontend; a peer-integration layer (`@bowenlabs/cadmus/astro`, #32, blocked by #30) is planned but not built yet — see CADMUS.md design philosophy point 4 |
 | CMS engine | **@bowenlabs/cadmus/cms** — collections, fields, schema codegen, Local API, admin-UI introspection metadata |
 | CMS admin UI components | **@bowenlabs/cadmea** — generic SolidJS list/edit views, driven by the engine's admin metadata; built with `tsup-preset-solid` (see DECISIONS.md 2026-06-22) |
 | CMS route-mounting helper | **@bowenlabs/cadmea/tanstack-start** — factory functions wiring the UI components to `@tanstack/solid-query`, the equivalent of `@payloadcms/next`'s catch-all route pattern |
