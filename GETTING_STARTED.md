@@ -13,7 +13,7 @@
 > and `app/` (the reference app). Worker 1 is Astro (public site).
 > Worker 2 is TanStack Start (Panel). Both Workers share the same D1, KV,
 > and R2 binding IDs. Hono lives inside Worker 2's custom server entrypoint.
-> All shared primitives live in `@bowenlabs/cadmus` — imported by both Workers.
+> All shared primitives live in `@thebes/cadmus` — imported by both Workers.
 
 ---
 

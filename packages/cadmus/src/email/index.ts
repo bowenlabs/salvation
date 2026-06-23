@@ -1,7 +1,7 @@
 // Copyright (c) 2026 BowenLabs. All rights reserved.
 // Cadmus is MIT licensed. See LICENSE in the repo root.
 //
-// @bowenlabs/cadmus/email
+// @thebes/cadmus/email
 //
 // Thin wrapper over the CF Email Workers `send_email` binding. The
 // binding only accepts a raw MIME message, not a {to, subject, html}

@@ -1,5 +1,5 @@
-import { seoPlugin } from "@bowenlabs/cadmea-plugin-seo";
-import { defineCmsConfig } from "@bowenlabs/cadmus/cms";
+import { seoPlugin } from "@thebes/cadmea-plugin-seo";
+import { defineCmsConfig } from "@thebes/cadmus/cms";
 import type { Session } from "./core/lib/session.js";
 
 // The context every collection's `access` functions receive, passed
@@ -31,7 +31,7 @@ const requirePublishPermission = requireSessionOrInternal;
 // its metaTitle-default hook). Reading the base directly would bypass every
 // plugin. It drives both the admin UI's field introspection and the
 // generated DB schema. Run `pnpm db:generate` after editing this file — it
-// regenerates app/core/db/schema.generated.ts (via @bowenlabs/cadmus/cms's
+// regenerates app/core/db/schema.generated.ts (via @thebes/cadmus/cms's
 // generateSchemaSource) and then runs drizzle-kit generate against it.
 const pagesBase = {
   slug: "pages",

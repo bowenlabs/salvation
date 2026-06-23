@@ -1,7 +1,7 @@
 import {
   buildTokenStyle,
   type TokenStyleInput,
-} from "@bowenlabs/cadmea-design-system";
+} from "@thebes/cadmea-design-system";
 import { createEffect, createSignal, type JSX } from "solid-js";
 import { useDesignPreviewOverrides } from "./design-preview-context";
 

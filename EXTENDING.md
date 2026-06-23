@@ -11,16 +11,16 @@ Payload's `plugin-*` packages.
 | Layer | Framework (any Cloudflare app) | CMS (content + admin) |
 | Shape | A swappable *implementation of an interface* Cadmus defines | A `(config) => config` transform |
 | Knows about | Cloudflare bindings | Collections, fields, hooks |
-| Naming | `@bowenlabs/cadmus-*` | `@bowenlabs/cadmea-plugin-*` |
-| Reference | `@bowenlabs/cadmus-cloudflare-images` | `@bowenlabs/cadmea-plugin-seo` |
+| Naming | `@thebes/cadmus-*` | `@thebes/cadmea-plugin-*` |
+| Reference | `@thebes/cadmus-cloudflare-images` | `@thebes/cadmea-plugin-seo` |
 
 Community-maintained extensions on either axis live under `@cadmus-community/*`
 (see CADMUS.md). First-party ones are published from this monorepo.
 
-**Not a third axis:** the planned `@bowenlabs/cadmus/astro` peer-integration
+**Not a third axis:** the planned `@thebes/cadmus/astro` peer-integration
 layer (#32, blocked by #30) is neither an adapter (it doesn't implement a
 Cadmus-defined interface) nor a plugin (it doesn't transform CMS config).
-It's core-shipped peer integration, the same category `@bowenlabs/cadmus/hono`
+It's core-shipped peer integration, the same category `@thebes/cadmus/hono`
 is already in — a deep, officially recommended wrapper over existing
 primitives for one specific framework, not an extension point.
 
@@ -29,8 +29,8 @@ primitives for one specific framework, not an extension point.
 ## Axis 1 — Cadmus adapters
 
 An **adapter** is an alternate implementation of an interface that
-`@bowenlabs/cadmus` already defines. Today the canonical interface is
-`ImageService` (`@bowenlabs/cadmus/storage`); the same pattern fits future
+`@thebes/cadmus` already defines. Today the canonical interface is
+`ImageService` (`@thebes/cadmus/storage`); the same pattern fits future
 storage/email/db backends.
 
 The rule that makes adapters swappable: **the app resolves the implementation in
@@ -41,7 +41,7 @@ R2 URLs either way.
 
 ```ts
 // app/core/lib/image-service.ts — the single selection point
-import { createCloudflareImageService } from "@bowenlabs/cadmus-cloudflare-images";
+import { createCloudflareImageService } from "@thebes/cadmus-cloudflare-images";
 
 export function createImageService(bucket: R2Bucket, mediaUrl: string) {
   return createCloudflareImageService({ bucket, mediaUrl }); // was: createR2ImageService(...)
@@ -52,7 +52,7 @@ Write an adapter by implementing the interface and exporting a factory. It takes
 raw bindings, never `env`:
 
 ```ts
-import type { ImageService } from "@bowenlabs/cadmus/storage";
+import type { ImageService } from "@thebes/cadmus/storage";
 
 export function createMyImageService(opts): ImageService {
   return {
@@ -75,8 +75,8 @@ an injected field automatically becomes a D1 column, an admin form field, and a
 typed API field.
 
 ```ts
-import { defineCmsConfig } from "@bowenlabs/cadmus/cms";
-import { seoPlugin } from "@bowenlabs/cadmea-plugin-seo";
+import { defineCmsConfig } from "@thebes/cadmus/cms";
+import { seoPlugin } from "@thebes/cadmea-plugin-seo";
 
 export const cmsConfig = defineCmsConfig({
   collections: [pagesCollection],
@@ -93,10 +93,10 @@ A plugin may inject fields, add whole collections, and register lifecycle
 **hooks** (`beforeChange`/`afterChange`/`beforeRead`/`afterRead`/`beforeDelete`/
 `afterDelete`), which `createLocalApi` enforces on every operation. `beforeChange`
 runs before validation, so a hook can default a required field — that is exactly
-how `@bowenlabs/cadmea-plugin-seo` defaults `metaTitle` from `title`.
+how `@thebes/cadmea-plugin-seo` defaults `metaTitle` from `title`.
 
 ```ts
-import type { CadmeaPlugin } from "@bowenlabs/cadmus/cms";
+import type { CadmeaPlugin } from "@thebes/cadmus/cms";
 
 export function myPlugin(): CadmeaPlugin {
   return (config) => ({
@@ -119,9 +119,9 @@ See `packages/cadmus/src/cms/README.md` for the full plugin + hook reference.
 ## Which axis do I want?
 
 - Swapping *how* something is stored, served, or sent (images, email, db)? →
-  **adapter** (`@bowenlabs/cadmus-*`).
+  **adapter** (`@thebes/cadmus-*`).
 - Adding *content or admin behavior* (SEO, redirects, audit fields, a new
-  collection)? → **plugin** (`@bowenlabs/cadmea-plugin-*`).
+  collection)? → **plugin** (`@thebes/cadmea-plugin-*`).
 
 If an extension needs both (e.g. a media plugin that also swaps the image
 service), ship two packages — one per axis — rather than blurring the boundary.
@@ -134,7 +134,7 @@ Some shared code is neither axis — it's a plain **library** with no opinion
 about CMS configs or Cloudflare interfaces. Ship it as a normal package and
 don't force it onto an axis.
 
-`@bowenlabs/cadmea-design-system` is the worked example: a framework-agnostic,
+`@thebes/cadmea-design-system` is the worked example: a framework-agnostic,
 zero-dependency design-token engine (`buildTokenStyle` + color/spacing/type/font
 helpers) consumed by both Workers. It isn't a `(config) => config` transform and
 it doesn't implement a Cadmus interface, so calling it a "plugin" or "adapter"

@@ -1,5 +1,5 @@
-import type { CollectionConfig } from "@bowenlabs/cadmus/cms";
 import { cleanup, fireEvent, render, screen } from "@solidjs/testing-library";
+import type { CollectionConfig } from "@thebes/cadmus/cms";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CollectionEdit } from "./CollectionEdit.js";
 

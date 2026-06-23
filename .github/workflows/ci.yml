@@ -56,8 +56,8 @@ jobs:
       # runner with no shared filesystem, so every publishable package's
       # dist/ (what its package.json exports map actually resolves
       # against — site's layout.astro pulls in both
-      # @bowenlabs/cadmea-design-system and @bowenlabs/cadmea-plugin-seo,
-      # not just @bowenlabs/cadmus) needs building again in this job too.
+      # @thebes/cadmea-design-system and @thebes/cadmea-plugin-seo,
+      # not just @thebes/cadmus) needs building again in this job too.
       # `build:packages` builds all of them, deliberately, so a future
       # package addition can't silently leave a CI job's dist/ stale the
       # way this one did.
@@ -121,7 +121,7 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       # app/cadmea.config.ts (imported by cms.test.ts/cadmea-service.test.ts)
-      # pulls in @bowenlabs/cadmea-plugin-seo, not just @bowenlabs/cadmus —
+      # pulls in @thebes/cadmea-plugin-seo, not just @thebes/cadmus —
       # see build-site's comment above for why this needs every package's
       # dist/, not just cadmus's, in every job.
       - run: pnpm build:packages

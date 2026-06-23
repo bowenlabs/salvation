@@ -1,6 +1,6 @@
-import type { CollectionConfig } from "@bowenlabs/cadmus/cms";
 import { createQuery } from "@tanstack/solid-query";
 import { Link } from "@tanstack/solid-router";
+import type { CollectionConfig } from "@thebes/cadmus/cms";
 import { createSignal, Show } from "solid-js";
 import { CollectionList } from "../CollectionList.js";
 

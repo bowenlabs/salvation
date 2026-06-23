@@ -1,4 +1,4 @@
-# `@bowenlabs/cadmus/cms`
+# `@thebes/cadmus/cms`
 
 A V8-native CMS engine: model content as **collections**, and the engine
 generates a Drizzle schema, a typed **Local API** (`find` / `findByID` /
@@ -11,8 +11,8 @@ is typed against the *shape* of a Drizzle instance but never imports
 `cadmus/db`. The consumer wires them together explicitly.
 
 ```ts
-import { db } from "@bowenlabs/cadmus/db";
-import { createLocalApi, defineCmsConfig } from "@bowenlabs/cadmus/cms";
+import { db } from "@thebes/cadmus/db";
+import { createLocalApi, defineCmsConfig } from "@thebes/cadmus/cms";
 ```
 
 ---
@@ -44,7 +44,7 @@ one's output, **before validation** — so a plugin's output is held to exactly
 the same rules as a hand-written config.
 
 ```ts
-import type { CadmeaPlugin } from "@bowenlabs/cadmus/cms";
+import type { CadmeaPlugin } from "@thebes/cadmus/cms";
 
 const addUpdatedAt: CadmeaPlugin = (config) => ({
   ...config,
@@ -60,8 +60,8 @@ const addUpdatedAt: CadmeaPlugin = (config) => ({
 config can be consumed by sync schema codegen and config loading; an async
 variant is a deliberate future extension.
 
-Published first-party plugins live under `@bowenlabs/cadmea-plugin-*` (e.g.
-`@bowenlabs/cadmea-plugin-seo`). Community plugins live under
+Published first-party plugins live under `@thebes/cadmea-plugin-*` (e.g.
+`@thebes/cadmea-plugin-seo`). Community plugins live under
 `@cadmus-community/*`.
 
 ---
@@ -119,7 +119,7 @@ for their effects.
 | `beforeDelete` / `afterDelete` | around a successful delete | `({ id }) => void` |
 
 `beforeChange` runs **before** validation, so a hook may supply or default a
-required field (this is how `@bowenlabs/cadmea-plugin-seo` defaults `metaTitle`
+required field (this is how `@thebes/cadmea-plugin-seo` defaults `metaTitle`
 from `title`). `afterChange` runs outside the write `try` so a side-effect error
 is never mis-reported as a write failure. Read hooks do **not** run on the doc
 returned from `create`/`update`. All hooks may be async. Access checks run
@@ -205,14 +205,14 @@ await pages.publish(context, draft.id);
 
 ---
 
-## Public REST API (`@bowenlabs/cadmus/hono`)
+## Public REST API (`@thebes/cadmus/hono`)
 
 `mountCmsRoutes` mounts a Payload-equivalent REST surface (`GET`/`POST`
 `/api/:collection`, `GET`/`PATCH`/`DELETE` `/api/:collection/:id`) over a
 static `{ slug: LocalApi }` registry:
 
 ```ts
-import { mountCmsRoutes } from "@bowenlabs/cadmus/hono";
+import { mountCmsRoutes } from "@thebes/cadmus/hono";
 
 mountCmsRoutes(app, {
   collections: { posts },

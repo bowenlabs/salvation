@@ -1,7 +1,7 @@
 // Copyright (c) 2026 BowenLabs. All rights reserved.
 // MIT licensed. See LICENSE in the repo root.
 //
-// @bowenlabs/cadmea-plugin-seo
+// @thebes/cadmea-plugin-seo
 //
 // A Cadmea plugin (the `plugin(config) => config` axis). It injects SEO
 // fields into named collections and registers a beforeChange hook that
@@ -15,7 +15,7 @@ import type {
   CollectionConfig,
   CollectionHooks,
   FieldConfig,
-} from "@bowenlabs/cadmus/cms";
+} from "@thebes/cadmus/cms";
 
 export interface SeoPluginOptions {
   /** Collection slugs to add SEO fields to. Slugs not present in the
@@ -26,7 +26,7 @@ export interface SeoPluginOptions {
 
 /** Fields this plugin injects into every targeted collection. Stored as
  *  plain columns (text + an `upload` for the OG image) — see
- *  `@bowenlabs/cadmus/cms` codegen for how each maps to D1. */
+ *  `@thebes/cadmus/cms` codegen for how each maps to D1. */
 const SEO_FIELDS: Record<string, FieldConfig> = {
   metaTitle: { type: "text" },
   metaDescription: { type: "text" },

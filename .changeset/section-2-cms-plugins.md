@@ -1,5 +1,5 @@
 ---
-"@bowenlabs/cadmus": minor
+"@thebes/cadmus": minor
 ---
 
 cms: add the Cadmea plugin axis and enforce collection hooks.

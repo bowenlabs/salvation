@@ -5,8 +5,8 @@
 // exact same `{ slug: LocalApi }` shape, so it's built once here instead
 // of twice. Only `pages` exists today; add entries here as new
 // collections land.
-import { createLocalApi, type LocalApi } from "@bowenlabs/cadmus/cms";
-import { db } from "@bowenlabs/cadmus/db";
+import { createLocalApi, type LocalApi } from "@thebes/cadmus/cms";
+import { db } from "@thebes/cadmus/db";
 import { pagesCollection } from "../../cadmea.config.js";
 import { pages } from "../db/schema.generated";
 import { cmsRegistry } from "./cms-registry.js";

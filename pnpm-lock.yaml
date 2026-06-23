@@ -13,10 +13,10 @@ importers:
 
   .:
     dependencies:
-      '@bowenlabs/cadmea-plugin-seo':
+      '@thebes/cadmea-plugin-seo':
         specifier: workspace:*
         version: link:packages/cadmea-plugin-seo
-      '@bowenlabs/cadmus':
+      '@thebes/cadmus':
         specifier: workspace:*
         version: link:packages/cadmus
       drizzle-orm:
@@ -65,18 +65,6 @@ importers:
 
   app/workers/cadmea:
     dependencies:
-      '@bowenlabs/cadmea':
-        specifier: workspace:*
-        version: link:../../../packages/cadmea
-      '@bowenlabs/cadmea-design-system':
-        specifier: workspace:*
-        version: link:../../../packages/cadmea-design-system
-      '@bowenlabs/cadmea-plugin-seo':
-        specifier: workspace:*
-        version: link:../../../packages/cadmea-plugin-seo
-      '@bowenlabs/cadmus':
-        specifier: workspace:*
-        version: link:../../../packages/cadmus
       '@cloudflare/vite-plugin':
         specifier: 1.42.1
         version: 1.42.1(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4))(workerd@1.20260617.1)(wrangler@4.103.0(@cloudflare/workers-types@4.20260621.1))
@@ -101,6 +89,18 @@ importers:
       '@tanstack/solid-start':
         specifier: latest
         version: 1.168.26(solid-js@1.9.13)(vite-plugin-solid@2.11.12(@testing-library/jest-dom@6.9.1)(solid-js@1.9.13)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)))(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4))
+      '@thebes/cadmea':
+        specifier: workspace:*
+        version: link:../../../packages/cadmea
+      '@thebes/cadmea-design-system':
+        specifier: workspace:*
+        version: link:../../../packages/cadmea-design-system
+      '@thebes/cadmea-plugin-seo':
+        specifier: workspace:*
+        version: link:../../../packages/cadmea-plugin-seo
+      '@thebes/cadmus':
+        specifier: workspace:*
+        version: link:../../../packages/cadmus
       '@tiptap/core':
         specifier: ^3.27.1
         version: 3.27.1(@tiptap/pm@3.27.1)
@@ -171,15 +171,6 @@ importers:
       '@astrojs/cloudflare':
         specifier: ^13.7.0
         version: 13.7.0(@types/node@26.0.0)(astro@6.4.8(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(tsx@4.22.4))(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(workerd@1.20260617.1)(wrangler@4.103.0(@cloudflare/workers-types@4.20260621.1))
-      '@bowenlabs/cadmea-design-system':
-        specifier: workspace:*
-        version: link:../../../packages/cadmea-design-system
-      '@bowenlabs/cadmea-plugin-seo':
-        specifier: workspace:*
-        version: link:../../../packages/cadmea-plugin-seo
-      '@bowenlabs/cadmus':
-        specifier: workspace:*
-        version: link:../../../packages/cadmus
       '@phosphor-icons/web':
         specifier: ^2.1.2
         version: 2.1.2
@@ -189,6 +180,15 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.3.1
         version: 4.3.1(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4))
+      '@thebes/cadmea-design-system':
+        specifier: workspace:*
+        version: link:../../../packages/cadmea-design-system
+      '@thebes/cadmea-plugin-seo':
+        specifier: workspace:*
+        version: link:../../../packages/cadmea-plugin-seo
+      '@thebes/cadmus':
+        specifier: workspace:*
+        version: link:../../../packages/cadmus
       astro:
         specifier: ^6.4.8
         version: 6.4.8(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(tsx@4.22.4)
@@ -211,7 +211,7 @@ importers:
 
   examples/minimal:
     dependencies:
-      '@bowenlabs/cadmus':
+      '@thebes/cadmus':
         specifier: workspace:*
         version: link:../../packages/cadmus
     devDependencies:
@@ -234,9 +234,6 @@ importers:
         specifier: ^3.27.1
         version: 3.27.1
     devDependencies:
-      '@bowenlabs/cadmus':
-        specifier: workspace:*
-        version: link:../cadmus
       '@solidjs/testing-library':
         specifier: latest
         version: 0.8.10(solid-js@1.9.13)
@@ -252,6 +249,9 @@ importers:
       '@testing-library/jest-dom':
         specifier: latest
         version: 6.9.1
+      '@thebes/cadmus':
+        specifier: workspace:*
+        version: link:../cadmus
       jsdom:
         specifier: latest
         version: 29.1.1
@@ -288,7 +288,7 @@ importers:
 
   packages/cadmea-plugin-seo:
     devDependencies:
-      '@bowenlabs/cadmus':
+      '@thebes/cadmus':
         specifier: workspace:*
         version: link:../cadmus
       tsup:
@@ -331,12 +331,12 @@ importers:
 
   packages/cadmus-cloudflare-images:
     devDependencies:
-      '@bowenlabs/cadmus':
-        specifier: workspace:*
-        version: link:../cadmus
       '@cloudflare/workers-types':
         specifier: latest
         version: 4.20260621.1
+      '@thebes/cadmus':
+        specifier: workspace:*
+        version: link:../cadmus
       tsup:
         specifier: latest
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.15)(tsx@4.22.4)(typescript@6.0.3)

@@ -1,4 +1,4 @@
-import { type CollectionConfig, defineCmsConfig } from "@bowenlabs/cadmus/cms";
+import { type CollectionConfig, defineCmsConfig } from "@thebes/cadmus/cms";
 import { describe, expect, it } from "vitest";
 import { renderSeoTags, seoPlugin } from "./index.js";
 

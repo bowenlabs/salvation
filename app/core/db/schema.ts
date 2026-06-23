@@ -5,7 +5,7 @@
 // See DECISIONS.md 2026-06-21 "`site_settings` stays a hand-written core
 // table". `sessions` and `magic_link_tokens` are intentionally absent —
 // they live in KV (see CLAUDE.md "Authentication"), not D1.
-import type { JsonValue } from "@bowenlabs/cadmus/cms";
+import type { JsonValue } from "@thebes/cadmus/cms";
 import { sql } from "drizzle-orm";
 import { check, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 

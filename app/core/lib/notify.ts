@@ -3,7 +3,7 @@
 // sending fails, which is also what makes local dev work without a real
 // Cloudflare Email Routing domain: there's no routing configured for
 // `localhost`, so the send fails and the caller's fallback kicks in.
-import { sendEmail as cadmusSendEmail } from "@bowenlabs/cadmus/email";
+import { sendEmail as cadmusSendEmail } from "@thebes/cadmus/email";
 
 export interface NotifyResult {
   sent: boolean;

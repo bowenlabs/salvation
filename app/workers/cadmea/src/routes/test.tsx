@@ -1,7 +1,7 @@
-import { db } from "@bowenlabs/cadmus/db";
 import { pages } from "@core/db/schema.generated";
 import { createFileRoute } from "@tanstack/solid-router";
 import { createServerFn } from "@tanstack/solid-start";
+import { db } from "@thebes/cadmus/db";
 
 // loader calls a server function — must never be statically prerendered.
 // See scripts/check-prerender.ts.

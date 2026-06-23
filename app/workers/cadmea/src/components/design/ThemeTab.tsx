@@ -1,9 +1,9 @@
-import type { FontPairingKey } from "@bowenlabs/cadmea-design-system";
+import type { FontPairingKey } from "@thebes/cadmea-design-system";
 import {
   buildAllFontsUrl,
   getFontConfig,
   THEME_PRESET_LIST,
-} from "@bowenlabs/cadmea-design-system";
+} from "@thebes/cadmea-design-system";
 import { For, type JSX } from "solid-js";
 
 const FONT_PAIRINGS: FontPairingKey[] = [

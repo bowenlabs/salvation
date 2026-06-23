@@ -9,6 +9,40 @@
 
 ---
 
+## 2026-06-23 — Renamed the npm scope from `@bowenlabs` to `@thebes`
+
+**Context:** Project Thebes has evolved beyond "one repo among several
+BowenLabs projects" into the actual umbrella identity for the broader
+mission — Cadmus, Cadmea, and the planned Spartoi (#31) and `cadmus/astro`
+(#32) are all spokes of one ecosystem, not unrelated personal-brand
+packages. Astro itself (`@astrojs/*`) is the relevant precedent: scope by
+project/ecosystem identity, not by the maintaining company's name.
+
+**Decision:** Every first-party package scope changed from `@bowenlabs/*` to
+`@thebes/*` (`cadmus`, `cadmea`, `cadmea-design-system`, `cadmea-plugin-seo`,
+`cadmus-cloudflare-images`), across every `package.json` `name`/dependency
+field, source import, and doc reference. `BowenLabs` is unaffected as the
+*maintaining* entity — "Maintained by: BowenLabs," author fields
+(`hello@bowenlabs.io`), and the `bowenlabs.com`/`bowenlabs/project-thebes`
+repo URL all stay as-is; only the npm publishing scope changed. The
+`@cadmus-community/*` placeholder for third-party Cadmus extensions
+(not yet created) is unaffected by this rename.
+
+**Why now:** every package is still `0.x`, pre-1.0, with no real external
+consumers yet — this is the cheapest this rename will ever be. Waiting
+until after wider adoption would make it a genuinely breaking change
+requiring deprecation notices and dual-publishing.
+
+**Explicitly not renamed:** historical records — this file's prior entries
+and `SECTION_1_PLAN.md` — keep their original `@bowenlabs/...` text as
+written, since they document what was true at the time, not current state.
+
+**Action required (not automatable from here):** the `@thebes` npm
+organization needs to be created on npmjs.com before the next publish —
+confirmed unclaimed as of this decision (zero packages under the scope).
+
+---
+
 ## 2026-06-23 — CI workflow built only `@bowenlabs/cadmus`, not the other 4 publishable packages — fixed
 
 **Problem:** `build-site`/`build-panel`/`test-int`/`test-e2e`/`bundle-size`

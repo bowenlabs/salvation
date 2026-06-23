@@ -98,7 +98,7 @@ describe("generateSchemaSource", () => {
       collections: [{ slug: "blocks", fields: { body: { type: "richText" } } }],
     });
     expect(withJson).toContain(
-      'import type { JsonValue } from "@bowenlabs/cadmus/cms";',
+      'import type { JsonValue } from "@thebes/cadmus/cms";',
     );
 
     const withoutJson = generateSchemaSource({

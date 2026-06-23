@@ -3,8 +3,7 @@
 // plugin (the fallback route's `@astrojs/cloudflare/handler` import pulls in
 // a virtual module that only exists inside an actual Astro build/dev
 // context, which the vitest-pool-workers runtime doesn't provide).
-import { db } from "@bowenlabs/cadmus/db";
-import { checkRateLimit } from "@bowenlabs/cadmus/rate-limit";
+
 import { users } from "@core/db/schema";
 import {
   createMagicLinkToken,
@@ -14,6 +13,8 @@ import {
 import { sendEmail } from "@core/lib/notify";
 import { securityHeaders } from "@core/lib/security-headers";
 import { createSession, deleteSession } from "@core/lib/session";
+import { db } from "@thebes/cadmus/db";
+import { checkRateLimit } from "@thebes/cadmus/rate-limit";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";

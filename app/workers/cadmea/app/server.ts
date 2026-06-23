@@ -1,13 +1,13 @@
 // app/workers/cadmea/app/server.ts
 
-import { CadmusStorageError } from "@bowenlabs/cadmus";
-import { checkRateLimit } from "@bowenlabs/cadmus/rate-limit";
 import { verifySessionCookie } from "@core/lib/auth";
 import { mountPublicCmsApi } from "@core/lib/cms-api";
 import { createImageService } from "@core/lib/image-service";
 import { securityHeaders } from "@core/lib/security-headers";
 import { getSession, type Session } from "@core/lib/session";
 import startHandler from "@tanstack/solid-start/server-entry";
+import { CadmusStorageError } from "@thebes/cadmus";
+import { checkRateLimit } from "@thebes/cadmus/rate-limit";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";

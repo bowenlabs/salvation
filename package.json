@@ -33,11 +33,11 @@
     "lint": "biome check . && tsx app/scripts/check-prerender.ts",
     "format": "biome format --write .",
     "test": "pnpm test:cadmus && pnpm test:cadmea-pkg && pnpm test:design-system && pnpm test:plugin-seo && pnpm test:cf-images && pnpm test:int && pnpm test:e2e",
-    "test:cadmus": "pnpm --filter @bowenlabs/cadmus test",
-    "test:cadmea-pkg": "pnpm --filter @bowenlabs/cadmea test",
-    "test:design-system": "pnpm --filter @bowenlabs/cadmea-design-system test",
-    "test:plugin-seo": "pnpm --filter @bowenlabs/cadmea-plugin-seo test",
-    "test:cf-images": "pnpm --filter @bowenlabs/cadmus-cloudflare-images test",
+    "test:cadmus": "pnpm --filter @thebes/cadmus test",
+    "test:cadmea-pkg": "pnpm --filter @thebes/cadmea test",
+    "test:design-system": "pnpm --filter @thebes/cadmea-design-system test",
+    "test:plugin-seo": "pnpm --filter @thebes/cadmea-plugin-seo test",
+    "test:cf-images": "pnpm --filter @thebes/cadmus-cloudflare-images test",
     "test:int": "vitest run --config tests/int/vitest.config.ts",
     "test:e2e": "playwright test",
     "changeset": "changeset",
@@ -59,8 +59,8 @@
     "wrangler": "latest"
   },
   "dependencies": {
-    "@bowenlabs/cadmea-plugin-seo": "workspace:*",
-    "@bowenlabs/cadmus": "workspace:*",
+    "@thebes/cadmea-plugin-seo": "workspace:*",
+    "@thebes/cadmus": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "solid-js": "^1.9.13"
   }

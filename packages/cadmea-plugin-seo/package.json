@@ -1,5 +1,5 @@
 {
-  "name": "@bowenlabs/cadmea-plugin-seo",
+  "name": "@thebes/cadmea-plugin-seo",
   "version": "0.1.0",
   "description": "SEO plugin for Cadmea — injects meta/OG fields into collections and renders head tags",
   "author": "BowenLabs <hello@bowenlabs.io>",
@@ -31,10 +31,10 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@bowenlabs/cadmus": "workspace:*"
+    "@thebes/cadmus": "workspace:*"
   },
   "devDependencies": {
-    "@bowenlabs/cadmus": "workspace:*",
+    "@thebes/cadmus": "workspace:*",
     "tsup": "latest",
     "typescript": "latest",
     "vitest": "latest"

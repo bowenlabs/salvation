@@ -1,5 +1,5 @@
 {
-  "name": "@bowenlabs/cadmea-design-system",
+  "name": "@thebes/cadmea-design-system",
   "version": "0.1.0",
   "description": "Framework-agnostic design-token engine for Cadmea — themes, color scales, spacing/type tokens, fonts",
   "author": "BowenLabs <hello@bowenlabs.io>",

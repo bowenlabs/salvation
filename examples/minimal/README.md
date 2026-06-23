@@ -2,12 +2,12 @@
 
 The smallest possible Cadmus app: **one Worker, one primitive.** It rate-limits
 each client IP to 5 requests/minute using
-[`@bowenlabs/cadmus/rate-limit`](../../packages/cadmus/src/rate-limit) — no
+[`@thebes/cadmus/rate-limit`](../../packages/cadmus/src/rate-limit) — no
 Node.js, no adapter layer, just a Cloudflare KV binding handed straight to the
 primitive.
 
 ```ts
-import { checkRateLimit } from "@bowenlabs/cadmus/rate-limit";
+import { checkRateLimit } from "@thebes/cadmus/rate-limit";
 
 const { allowed, remaining } = await checkRateLimit(env.KV, key, 5, 60);
 ```

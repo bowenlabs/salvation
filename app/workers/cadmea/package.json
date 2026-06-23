@@ -14,10 +14,10 @@
     "deploy": "pnpm run build && wrangler deploy"
   },
   "dependencies": {
-    "@bowenlabs/cadmea": "workspace:*",
-    "@bowenlabs/cadmea-design-system": "workspace:*",
-    "@bowenlabs/cadmea-plugin-seo": "workspace:*",
-    "@bowenlabs/cadmus": "workspace:*",
+    "@thebes/cadmea": "workspace:*",
+    "@thebes/cadmea-design-system": "workspace:*",
+    "@thebes/cadmea-plugin-seo": "workspace:*",
+    "@thebes/cadmus": "workspace:*",
     "@cloudflare/vite-plugin": "1.42.1",
     "@phosphor-icons/web": "^2.1.2",
     "@tailwindcss/vite": "^4.3.1",

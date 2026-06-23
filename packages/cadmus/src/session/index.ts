@@ -1,7 +1,7 @@
 // Copyright (c) 2026 BowenLabs. All rights reserved.
 // Cadmus is MIT licensed. See LICENSE in the repo root.
 //
-// @bowenlabs/cadmus/session
+// @thebes/cadmus/session
 //
 // Thin JSON-over-KV session store. Takes a raw KVNamespace and a caller-
 // chosen key — no "session:" prefix or namespace convention baked in,

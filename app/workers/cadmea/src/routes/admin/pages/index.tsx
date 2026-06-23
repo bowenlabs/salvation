@@ -1,5 +1,5 @@
-import { createCollectionListPage } from "@bowenlabs/cadmea/tanstack-start";
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { createCollectionListPage } from "@thebes/cadmea/tanstack-start";
 import { pagesCollection } from "../../../../../../cadmea.config.js";
 import { getPages } from "../../../server-functions/pages";
 

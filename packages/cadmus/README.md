@@ -1,4 +1,4 @@
-# @bowenlabs/cadmus
+# @thebes/cadmus
 
 V8-first, Cloudflare-native full-stack framework primitives.
 
@@ -23,9 +23,9 @@ pricing. Cadmus makes building on it feel complete.
 ## Install
 
 ```bash
-npm install @bowenlabs/cadmus
+npm install @thebes/cadmus
 # or
-pnpm add @bowenlabs/cadmus
+pnpm add @thebes/cadmus
 ```
 
 ---
@@ -35,29 +35,29 @@ pnpm add @bowenlabs/cadmus
 Each primitive is independently usable — import only what you need:
 
 ```typescript
-import { db }              from '@bowenlabs/cadmus/db'
-import { createMagicLink } from '@bowenlabs/cadmus/auth'
-import { upload }          from '@bowenlabs/cadmus/storage'
-import { purgeCache }      from '@bowenlabs/cadmus/cache'
-import { sendEmail }       from '@bowenlabs/cadmus/email'
-import { rateLimit }       from '@bowenlabs/cadmus/rate-limit'
-import { createSession }   from '@bowenlabs/cadmus/session'
-import { enqueue }         from '@bowenlabs/cadmus/queues'
+import { db }              from '@thebes/cadmus/db'
+import { createMagicLink } from '@thebes/cadmus/auth'
+import { upload }          from '@thebes/cadmus/storage'
+import { purgeCache }      from '@thebes/cadmus/cache'
+import { sendEmail }       from '@thebes/cadmus/email'
+import { rateLimit }       from '@thebes/cadmus/rate-limit'
+import { createSession }   from '@thebes/cadmus/session'
+import { enqueue }         from '@thebes/cadmus/queues'
 ```
 
 Hono users get ergonomic middleware via a separate entrypoint:
 
 ```typescript
-import { cadmusAuth, cadmusRateLimit } from '@bowenlabs/cadmus/hono'
+import { cadmusAuth, cadmusRateLimit } from '@thebes/cadmus/hono'
 ```
 
 **A CMS engine on top of the primitives above** — model content as
 collections and get a generated Drizzle schema, a typed, access-controlled,
 hook-driven Local API, and a Payload-equivalent REST API
-(`mountCmsRoutes`, also from `@bowenlabs/cadmus/hono`):
+(`mountCmsRoutes`, also from `@thebes/cadmus/hono`):
 
 ```typescript
-import { createLocalApi, defineCmsConfig } from '@bowenlabs/cadmus/cms'
+import { createLocalApi, defineCmsConfig } from '@thebes/cadmus/cms'
 ```
 
 See [`src/cms/README.md`](./src/cms/README.md) for the full reference —
@@ -77,12 +77,12 @@ draft/publish versioning, and mounting the REST API.
 
 ---
 
-## Email (`@bowenlabs/cadmus/email`)
+## Email (`@thebes/cadmus/email`)
 
 Thin wrapper over the CF Email Workers `send_email` binding.
 
 ```typescript
-import { sendEmail } from '@bowenlabs/cadmus/email'
+import { sendEmail } from '@thebes/cadmus/email'
 
 await sendEmail(env.EMAIL, {
   from: 'noreply@yourdomain.com',

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 BowenLabs. All rights reserved.
 // Cadmus is MIT licensed. See LICENSE in the repo root.
 //
-// @bowenlabs/cadmus/db
+// @thebes/cadmus/db
 //
 // Thin wrapper around Drizzle's D1 driver. Raw binding in, Drizzle
 // instance out — the schema is the caller's, never Cadmus's. Cadmus has

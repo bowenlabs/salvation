@@ -1,8 +1,8 @@
-import type { ImageService } from "@bowenlabs/cadmus/storage";
-import { validateImageFile } from "@bowenlabs/cadmus/storage";
+import type { ImageService } from "@thebes/cadmus/storage";
+import { validateImageFile } from "@thebes/cadmus/storage";
 
 // To switch the whole app to Cloudflare Image Resizing, import the adapter
-// (@bowenlabs/cadmus-cloudflare-images) and return it from
+// (@thebes/cadmus-cloudflare-images) and return it from
 // createImageService() below — a one-line change confined to this file.
 
 // Extracts a short, safe extension from the original filename — never
@@ -41,7 +41,7 @@ export function createR2ImageService(
 /**
  * The app's single image-service selection point. Every call site resolves
  * its `ImageService` through this one function, so swapping the active
- * implementation (e.g. to `@bowenlabs/cadmus-cloudflare-images`) is a
+ * implementation (e.g. to `@thebes/cadmus-cloudflare-images`) is a
  * one-line change confined to this file — no component, renderer, or block
  * data changes, and the database still stores original R2 URLs either way.
  */

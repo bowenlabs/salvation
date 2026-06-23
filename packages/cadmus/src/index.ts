@@ -25,6 +25,6 @@ export interface CadmusEnv {
   SESSION_SECRET: string;
 }
 
-// Note: @bowenlabs/cadmus/hono is intentionally excluded from the root
+// Note: @thebes/cadmus/hono is intentionally excluded from the root
 // export — it has hono as a peer dependency and is opt-in only.
-// Import it directly: import { cadmusAuth } from '@bowenlabs/cadmus/hono'
+// Import it directly: import { cadmusAuth } from '@thebes/cadmus/hono'

@@ -1,22 +1,22 @@
-# @bowenlabs/cadmea-plugin-seo
+# @thebes/cadmea-plugin-seo
 
 SEO plugin for [Cadmea](https://github.com/bowenlabs/project-thebes). It adds
 meta/OG fields to your collections and renders the matching `<head>` tags on the
 public site — the V8-native equivalent of `@payloadcms/plugin-seo`.
 
 This is a **Cadmea plugin** — a `plugin(config) => config` transform on the
-`@bowenlabs/cadmus/cms` config. `@bowenlabs/cadmus` is a types-only peer; nothing
+`@thebes/cadmus/cms` config. `@thebes/cadmus` is a types-only peer; nothing
 here ships at runtime except your own field data.
 
 ```bash
-pnpm add @bowenlabs/cadmea-plugin-seo
+pnpm add @thebes/cadmea-plugin-seo
 ```
 
 ## Add it to your config
 
 ```ts
-import { defineCmsConfig } from "@bowenlabs/cadmus/cms";
-import { seoPlugin } from "@bowenlabs/cadmea-plugin-seo";
+import { defineCmsConfig } from "@thebes/cadmus/cms";
+import { seoPlugin } from "@thebes/cadmea-plugin-seo";
 
 export const cmsConfig = defineCmsConfig({
   collections: [pagesCollection],
@@ -44,7 +44,7 @@ inject via Astro's `set:html` because every value is escaped.
 
 ```astro
 ---
-import { renderSeoTags } from "@bowenlabs/cadmea-plugin-seo";
+import { renderSeoTags } from "@thebes/cadmea-plugin-seo";
 const tags = renderSeoTags(page, {
   siteName: settings?.siteName,
   metaDescription: settings?.metaDescription,

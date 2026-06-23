@@ -10,5 +10,5 @@ export default defineConfig({
   // V8/Workers target. cadmus is a peer (the consumer always has it), so it
   // is resolved at runtime rather than bundled in.
   platform: "browser",
-  external: ["@bowenlabs/cadmus"],
+  external: ["@thebes/cadmus"],
 });

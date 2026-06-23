@@ -1,4 +1,4 @@
-import type { CollectionConfig, FieldConfig } from "@bowenlabs/cadmus/cms";
+import type { CollectionConfig, FieldConfig } from "@thebes/cadmus/cms";
 import {
   createEffect,
   createSignal,
@@ -34,7 +34,7 @@ export interface RelationshipOption {
 /**
  * Replaces the generic "Save" button with "Save draft"/"Publish" when the
  * collection has `versions: { drafts: true }` — a separate privilege from
- * a plain update, matching `access.publish` in `@bowenlabs/cadmus/cms`.
+ * a plain update, matching `access.publish` in `@thebes/cadmus/cms`.
  * `onPublish` takes no values: publishing acts on whatever was last saved
  * as a draft (the consuming route tracks which version that is), not on
  * the live form state.

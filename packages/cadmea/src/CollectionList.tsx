@@ -1,4 +1,4 @@
-import type { CollectionConfig, FieldConfig } from "@bowenlabs/cadmus/cms";
+import type { CollectionConfig, FieldConfig } from "@thebes/cadmus/cms";
 import { createSignal, For, Show } from "solid-js";
 
 // Field types that can be rendered as a plain table cell today.

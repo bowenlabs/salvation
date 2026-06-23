@@ -39,11 +39,11 @@ everything that isn't this.
 ```
 thebes/
 ├── packages/
-│   ├── cadmus/                    @bowenlabs/cadmus — the framework
-│   ├── cadmea/                    @bowenlabs/cadmea — Cadmea's admin-UI components
-│   ├── cadmea-design-system/      @bowenlabs/cadmea-design-system — design-token engine (standalone lib)
-│   ├── cadmea-plugin-seo/         @bowenlabs/cadmea-plugin-seo — SEO plugin (CMS axis)
-│   └── cadmus-cloudflare-images/  @bowenlabs/cadmus-cloudflare-images — image adapter (framework axis)
+│   ├── cadmus/                    @thebes/cadmus — the framework
+│   ├── cadmea/                    @thebes/cadmea — Cadmea's admin-UI components
+│   ├── cadmea-design-system/      @thebes/cadmea-design-system — design-token engine (standalone lib)
+│   ├── cadmea-plugin-seo/         @thebes/cadmea-plugin-seo — SEO plugin (CMS axis)
+│   └── cadmus-cloudflare-images/  @thebes/cadmus-cloudflare-images — image adapter (framework axis)
 ├── app/
 │   ├── workers/site/   docs + marketing for Cadmus and Cadmea, example deployment
 │   └── workers/cadmea/ Cadmea — the reference CMS admin
@@ -51,8 +51,8 @@ thebes/
     └── minimal/        the smallest possible Cadmus app (with-auth, with-d1 planned)
 ```
 
-Extensions come on two axes — **adapters** (`@bowenlabs/cadmus-*`, swappable
-implementations like image services) and **plugins** (`@bowenlabs/cadmea-plugin-*`,
+Extensions come on two axes — **adapters** (`@thebes/cadmus-*`, swappable
+implementations like image services) and **plugins** (`@thebes/cadmea-plugin-*`,
 Payload-style `config => config` transforms). Shared building blocks that are
 neither (like the design-token engine) ship as plain **libraries**. See
 **[EXTENDING.md](./EXTENDING.md)**.
@@ -61,7 +61,7 @@ neither (like the design-token engine) ship as plain **libraries**. See
 
 `project-thebes` is the **monorepo** — it holds the framework, the CMS, the
 first-party extensions, the docs site, the reference app, and the examples, and
-it publishes the `@bowenlabs/*` packages to npm. Two things live *outside* it:
+it publishes the `@thebes/*` packages to npm. Two things live *outside* it:
 
 - **`bowenlabs-template`** — the fork target (Cloudflare deploy button) a client
   site is built from. It consumes the published packages and holds that site's
@@ -84,17 +84,17 @@ to build complete web applications on Cloudflare Workers without Node.js
 assumptions, adapter layers, or configuration overhead.
 
 ```bash
-npm install @bowenlabs/cadmus
+npm install @thebes/cadmus
 ```
 
 Each primitive is independently usable:
 
 ```typescript
-import { db }          from '@bowenlabs/cadmus/db'
-import { createMagicLink } from '@bowenlabs/cadmus/auth'
-import { upload }      from '@bowenlabs/cadmus/storage'
-import { purgeCache }  from '@bowenlabs/cadmus/cache'
-import { enqueue }     from '@bowenlabs/cadmus/queues'
+import { db }          from '@thebes/cadmus/db'
+import { createMagicLink } from '@thebes/cadmus/auth'
+import { upload }      from '@thebes/cadmus/storage'
+import { purgeCache }  from '@thebes/cadmus/cache'
+import { enqueue }     from '@thebes/cadmus/queues'
 ```
 
 **[Read the Cadmus docs →](./packages/cadmus/README.md)**
@@ -133,7 +133,7 @@ on [issue #30](https://github.com/bowenlabs/project-thebes/issues/30) (the
 VoidZero Void/Vite+/Rolldown migration). See CLAUDE.md and CADMEA.md for the
 full reasoning.
 
-Also planned: **`@bowenlabs/cadmus/astro`**, an official peer-integration
+Also planned: **`@thebes/cadmus/astro`**, an official peer-integration
 layer (same "peer, not a dependency" treatment `cadmus/hono` already gets)
 making Astro the officially recommended frontend for Cadmus — the headline
 answer to "what do I build the UI with" for the React-alternative pitch.

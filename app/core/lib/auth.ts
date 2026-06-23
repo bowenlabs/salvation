@@ -1,12 +1,12 @@
 // Magic-link token issuance/verification and session-cookie signing —
-// This app's wiring on top of the generic @bowenlabs/cadmus/auth
+// This app's wiring on top of the generic @thebes/cadmus/auth
 // primitives. See CLAUDE.md "Authentication" for the full flow.
 import {
   generateToken,
   hashToken,
   signSession,
   verifySession,
-} from "@bowenlabs/cadmus/auth";
+} from "@thebes/cadmus/auth";
 
 const MAGIC_LINK_TTL_SECONDS = 900; // 15 min
 const MAGIC_LINK_KEY_PREFIX = "magiclink:";

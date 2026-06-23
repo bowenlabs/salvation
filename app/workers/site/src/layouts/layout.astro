@@ -1,16 +1,13 @@
 ---
 import { ClientRouter } from "astro:transitions";
 import { env } from "cloudflare:workers";
-import {
-  buildTokenStyle,
-  getFontConfig,
-} from "@bowenlabs/cadmea-design-system";
-import { renderSeoTags, type SeoDocument } from "@bowenlabs/cadmea-plugin-seo";
-import { db } from "@bowenlabs/cadmus/db";
 import { pages } from "@core/db/schema.generated";
 import { getSiteSettings } from "@core/lib/get-site-settings";
 import { createImageService } from "@core/lib/image-service";
 import phosphorCss from "@phosphor-icons/web/regular?url";
+import { buildTokenStyle, getFontConfig } from "@thebes/cadmea-design-system";
+import { renderSeoTags, type SeoDocument } from "@thebes/cadmea-plugin-seo";
+import { db } from "@thebes/cadmus/db";
 import { eq } from "drizzle-orm";
 import SiteFooter, { type SocialLink } from "../components/SiteFooter.astro";
 import SiteNav, { type NavLink } from "../components/SiteNav.astro";
@@ -23,7 +20,7 @@ interface Props {
   /** Renders <meta name="robots" content="noindex">. Defaults to false. */
   noindex?: boolean;
   /**
-   * Document whose SEO fields (from @bowenlabs/cadmea-plugin-seo) drive the
+   * Document whose SEO fields (from @thebes/cadmea-plugin-seo) drive the
    * <title> and meta/OG tags, with site_settings as the fallback. When
    * omitted the layout renders a plain <title> from the `title` prop.
    */

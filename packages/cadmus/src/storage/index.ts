@@ -1,7 +1,7 @@
 // Copyright (c) 2026 BowenLabs. All rights reserved.
 // Cadmus is MIT licensed. See LICENSE in the repo root.
 //
-// @bowenlabs/cadmus/storage
+// @thebes/cadmus/storage
 //
 // Defines the ImageService contract only — R2 upload/serve and any
 // alternate implementation (e.g. a Cloudflare Images extension) live

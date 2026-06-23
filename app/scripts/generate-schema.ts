@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { generateSchemaSource } from "@bowenlabs/cadmus/cms";
+import { generateSchemaSource } from "@thebes/cadmus/cms";
 import { cadmeaConfig } from "../cadmea.config.js";
 
 const outputPath = fileURLToPath(

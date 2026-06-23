@@ -1,7 +1,7 @@
 {
-  "name": "@bowenlabs/cadmus-cloudflare-images",
+  "name": "@thebes/cadmus-cloudflare-images",
   "version": "0.1.0",
-  "description": "Cloudflare Image Resizing adapter for @bowenlabs/cadmus/storage's ImageService",
+  "description": "Cloudflare Image Resizing adapter for @thebes/cadmus/storage's ImageService",
   "author": "BowenLabs <hello@bowenlabs.io>",
   "license": "MIT",
   "repository": {
@@ -31,10 +31,10 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@bowenlabs/cadmus": "workspace:*"
+    "@thebes/cadmus": "workspace:*"
   },
   "devDependencies": {
-    "@bowenlabs/cadmus": "workspace:*",
+    "@thebes/cadmus": "workspace:*",
     "@cloudflare/workers-types": "latest",
     "tsup": "latest",
     "typescript": "latest",

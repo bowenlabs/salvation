@@ -1,7 +1,7 @@
 // Copyright (c) 2026 BowenLabs. All rights reserved.
 // Cadmus is MIT licensed. See LICENSE in the repo root.
 //
-// @bowenlabs/cadmus/rate-limit
+// @thebes/cadmus/rate-limit
 //
 // Fixed-window rate limiter over KV. Best-effort, not atomic — KV has no
 // transactions, so a tight race on the same key can let one or two extra

@@ -10,5 +10,5 @@ export default defineConfig({
   // V8/Workers target — no Node.js built-ins. cadmus is a types-only peer,
   // erased at build time, so it is never bundled in.
   platform: "browser",
-  external: ["@bowenlabs/cadmus"],
+  external: ["@thebes/cadmus"],
 });

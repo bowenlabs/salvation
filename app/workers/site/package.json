@@ -17,9 +17,9 @@
 	},
 	"dependencies": {
 		"@astrojs/cloudflare": "^13.7.0",
-		"@bowenlabs/cadmea-design-system": "workspace:*",
-		"@bowenlabs/cadmea-plugin-seo": "workspace:*",
-		"@bowenlabs/cadmus": "workspace:*",
+		"@thebes/cadmea-design-system": "workspace:*",
+		"@thebes/cadmea-plugin-seo": "workspace:*",
+		"@thebes/cadmus": "workspace:*",
 		"@phosphor-icons/web": "^2.1.2",
 		"@tailwindcss/typography": "^0.5.20",
 		"@tailwindcss/vite": "^4.3.1",

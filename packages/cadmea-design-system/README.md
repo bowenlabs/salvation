@@ -1,4 +1,4 @@
-# @bowenlabs/cadmea-design-system
+# @thebes/cadmea-design-system
 
 The design-token engine behind [Cadmea](https://github.com/bowenlabs/project-thebes):
 turn a plain settings object into the CSS token cascade — DaisyUI v5 theme
@@ -10,13 +10,13 @@ platform APIs, so the same code renders the cascade server-side (SSR `<style>`,
 no FOUC) and client-side (the Panel's live preview).
 
 ```bash
-pnpm add @bowenlabs/cadmea-design-system
+pnpm add @thebes/cadmea-design-system
 ```
 
 ## Core API
 
 ```ts
-import { buildTokenStyle } from "@bowenlabs/cadmea-design-system";
+import { buildTokenStyle } from "@thebes/cadmea-design-system";
 
 const css = buildTokenStyle({
   theme: "citadel",

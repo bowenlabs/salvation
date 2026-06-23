@@ -2,7 +2,7 @@ import {
   contrastRatio,
   generateColorScale,
   passesAA,
-} from "@bowenlabs/cadmea-design-system";
+} from "@thebes/cadmea-design-system";
 import { For, type JSX, Show } from "solid-js";
 
 export interface ColorsTabValues {

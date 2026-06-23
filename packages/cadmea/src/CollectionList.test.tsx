@@ -1,4 +1,3 @@
-import type { CollectionConfig } from "@bowenlabs/cadmus/cms";
 import {
   cleanup,
   fireEvent,
@@ -6,6 +5,7 @@ import {
   screen,
   within,
 } from "@solidjs/testing-library";
+import type { CollectionConfig } from "@thebes/cadmus/cms";
 import { afterEach, describe, expect, it } from "vitest";
 import { CollectionList } from "./CollectionList.js";
 

@@ -1,5 +1,5 @@
 import { env, SELF } from "cloudflare:test";
-import { db } from "@bowenlabs/cadmus/db";
+import { db } from "@thebes/cadmus/db";
 import { createMagicLinkToken } from "@core/lib/auth";
 import { users } from "@core/db/schema";
 import { beforeEach, describe, expect, it } from "vitest";

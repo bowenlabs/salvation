@@ -1,6 +1,6 @@
 // Copyright (c) 2026 BowenLabs. MIT licensed. See LICENSE in the repo root.
 //
-// @bowenlabs/cadmea-design-system
+// @thebes/cadmea-design-system
 //
 // A framework-agnostic design-token engine: turn a settings object into the
 // CSS token cascade (DaisyUI v5 themes + an OKLCH brand ramp + spacing/type

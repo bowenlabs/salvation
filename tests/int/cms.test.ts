@@ -1,6 +1,6 @@
 import { env } from "cloudflare:test";
-import { createLocalApi, createVersionedLocalApi } from "@bowenlabs/cadmus/cms";
-import { db } from "@bowenlabs/cadmus/db";
+import { createLocalApi, createVersionedLocalApi } from "@thebes/cadmus/cms";
+import { db } from "@thebes/cadmus/db";
 import { pagesCollection } from "../../app/cadmea.config";
 import { pages, pages_versions } from "@core/db/schema.generated";
 import { beforeEach, describe, expect, it } from "vitest";

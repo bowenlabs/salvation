@@ -17,7 +17,7 @@ pricing, genuinely committed to a better internet. Cadmus exists to make
 building on Cloudflare so easy, secure, and cheap that reaching for AWS,
 Vercel, or a heavier stack feels like the wrong choice.
 
-**Package:** `@bowenlabs/cadmus`
+**Package:** `@thebes/cadmus`
 **Location:** `packages/cadmus/`
 **License:** MIT
 
@@ -49,9 +49,9 @@ infrastructure you happen to have access to.
 
 ```typescript
 // This should feel native, not bolted on
-import { db } from '@bowenlabs/cadmus/db'
-import { createMagicLink } from '@bowenlabs/cadmus/auth'
-import { upload } from '@bowenlabs/cadmus/storage'
+import { db } from '@thebes/cadmus/db'
+import { createMagicLink } from '@thebes/cadmus/auth'
+import { upload } from '@thebes/cadmus/storage'
 ```
 
 ### 3. Independent primitives — progressive adoption
@@ -61,9 +61,9 @@ independently with no forced coupling between them:
 
 ```typescript
 // Use only what you need — nothing else is pulled in
-import { createMagicLink } from '@bowenlabs/cadmus/auth'
-import { db } from '@bowenlabs/cadmus/db'
-import { upload } from '@bowenlabs/cadmus/storage'
+import { createMagicLink } from '@thebes/cadmus/auth'
+import { db } from '@thebes/cadmus/db'
+import { upload } from '@thebes/cadmus/storage'
 ```
 
 **Hard rule:** inter-primitive dependencies are zero. `cadmus/auth` must
@@ -77,8 +77,8 @@ the type returned by `cadmus/db`'s `db()` factory — without importing
 `cadmus/db` itself. A consumer wires the two together explicitly:
 
 ```typescript
-import { db } from '@bowenlabs/cadmus/db'
-import { defineCmsConfig } from '@bowenlabs/cadmus/cms'
+import { db } from '@thebes/cadmus/db'
+import { defineCmsConfig } from '@thebes/cadmus/cms'
 
 defineCmsConfig({ collections, db: db(d1, schema) })
 ```
@@ -93,7 +93,7 @@ site explicit:
 
 ```typescript
 // Raw primitive — works in Astro, TanStack Start, Hono, raw Workers, anywhere
-import { createMagicLink } from '@bowenlabs/cadmus/auth'
+import { createMagicLink } from '@thebes/cadmus/auth'
 
 await createMagicLink({
   kv:    env.KV,
@@ -103,7 +103,7 @@ await createMagicLink({
 ```
 
 Hono users get ergonomic helpers that read bindings from context automatically,
-via the separate `@bowenlabs/cadmus/hono` entrypoint — see below.
+via the separate `@thebes/cadmus/hono` entrypoint — see below.
 
 ### 4. Framework-agnostic, Cloudflare-specific
 
@@ -121,8 +121,8 @@ multiple hosting providers. Run it on Cloudflare because Cloudflare is
 the right choice — not because Cadmus forces you to.
 
 **Astro is the one deliberate, flagged exception to "no opinion."** A
-planned `@bowenlabs/cadmus/astro` peer-integration layer — same "peer, not a
-dependency" treatment `@bowenlabs/cadmus/hono` already gets, not a hard
+planned `@thebes/cadmus/astro` peer-integration layer — same "peer, not a
+dependency" treatment `@thebes/cadmus/hono` already gets, not a hard
 dependency of core — will be the officially recommended frontend for Cadmus's
 "real alternative to React" positioning. Core primitives stay framework-
 agnostic; this one peer layer is allowed an opinion, the same way `cadmus/hono`
@@ -209,7 +209,7 @@ packages/cadmus/
 │   └── index.ts             ← re-exports all primitives (meta import)
 │
 ├── dist/                    ← compiled output (tsup → ESM + CJS + .d.ts)
-├── package.json             ← name: "@bowenlabs/cadmus", exports map
+├── package.json             ← name: "@thebes/cadmus", exports map
 ├── tsup.config.ts           ← build config
 ├── tsconfig.json
 └── README.md                ← top-level framework docs
@@ -227,7 +227,7 @@ both the compiled output and TypeScript types:
 
 ```json
 {
-  "name": "@bowenlabs/cadmus",
+  "name": "@thebes/cadmus",
   "exports": {
     ".": {
       "types":   "./dist/index.d.ts",
@@ -312,7 +312,7 @@ export default defineConfig({
 ```
 
 `pnpm build:cadmus` runs tsup and produces `dist/`. During development,
-both Workers consume `@bowenlabs/cadmus` via pnpm workspace reference —
+both Workers consume `@thebes/cadmus` via pnpm workspace reference —
 TypeScript resolves directly from `src/` via `tsconfig.json` paths.
 The build step is required before publishing to npm and is validated
 in CI on every push to confirm the output is valid.
@@ -377,7 +377,7 @@ export class CadmusCmsError extends CadmusError {
 Consumer error handling:
 
 ```typescript
-import { CadmusAuthError, CadmusError } from '@bowenlabs/cadmus'
+import { CadmusAuthError, CadmusError } from '@thebes/cadmus'
 
 try {
   await createMagicLink({ kv, email, to })
@@ -401,7 +401,7 @@ Never throw a raw `Error` from a Cadmus primitive — always a typed subclass.
 
 ## Hono integration layer
 
-`@bowenlabs/cadmus/hono` provides thin wrappers over the raw primitives
+`@thebes/cadmus/hono` provides thin wrappers over the raw primitives
 that read Cloudflare bindings from Hono context automatically. These are
 purely ergonomic — they call the same underlying primitive functions.
 
@@ -445,7 +445,7 @@ export function cadmusRateLimit(options: { limit: number; window: number }) {
 - Every Hono helper wraps a raw primitive call — never reimplements logic
 - The raw primitive is always the source of truth
 - Hono helpers are tested by testing the raw primitives they wrap
-- `@bowenlabs/cadmus/hono` has `hono` as a peer dependency, not a dependency
+- `@thebes/cadmus/hono` has `hono` as a peer dependency, not a dependency
 
 ---
 
@@ -459,7 +459,7 @@ The Queues primitive has two distinct concerns:
 
 **Producer** — enqueue a message from any Worker context:
 ```typescript
-import { enqueue } from '@bowenlabs/cadmus/queues'
+import { enqueue } from '@thebes/cadmus/queues'
 
 await enqueue({
   queue: env.MY_QUEUE,
@@ -469,7 +469,7 @@ await enqueue({
 
 **Consumer** — handle messages in a queue consumer Worker:
 ```typescript
-import { createQueueHandler } from '@bowenlabs/cadmus/queues'
+import { createQueueHandler } from '@thebes/cadmus/queues'
 
 export default createQueueHandler({
   async handle(message, env) {
@@ -499,10 +499,10 @@ signatures narrow and avoids coupling to any app's specific binding set.
 
 ```typescript
 // Each primitive takes only what it needs
-import { db } from '@bowenlabs/cadmus/db'
+import { db } from '@thebes/cadmus/db'
 db(env.DB, schema)          // D1Database only
 
-import { rateLimit } from '@bowenlabs/cadmus/rate-limit'
+import { rateLimit } from '@thebes/cadmus/rate-limit'
 rateLimit({ kv: env.KV })   // KVNamespace only
 ```
 
@@ -615,11 +615,11 @@ Keep a `wrangler.test.jsonc` in `packages/cadmus/` with `[[d1_databases]]`,
 
 Some Cadmus primitives are defined as *interfaces* with their implementation
 living outside core, so an app can swap backends without touching call sites.
-`ImageService` (`@bowenlabs/cadmus/storage`) is the first: the default is a
-plain R2 pass-through, and `@bowenlabs/cadmus-cloudflare-images` is an alternate
+`ImageService` (`@thebes/cadmus/storage`) is the first: the default is a
+plain R2 pass-through, and `@thebes/cadmus-cloudflare-images` is an alternate
 adapter that returns Cloudflare Image Resizing URLs.
 
-An adapter implements the interface and is published as `@bowenlabs/cadmus-*`
+An adapter implements the interface and is published as `@thebes/cadmus-*`
 (first-party) or `@cadmus-community/*`. The contract that makes the swap a
 one-liner: the app resolves the active implementation in a single place. This is
 one of Thebes's two extension axes — the other is Cadmea plugins. See the full
@@ -629,7 +629,7 @@ guide in **[EXTENDING.md](./EXTENDING.md)**.
 
 ## Community primitives
 
-The `@bowenlabs/cadmus` core package stays small and officially maintained.
+The `@thebes/cadmus` core package stays small and officially maintained.
 Community-built primitives live under `@cadmus-community/*` as separate
 packages maintained by their authors.
 

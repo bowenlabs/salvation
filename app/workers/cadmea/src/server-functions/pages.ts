@@ -1,8 +1,8 @@
-import { createVersionedLocalApi } from "@bowenlabs/cadmus/cms";
-import { db } from "@bowenlabs/cadmus/db";
-import { checkRateLimit } from "@bowenlabs/cadmus/rate-limit";
 import { pages, pages_versions } from "@core/db/schema.generated";
 import { createServerFn } from "@tanstack/solid-start";
+import { createVersionedLocalApi } from "@thebes/cadmus/cms";
+import { db } from "@thebes/cadmus/db";
+import { checkRateLimit } from "@thebes/cadmus/rate-limit";
 import { asc, type Column, desc } from "drizzle-orm";
 import type { PagesAccessContext } from "../../../../cadmea.config.js";
 import { pagesCollection } from "../../../../cadmea.config.js";
@@ -49,7 +49,7 @@ export const getPages = createServerFn({ method: "GET" })
     const api = await pagesApi();
     // `sortField` comes from CollectionList's column picker, which only
     // ever lists this collection's own field keys (see listableFields in
-    // @bowenlabs/cadmea), so it's always a real column on `pages` — still
+    // @thebes/cadmea), so it's always a real column on `pages` — still
     // guarded here since it crosses a server-function boundary.
     const column = data.sortField
       ? (pages as unknown as Record<string, Column>)[data.sortField]

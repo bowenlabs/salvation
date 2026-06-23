@@ -1,11 +1,11 @@
-import { checkRateLimit } from "@bowenlabs/cadmus/rate-limit";
+import { checkRateLimit } from "@thebes/cadmus/rate-limit";
 
 interface Env {
   KV: KVNamespace;
 }
 
 // The smallest possible Cadmus app: one Worker, one primitive. It rate-limits
-// each client IP to 5 requests per minute using @bowenlabs/cadmus/rate-limit —
+// each client IP to 5 requests per minute using @thebes/cadmus/rate-limit —
 // no Node.js, no adapter layer, just a Cloudflare KV binding passed straight
 // into the primitive (see CADMUS.md "Raw bindings").
 export default {

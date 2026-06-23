@@ -15,7 +15,7 @@
 ## What is Cadmea?
 
 Cadmea is a free, open-source, V8-native headless CMS and admin platform,
-built entirely on top of `@bowenlabs/cadmus` and its `cadmus/cms` engine.
+built entirely on top of `@thebes/cadmus` and its `cadmus/cms` engine.
 Operators define content as **collections** in `cadmea.config.ts` (the
 equivalent of a `payload.config.ts`) and get a generated admin UI, a typed
 query layer, and a REST API — on infrastructure they own forever.
@@ -26,9 +26,9 @@ a deliberate proof of concept for what a Payload-CMS-equivalent product looks
 like with zero Node.js dependency, running natively in Cloudflare's V8
 isolates.
 
-**Component package:** `@bowenlabs/cadmea`
+**Component package:** `@thebes/cadmea`
 **Location:** `packages/cadmea/`
-**Engine:** `@bowenlabs/cadmus/cms` (`packages/cadmus/src/cms/`)
+**Engine:** `@thebes/cadmus/cms` (`packages/cadmus/src/cms/`)
 **Reference deployment:** `app/workers/cadmea/` (Worker 2 of Thebes's own app)
 **License:** MIT
 
@@ -99,7 +99,7 @@ always wrong, no exceptions.
 ### 6. Plugins, not forks
 
 Collection/field/hook behavior changes ship as Cadmea plugins
-(`@bowenlabs/cadmea-plugin-*`, the `(config) => config` axis — see
+(`@thebes/cadmea-plugin-*`, the `(config) => config` axis — see
 EXTENDING.md), not as edits to `packages/cadmea`'s generic components or
 `cadmus/cms`'s engine. If a feature can't be expressed as a plugin transform
 over the config, that's a signal that it belongs in `cadmus/cms` itself
@@ -122,7 +122,7 @@ packages/cadmea/
 │   │   └── index.ts
 │   └── index.ts
 ├── dist/                        ← tsup-preset-solid output (server/browser/worker/node/deno)
-├── package.json                 ← name: "@bowenlabs/cadmea", exports map
+├── package.json                 ← name: "@thebes/cadmea", exports map
 ├── tsup.config.ts
 └── README.md                    ← npm-facing install/usage docs
 

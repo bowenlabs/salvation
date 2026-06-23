@@ -1,7 +1,7 @@
 ---
 import { env } from "cloudflare:workers";
-import { db } from "@bowenlabs/cadmus/db";
 import { pages } from "@core/db/schema.generated";
+import { db } from "@thebes/cadmus/db";
 
 const result = await env.DB.prepare("SELECT 1 as ok").first();
 const pagesResult = await db(env.DB).select().from(pages).all();

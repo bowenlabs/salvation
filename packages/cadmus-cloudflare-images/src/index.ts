@@ -1,21 +1,21 @@
 // Copyright (c) 2026 BowenLabs. All rights reserved.
 // MIT licensed. See LICENSE in the repo root.
 //
-// @bowenlabs/cadmus-cloudflare-images
+// @thebes/cadmus-cloudflare-images
 //
 // A Cadmus *adapter* (the swappable-implementation axis): an alternate
-// `ImageService` (from @bowenlabs/cadmus/storage) backed by Cloudflare
+// `ImageService` (from @thebes/cadmus/storage) backed by Cloudflare
 // Image Resizing. Uploads still land in R2 and the database still stores
 // the original R2 URL — only `render()` differs, returning responsive
 // `/cdn-cgi/image/...` transform URLs instead of a pass-through `src`.
 //
 // Swap it in without touching any component or block data:
 //
-//   import { createCloudflareImageService } from "@bowenlabs/cadmus-cloudflare-images";
+//   import { createCloudflareImageService } from "@thebes/cadmus-cloudflare-images";
 //   const images = createCloudflareImageService({ bucket: env.R2, mediaUrl: env.MEDIA_URL });
 
-import type { ImageService, RenderedImage } from "@bowenlabs/cadmus/storage";
-import { validateImageFile } from "@bowenlabs/cadmus/storage";
+import type { ImageService, RenderedImage } from "@thebes/cadmus/storage";
+import { validateImageFile } from "@thebes/cadmus/storage";
 
 export interface CloudflareImagesOptions {
   /** R2 bucket originals are uploaded to. */

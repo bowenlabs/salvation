@@ -1,6 +1,6 @@
-# @bowenlabs/cadmea
+# @thebes/cadmea
 
-Generic SolidJS admin-UI components for `@bowenlabs/cadmus/cms` collections.
+Generic SolidJS admin-UI components for `@thebes/cadmus/cms` collections.
 
 > **0.x — active development.** APIs will change. Not production-ready.
 > Star [bowenlabs/project-thebes](https://github.com/bowenlabs/project-thebes) to follow along.
@@ -23,7 +23,7 @@ than owning the components directly.
 ## Install
 
 ```bash
-pnpm add @bowenlabs/cadmea @bowenlabs/cadmus solid-js
+pnpm add @thebes/cadmea @thebes/cadmus solid-js
 ```
 
 Built with [`tsup-preset-solid`](https://github.com/solidjs-community/tsup-preset-solid),
@@ -41,7 +41,7 @@ package started as (see `DECISIONS.md`'s 2026-06-22 entries).
 ## Components
 
 ```typescript
-import { CollectionList, CollectionEdit } from '@bowenlabs/cadmea'
+import { CollectionList, CollectionEdit } from '@thebes/cadmea'
 ```
 
 **`CollectionList`** — generic table view. Renders one column per field
@@ -54,7 +54,7 @@ field (excluding `id`), with `text`/`select`/`number` editable inputs and
 (`richText`/`relationship`/`array`/`upload`/`checkbox`) are silently
 skipped rather than crashing — contributions welcome.
 
-Both take a `CollectionConfig` (from `@bowenlabs/cadmus/cms`) as their
+Both take a `CollectionConfig` (from `@thebes/cadmus/cms`) as their
 `config` prop.
 
 ---
@@ -66,7 +66,7 @@ import {
   createCollectionListPage,
   createCollectionCreatePage,
   createCollectionEditPage,
-} from '@bowenlabs/cadmea/tanstack-start'
+} from '@thebes/cadmea/tanstack-start'
 ```
 
 The equivalent of Payload's `@payloadcms/next` catch-all route pattern —
@@ -79,7 +79,7 @@ from ~40 hand-wired lines to ~15:
 
 ```tsx
 // src/routes/admin/pages/index.tsx
-import { createCollectionListPage } from '@bowenlabs/cadmea/tanstack-start'
+import { createCollectionListPage } from '@thebes/cadmea/tanstack-start'
 import { createFileRoute, useNavigate } from '@tanstack/solid-router'
 import { pagesCollection } from '../../../../cadmea.config.js'
 import { getPages } from '../../server-functions/pages'

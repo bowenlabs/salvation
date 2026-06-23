@@ -1,5 +1,5 @@
 {
-  "name": "@bowenlabs/cadmus",
+  "name": "@thebes/cadmus",
   "version": "0.1.0",
   "description": "V8-first, Cloudflare-native full-stack framework primitives",
   "author": "BowenLabs <hello@bowenlabs.io>",

@@ -1,7 +1,7 @@
-import { db } from "@bowenlabs/cadmus/db";
-import { checkRateLimit } from "@bowenlabs/cadmus/rate-limit";
 import { siteSettings } from "@core/db/schema";
 import { createServerFn } from "@tanstack/solid-start";
+import { db } from "@thebes/cadmus/db";
+import { checkRateLimit } from "@thebes/cadmus/rate-limit";
 import { eq } from "drizzle-orm";
 import {
   requireAuthOrThrow,

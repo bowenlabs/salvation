@@ -2,10 +2,10 @@
 export const prerender = false;
 
 import { env } from "cloudflare:workers";
-import { db } from "@bowenlabs/cadmus/db";
 import { pages } from "@core/db/schema.generated";
 import { parseBlocks } from "@core/lib/blocks";
 import { getSiteSettings } from "@core/lib/get-site-settings";
+import { db } from "@thebes/cadmus/db";
 import { and, eq } from "drizzle-orm";
 import BlockRenderer from "../components/BlockRenderer.astro";
 import Layout from "../layouts/layout.astro";

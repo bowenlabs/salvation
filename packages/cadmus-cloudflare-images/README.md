@@ -1,7 +1,7 @@
-# @bowenlabs/cadmus-cloudflare-images
+# @thebes/cadmus-cloudflare-images
 
 A [Cadmus](https://github.com/bowenlabs/project-thebes) **adapter** — an
-alternate `ImageService` (from `@bowenlabs/cadmus/storage`) backed by
+alternate `ImageService` (from `@thebes/cadmus/storage`) backed by
 [Cloudflare Image Resizing](https://developers.cloudflare.com/images/transform-images/).
 
 This is the *adapter* extension axis: a swappable implementation of an
@@ -10,7 +10,7 @@ still stores the **original** R2 URL — only `render()` changes, returning
 responsive `/cdn-cgi/image/...` transform URLs instead of a pass-through `src`.
 
 ```bash
-pnpm add @bowenlabs/cadmus-cloudflare-images
+pnpm add @thebes/cadmus-cloudflare-images
 ```
 
 ## Swap it in
@@ -20,7 +20,7 @@ Because every call site resolves its image service through one selection point
 component, renderer, or stored data changes:
 
 ```ts
-import { createCloudflareImageService } from "@bowenlabs/cadmus-cloudflare-images";
+import { createCloudflareImageService } from "@thebes/cadmus-cloudflare-images";
 
 export function createImageService(bucket: R2Bucket, mediaUrl: string) {
   return createCloudflareImageService({ bucket, mediaUrl });

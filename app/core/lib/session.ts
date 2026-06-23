@@ -1,14 +1,14 @@
-// Session storage on top of @bowenlabs/cadmus/session — owns the
+// Session storage on top of @thebes/cadmus/session — owns the
 // `session:{id}` key convention and the 7-day TTL. This app's wiring:
 // uses the dedicated `SESSION` KV namespace (separate from the `KV`
 // namespace used for magic-link tokens and rate-limit counters), and
 // knows the session payload shape (userId/email/role).
-import { generateSessionId } from "@bowenlabs/cadmus/auth";
+import { generateSessionId } from "@thebes/cadmus/auth";
 import {
   createSession as kvCreateSession,
   deleteSession as kvDeleteSession,
   getSession as kvGetSession,
-} from "@bowenlabs/cadmus/session";
+} from "@thebes/cadmus/session";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 const SESSION_KEY_PREFIX = "session:";

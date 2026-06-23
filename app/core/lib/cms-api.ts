@@ -7,9 +7,9 @@
 // `@tanstack/solid-start/server-entry`) so it can be exercised directly
 // against real D1/KV in tests/int, the same "no mocked D1" bar the rest
 // of this app's integration tests hold to.
-import type { LocalApi } from "@bowenlabs/cadmus/cms";
-import { mountCmsRoutes } from "@bowenlabs/cadmus/hono";
-import { checkRateLimit } from "@bowenlabs/cadmus/rate-limit";
+import type { LocalApi } from "@thebes/cadmus/cms";
+import { mountCmsRoutes } from "@thebes/cadmus/hono";
+import { checkRateLimit } from "@thebes/cadmus/rate-limit";
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { createCmsCollections } from "./cms-collections.js";
@@ -28,7 +28,7 @@ export interface MountPublicCmsApiOptions {
    * inject a fixture to isolate CORS/rate-limit behavior from the real
    * schema.
    */
-  // biome-ignore lint/suspicious/noExplicitAny: mirrors CmsRoutesOptions["collections"] in @bowenlabs/cadmus/hono
+  // biome-ignore lint/suspicious/noExplicitAny: mirrors CmsRoutesOptions["collections"] in @thebes/cadmus/hono
   getCollections?: (env: Env) => Record<string, LocalApi<any>>;
 }
 

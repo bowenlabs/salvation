@@ -1,5 +1,5 @@
-import type { CollectionConfig } from "@bowenlabs/cadmus/cms";
 import { createMutation, useQueryClient } from "@tanstack/solid-query";
+import type { CollectionConfig } from "@thebes/cadmus/cms";
 import { createSignal } from "solid-js";
 import { CollectionEdit } from "../CollectionEdit.js";
 

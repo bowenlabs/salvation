@@ -6,11 +6,11 @@ this monorepo.
 
 Publishable packages:
 
-- `@bowenlabs/cadmus`
-- `@bowenlabs/cadmea`
-- `@bowenlabs/cadmea-design-system`
-- `@bowenlabs/cadmea-plugin-seo`
-- `@bowenlabs/cadmus-cloudflare-images`
+- `@thebes/cadmus`
+- `@thebes/cadmea`
+- `@thebes/cadmea-design-system`
+- `@thebes/cadmea-plugin-seo`
+- `@thebes/cadmus-cloudflare-images`
 
 The `site` and `cadmea` Workers (under `app/workers/`) are `private` and never
 published — they are the reference app, ignored in `config.json`.

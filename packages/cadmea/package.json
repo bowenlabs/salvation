@@ -1,7 +1,7 @@
 {
-  "name": "@bowenlabs/cadmea",
+  "name": "@thebes/cadmea",
   "version": "0.1.0",
-  "description": "Generic SolidJS admin-UI components for @bowenlabs/cadmus/cms collections",
+  "description": "Generic SolidJS admin-UI components for @thebes/cadmus/cms collections",
   "author": "BowenLabs <hello@bowenlabs.io>",
   "license": "MIT",
   "repository": {
@@ -24,7 +24,7 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@bowenlabs/cadmus": "workspace:*",
+    "@thebes/cadmus": "workspace:*",
     "@tanstack/solid-query": ">=5.0.0",
     "@tanstack/solid-router": ">=1.0.0",
     "solid-js": ">=1.9.0"
@@ -34,7 +34,7 @@
     "@tiptap/starter-kit": "^3.27.1"
   },
   "devDependencies": {
-    "@bowenlabs/cadmus": "workspace:*",
+    "@thebes/cadmus": "workspace:*",
     "@solidjs/testing-library": "latest",
     "@tanstack/solid-query": "^5.101.0",
     "@tanstack/solid-router": "latest",

@@ -3,7 +3,7 @@ import {
   env,
   waitOnExecutionContext,
 } from "cloudflare:test";
-import { db } from "@bowenlabs/cadmus/db";
+import { db } from "@thebes/cadmus/db";
 import { pages } from "@core/db/schema.generated";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CadmeaService } from "../../app/workers/cadmea/app/service";

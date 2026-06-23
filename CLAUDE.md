@@ -34,7 +34,7 @@ isolates.
 **Maintained by:** BowenLabs (one person)
 **License:** MIT
 **Repo:** github.com/bowenlabs/project-thebes
-**Framework package:** @bowenlabs/cadmus
+**Framework package:** @thebes/cadmus
 
 **Why the names (for context, not load-bearing):** in the myth, Cadmus
 found the Ismenian spring guarded by a dragon, killed it, and from its
@@ -66,7 +66,7 @@ by [issue #30](https://github.com/bowenlabs/project-thebes/issues/30).
 |------|-----------|
 | **Thebes** | The monorepo, and the single reference app at `app/` |
 | **Cadmus** | The framework (`packages/cadmus/`) |
-| **@bowenlabs/cadmus** | The npm package |
+| **@thebes/cadmus** | The npm package |
 | **Cadmea** | The CMS product (`app/workers/cadmea/`) |
 | **Cadmea Panel** | The owner-facing admin UI at `/admin/*` |
 | **Extensions** | Cadmea add-ons (Section 3+, was "thimbles") |
@@ -80,7 +80,7 @@ by [issue #30](https://github.com/bowenlabs/project-thebes/issues/30).
 ```
 thebes/
 ├── packages/
-│   ├── cadmus/                  ← @bowenlabs/cadmus framework package
+│   ├── cadmus/                  ← @thebes/cadmus framework package
 │   │   ├── src/
 │   │   │   ├── auth/            ← Web Crypto token gen, HMAC, magic link
 │   │   │   ├── cms/             ← collection/field config, schema codegen, Local API, admin meta
@@ -96,15 +96,15 @@ thebes/
 │   │   │   └── index.ts         ← re-exports all primitives
 │   │   ├── dist/                ← tsup output (ESM + CJS + .d.ts) — gitignored
 │   │   ├── tsup.config.ts       ← build config
-│   │   ├── package.json         ← name: "@bowenlabs/cadmus", exports map
+│   │   ├── package.json         ← name: "@thebes/cadmus", exports map
 │   │   └── README.md
 │   │
-│   └── cadmea/                  ← @bowenlabs/cadmea — Cadmea's admin-UI package
+│   └── cadmea/                  ← @thebes/cadmea — Cadmea's admin-UI package
 │       ├── src/
 │       │   ├── CollectionList.tsx  ← generic list view, driven by admin meta
 │       │   ├── CollectionEdit.tsx  ← generic edit/create form
 │       │   ├── index.ts
-│       │   └── tanstack-start/  ← @bowenlabs/cadmea/tanstack-start subpath —
+│       │   └── tanstack-start/  ← @thebes/cadmea/tanstack-start subpath —
 │       │                          route-mounting helper (createCollectionListPage/
 │       │                          CreatePage/EditPage), the equivalent of
 │       │                          @payloadcms/next's catch-all route pattern
@@ -112,22 +112,22 @@ thebes/
 │       │                          worker/node/deno build (see DECISIONS.md
 │       │                          2026-06-22), not source-only like the
 │       │                          package started as
-│       ├── package.json         ← name: "@bowenlabs/cadmea"; exports map
+│       ├── package.json         ← name: "@thebes/cadmea"; exports map
 │       │                          auto-written by tsup-preset-solid
 │       └── README.md
 │   │
-│   ├── cadmea-design-system/    ← @bowenlabs/cadmea-design-system — the
+│   ├── cadmea-design-system/    ← @thebes/cadmea-design-system — the
 │   │                              design-token engine (standalone library,
 │   │                              not a plugin/adapter): buildTokenStyle +
 │   │                              color/spacing/type/font helpers, shared by
 │   │                              both Workers. Extracted from app/core/lib.
 │   │
-│   ├── cadmea-plugin-seo/       ← @bowenlabs/cadmea-plugin-seo — SEO plugin
+│   ├── cadmea-plugin-seo/       ← @thebes/cadmea-plugin-seo — SEO plugin
 │   │                              (Cadmea axis: plugin(config) => config;
 │   │                              injects meta/OG fields + a metaTitle hook,
 │   │                              ships renderSeoTags() for the public site)
 │   │
-│   └── cadmus-cloudflare-images/ ← @bowenlabs/cadmus-cloudflare-images — image
+│   └── cadmus-cloudflare-images/ ← @thebes/cadmus-cloudflare-images — image
 │                                  adapter (Cadmus axis: an alternate
 │                                  ImageService returning /cdn-cgi/image URLs)
 │
@@ -136,7 +136,7 @@ thebes/
 │   │   ├── site/                ← Worker 1: Astro public site — docs + marketing
 │   │   │                          for Cadmus and Cadmea, and the example deployment
 │   │   └── cadmea/               ← Worker 2: TanStack Start CMS/admin (SolidJS),
-│   │                               depends on @bowenlabs/cadmea for admin-UI components
+│   │                               depends on @thebes/cadmea for admin-UI components
 │   ├── core/                    ← app-specific shared code
 │   │   ├── db/
 │   │   │   ├── schema.ts        ← generated from cadmea.config.ts collections
@@ -167,7 +167,7 @@ thebes/
 ## Two audiences, two layers
 
 **Cadmus is for developers.**
-They import `@bowenlabs/cadmus` and get V8-native primitives that work on
+They import `@thebes/cadmus` and get V8-native primitives that work on
 Cloudflare without adapter layers, Node shims, or configuration overhead.
 Each primitive is independently usable — you can use just `cadmus/auth`
 without pulling in `cadmus/db`.
@@ -180,7 +180,7 @@ a `payload.config.ts`), and deploy. They never touch `core/` or
 that config — no coding required after the initial deploy.
 
 Code in `packages/cadmus/` must not contain anything Cadmea-specific.
-Code in `app/core/` is Cadmea-specific and imports from `@bowenlabs/cadmus`.
+Code in `app/core/` is Cadmea-specific and imports from `@thebes/cadmus`.
 Never let this boundary blur.
 
 ---
@@ -190,20 +190,20 @@ Never let this boundary blur.
 Features break out along **two axes** — keep them distinct, it's the same
 framework/CMS boundary as above. Full guide: **`EXTENDING.md`**.
 
-- **Cadmus adapters** (`@bowenlabs/cadmus-*`) — a swappable *implementation* of
+- **Cadmus adapters** (`@thebes/cadmus-*`) — a swappable *implementation* of
   an interface Cadmus defines (e.g. `ImageService`). Framework-level. The app
   resolves the active implementation in one place (`app/core/lib/image-service.ts`'s
   `createImageService`) so swapping is a one-liner. Reference:
-  `@bowenlabs/cadmus-cloudflare-images`.
-- **Cadmea plugins** (`@bowenlabs/cadmea-plugin-*`) — a synchronous
+  `@thebes/cadmus-cloudflare-images`.
+- **Cadmea plugins** (`@thebes/cadmea-plugin-*`) — a synchronous
   `(config) => config` transform (Payload-shaped) run by `defineCmsConfig`
   before validation. Injects fields/collections/hooks. Reference:
-  `@bowenlabs/cadmea-plugin-seo`. **Consumers must read the resolved config
+  `@thebes/cadmea-plugin-seo`. **Consumers must read the resolved config
   (post-plugin), never the raw definition** — see `app/cadmea.config.ts`.
 
 Collection `hooks` and `access` are both enforced by `createLocalApi` — a
 rejected `access` check throws `CadmusAccessDeniedError`. The public REST API
-(`mountCmsRoutes`, `@bowenlabs/cadmus/hono`) is mounted at `/api/*` in
+(`mountCmsRoutes`, `@thebes/cadmus/hono`) is mounted at `/api/*` in
 `app/workers/cadmea/app/server.ts` via `app/core/lib/cms-api.ts`'s
 `mountPublicCmsApi` — every collection's own `access` rules are what gate
 each request; see `packages/cadmus/src/cms/README.md` for the full Local
@@ -211,7 +211,7 @@ API/access/REST API reference. Community extensions on either axis live
 under `@cadmus-community/*`.
 
 Shared code that is **neither** axis (no CMS config, no Cadmus interface) ships
-as a plain library, not an extension — e.g. `@bowenlabs/cadmea-design-system`,
+as a plain library, not an extension — e.g. `@thebes/cadmea-design-system`,
 the framework-agnostic design-token engine extracted from `app/core/lib`. Don't
 force a library onto an axis.
 
@@ -221,18 +221,18 @@ force a library onto an axis.
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | **@bowenlabs/cadmus** — V8-first CF primitives |
+| Framework | **@thebes/cadmus** — V8-first CF primitives |
 | Framework build | **tsup** → `dist/` (ESM + CJS + `.d.ts`) |
-| Public site SSR | **Astro** with `@astrojs/cloudflare` adapter — Worker 1. Astro is Cadmus's officially recommended frontend; a peer-integration layer (`@bowenlabs/cadmus/astro`, #32, blocked by #30) is planned but not built yet — see CADMUS.md design philosophy point 4 |
-| CMS engine | **@bowenlabs/cadmus/cms** — collections, fields, schema codegen, Local API, admin-UI introspection metadata |
-| CMS admin UI components | **@bowenlabs/cadmea** — generic SolidJS list/edit views, driven by the engine's admin metadata; built with `tsup-preset-solid` (see DECISIONS.md 2026-06-22) |
-| CMS route-mounting helper | **@bowenlabs/cadmea/tanstack-start** — factory functions wiring the UI components to `@tanstack/solid-query`, the equivalent of `@payloadcms/next`'s catch-all route pattern |
+| Public site SSR | **Astro** with `@astrojs/cloudflare` adapter — Worker 1. Astro is Cadmus's officially recommended frontend; a peer-integration layer (`@thebes/cadmus/astro`, #32, blocked by #30) is planned but not built yet — see CADMUS.md design philosophy point 4 |
+| CMS engine | **@thebes/cadmus/cms** — collections, fields, schema codegen, Local API, admin-UI introspection metadata |
+| CMS admin UI components | **@thebes/cadmea** — generic SolidJS list/edit views, driven by the engine's admin metadata; built with `tsup-preset-solid` (see DECISIONS.md 2026-06-22) |
+| CMS route-mounting helper | **@thebes/cadmea/tanstack-start** — factory functions wiring the UI components to `@tanstack/solid-query`, the equivalent of `@payloadcms/next`'s catch-all route pattern |
 | CMS admin | **TanStack Start** (Solid target) — Worker 2, VMFE architecture |
 | CMS data fetching | **@tanstack/solid-query** — server state, API communication |
 | CMS routing | **@tanstack/solid-router** — built into TanStack Start |
 | UI framework | **SolidJS** — fine-grained reactivity, no VDOM, minimal payload for V8 isolates |
 | Public API spine | **Hono** — form submission, auth, media upload endpoints |
-| Hono integration | **@bowenlabs/cadmus/hono** — thin wrappers over raw primitives |
+| Hono integration | **@thebes/cadmus/hono** — thin wrappers over raw primitives |
 | Deployment | **Cloudflare Workers** via `wrangler deploy` (two Workers) |
 | Architecture | **Vertical Microfrontends (VMFE)** — two independent Workers |
 | Database | **Cloudflare D1** (SQLite) via **Drizzle ORM** — shared by both Workers |
@@ -241,7 +241,7 @@ force a library onto an axis.
 | Cache invalidation | **Cloudflare Cache API** (`caches.default`) |
 | Sessions / rate limiting | **Cloudflare KV** — shared by both Workers |
 | Email | **Cloudflare Email Workers** (`send_email` binding) |
-| Queues | **Cloudflare Queues** via `@bowenlabs/cadmus/queues` |
+| Queues | **Cloudflare Queues** via `@thebes/cadmus/queues` |
 | Analytics | **Cloudflare Web Analytics** |
 | Fonts | **Cloudflare Fonts** — link to `fonts.googleapis.com`; CF intercepts at edge |
 | Icons | **@phosphor-icons/web** — everywhere, no other icon library. No official Solid Phosphor package exists; the framework-agnostic web-component/CSS build is used instead of an unofficial community port |
@@ -333,7 +333,7 @@ const settings = await database.select().from(siteSettings)
 ```typescript
 // app/workers/cadmea/src/server-functions/pages.ts
 import { createServerFn } from '@tanstack/solid-start'
-import { db } from '@bowenlabs/cadmus/db'
+import { db } from '@thebes/cadmus/db'
 
 export const getPages = createServerFn({ method: 'GET' })
   .handler(async () => {
@@ -383,7 +383,7 @@ just a Cadmea constraint.
 
 Drizzle + D1 underneath, but Cadmea no longer hand-writes Drizzle tables.
 Content is modeled as **collections** in `cadmea.config.ts`, the
-equivalent of a `payload.config.ts`. `@bowenlabs/cadmus/cms` turns that
+equivalent of a `payload.config.ts`. `@thebes/cadmus/cms` turns that
 config into a generated Drizzle schema, a typed Local API (`find` /
 `findByID` / `create` / `update` / `delete`), and the introspection metadata
 the CMS admin UI uses to render generic list/edit views. This supersedes the
@@ -392,7 +392,7 @@ entry for why: the earlier decision was against running Payload itself (on
 Node, admin disabled); this is a from-scratch V8-native primitive that
 reaches the same outcome without that dependency.
 
-Underneath `cadmus/cms`, raw D1 access is still via `@bowenlabs/cadmus/db`.
+Underneath `cadmus/cms`, raw D1 access is still via `@thebes/cadmus/db`.
 
 ```typescript
 // packages/cadmus/src/db/index.ts
@@ -408,7 +408,7 @@ export function db<TSchema extends Record<string, unknown>>(
 
 ```typescript
 // app/core/lib/db.ts
-import { db } from '@bowenlabs/cadmus/db'
+import { db } from '@thebes/cadmus/db'
 import * as schema from '../db/schema'
 
 export const createDb = (d1: D1Database) => db(d1, schema)
@@ -554,7 +554,7 @@ Cloudflare Images is available as a paid extension (Section 3+).
 
 ## Image service interface
 
-Defined in `@bowenlabs/cadmus/storage`. Implemented in
+Defined in `@thebes/cadmus/storage`. Implemented in
 `app/core/lib/image-service.ts`. Never construct image URLs inline.
 
 ```typescript
@@ -581,7 +581,7 @@ touching any component, renderer, or block data.
 ## Notifications
 
 CF Email Workers `send_email` binding (binding name: `EMAIL`).
-Wrapped by `@bowenlabs/cadmus/email`.
+Wrapped by `@thebes/cadmus/email`.
 From address must be from a domain with CF Email Routing active.
 
 In Section 1, operators configure CF Email Routing manually.
@@ -599,7 +599,7 @@ Security headers in Hono middleware — applies to all responses:
 - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
 - CSP: allowlist Cloudflare Fonts, Cloudflare Analytics, `'self'`
 
-Rate limiting via `@bowenlabs/cadmus/rate-limit` (KV-based).
+Rate limiting via `@thebes/cadmus/rate-limit` (KV-based).
 Honeypot on all public forms (`name="website"`, hidden).
 
 ---
@@ -704,7 +704,7 @@ If yes to any: flag it before proceeding.
 - **Independent primitives:** Each Cadmus primitive usable without the others. Zero cross-primitive dependencies. Always.
 - **Raw bindings:** Primitives accept `D1Database`, `KVNamespace` etc. directly — not `Env` or Hono `Context`. Explicit is better than magic.
 - **Thrown errors:** `CadmusError` and typed subclasses. Never raw `Error`. Never Result types.
-- **Hono is a peer, not a dependency:** `@bowenlabs/cadmus/hono` wraps raw primitives — it never reimplements them.
+- **Hono is a peer, not a dependency:** `@thebes/cadmus/hono` wraps raw primitives — it never reimplements them.
 - **tsup builds dist/:** The exports map points at `dist/`. TypeScript source is for development only. CI validates both.
 - **Mobile-first CMS:** Cadmea is designed for phones and tablets first. Desktop is an enhancement. Bottom navigation, full-screen views, tap-to-reorder. Never retrofit a desktop UI for mobile.
 - **SolidJS, not React:** CMS UI is built in SolidJS — fine-grained reactivity, no virtual DOM, minimal compiled payload for fast cold starts in V8 isolates. Use `createSignal`/`createEffect`, not React hooks. When a dependency has no official Solid package (e.g. Phosphor icons), prefer the framework-agnostic build over an unofficial community port.

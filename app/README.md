@@ -60,7 +60,7 @@ Two Cloudflare Workers sharing the same D1, KV, and R2 bindings:
   Cadmus and Cadmea, and the example deployment's public pages
 - **Worker 2** (`workers/cadmea`) — TanStack Start CMS admin interface
 
-Both built on `@bowenlabs/cadmus` primitives.
+Both built on `@thebes/cadmus` primitives.
 
 ---
 

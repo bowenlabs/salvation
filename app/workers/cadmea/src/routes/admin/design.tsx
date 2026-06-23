@@ -1,5 +1,5 @@
-import type { TypeTokens } from "@bowenlabs/cadmea-design-system";
 import { createFileRoute, useBlocker } from "@tanstack/solid-router";
+import type { TypeTokens } from "@thebes/cadmea-design-system";
 import {
   createEffect,
   createMemo,

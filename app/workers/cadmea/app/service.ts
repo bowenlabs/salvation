@@ -1,6 +1,6 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
-import { CadmusCmsError } from "@bowenlabs/cadmus";
 import { createCmsCollections } from "@core/lib/cms-collections";
+import { CadmusCmsError } from "@thebes/cadmus";
 
 // Exposes the write-with-CMS-logic path for Worker 1 (Astro/site) via a
 // Service Binding (Worker-to-Worker RPC, no fetch/HTTP overhead) — per

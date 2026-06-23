@@ -44,7 +44,7 @@ export class CadmusError extends Error {
   }
 }
 
-/** Thrown by @bowenlabs/cadmus/auth primitives */
+/** Thrown by @thebes/cadmus/auth primitives */
 export class CadmusAuthError extends CadmusError {
   constructor(message: string, cause?: unknown) {
     super(message, "AUTH_ERROR", cause);
@@ -52,7 +52,7 @@ export class CadmusAuthError extends CadmusError {
   }
 }
 
-/** Thrown by @bowenlabs/cadmus/db primitives */
+/** Thrown by @thebes/cadmus/db primitives */
 export class CadmusDbError extends CadmusError {
   constructor(message: string, cause?: unknown) {
     super(message, "DB_ERROR", cause);
@@ -60,7 +60,7 @@ export class CadmusDbError extends CadmusError {
   }
 }
 
-/** Thrown by @bowenlabs/cadmus/storage primitives */
+/** Thrown by @thebes/cadmus/storage primitives */
 export class CadmusStorageError extends CadmusError {
   constructor(message: string, cause?: unknown) {
     super(message, "STORAGE_ERROR", cause);
@@ -68,7 +68,7 @@ export class CadmusStorageError extends CadmusError {
   }
 }
 
-/** Thrown by @bowenlabs/cadmus/cache primitives */
+/** Thrown by @thebes/cadmus/cache primitives */
 export class CadmusCacheError extends CadmusError {
   constructor(message: string, cause?: unknown) {
     super(message, "CACHE_ERROR", cause);
@@ -76,7 +76,7 @@ export class CadmusCacheError extends CadmusError {
   }
 }
 
-/** Thrown by @bowenlabs/cadmus/email primitives */
+/** Thrown by @thebes/cadmus/email primitives */
 export class CadmusEmailError extends CadmusError {
   constructor(message: string, cause?: unknown) {
     super(message, "EMAIL_ERROR", cause);
@@ -84,7 +84,7 @@ export class CadmusEmailError extends CadmusError {
   }
 }
 
-/** Thrown by @bowenlabs/cadmus/session primitives */
+/** Thrown by @thebes/cadmus/session primitives */
 export class CadmusSessionError extends CadmusError {
   constructor(message: string, cause?: unknown) {
     super(message, "SESSION_ERROR", cause);
@@ -92,7 +92,7 @@ export class CadmusSessionError extends CadmusError {
   }
 }
 
-/** Thrown by @bowenlabs/cadmus/rate-limit primitives */
+/** Thrown by @thebes/cadmus/rate-limit primitives */
 export class CadmusRateLimitError extends CadmusError {
   constructor(message: string, cause?: unknown) {
     super(message, "RATE_LIMIT_ERROR", cause);
@@ -100,7 +100,7 @@ export class CadmusRateLimitError extends CadmusError {
   }
 }
 
-/** Thrown by @bowenlabs/cadmus/queues primitives */
+/** Thrown by @thebes/cadmus/queues primitives */
 export class CadmusQueueError extends CadmusError {
   constructor(message: string, cause?: unknown) {
     super(message, "QUEUE_ERROR", cause);
@@ -108,7 +108,7 @@ export class CadmusQueueError extends CadmusError {
   }
 }
 
-/** Thrown by @bowenlabs/cadmus/cms primitives */
+/** Thrown by @thebes/cadmus/cms primitives */
 export class CadmusCmsError extends CadmusError {
   constructor(message: string, cause?: unknown) {
     super(message, "CMS_ERROR", cause);
@@ -117,7 +117,7 @@ export class CadmusCmsError extends CadmusError {
 }
 
 /**
- * Thrown by @bowenlabs/cadmus/cms's createLocalApi when a collection's
+ * Thrown by @thebes/cadmus/cms's createLocalApi when a collection's
  * `access` function rejects an operation. A distinct subclass (rather than
  * a plain CadmusCmsError) so consumers like mountCmsRoutes can map it to
  * 403 by `instanceof`, not by matching on message text.

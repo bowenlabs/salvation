@@ -1,7 +1,7 @@
 // Copyright (c) 2026 BowenLabs. All rights reserved.
 // Cadmus is MIT licensed. See LICENSE in the repo root.
 //
-// @bowenlabs/cadmus/auth
+// @thebes/cadmus/auth
 //
 // Web Crypto primitives for magic-link/token-based auth flows. No
 // passwords, no Node.js crypto — every operation here runs on
