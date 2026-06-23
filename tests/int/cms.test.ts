@@ -56,6 +56,25 @@ describe("pages Local API (app wiring)", () => {
     ).rejects.toThrow();
   });
 
+  // Closes issue #25's verification bar for getPages (server-functions/
+  // pages.ts) passing limit/offset through to the real Local API — same
+  // rationale as this file's other tests: exercise the Local API call
+  // getPages wraps, directly against real local D1, rather than the
+  // server-function wrapper itself (which needs request/session context
+  // this pool doesn't provide).
+  it("paginates and counts pages through the generated schema", async () => {
+    await localApi.create(ctx, { title: "A", slug: `page-a-${Date.now()}` });
+    await localApi.create(ctx, { title: "B", slug: `page-b-${Date.now()}` });
+    await localApi.create(ctx, { title: "C", slug: `page-c-${Date.now()}` });
+
+    expect(await localApi.count(ctx)).toBe(3);
+
+    const page1 = await localApi.find(ctx, { limit: 2, offset: 0 });
+    expect(page1).toHaveLength(2);
+    const page2 = await localApi.find(ctx, { limit: 2, offset: 2 });
+    expect(page2).toHaveLength(1);
+  });
+
   it("round-trips the blocks JSON column", async () => {
     const blocks = [
       { type: "hero", heading: "Welcome" },

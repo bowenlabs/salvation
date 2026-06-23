@@ -3,6 +3,7 @@ import { db } from "@bowenlabs/cadmus/db";
 import { checkRateLimit } from "@bowenlabs/cadmus/rate-limit";
 import { pages, pages_versions } from "@core/db/schema.generated";
 import { createServerFn } from "@tanstack/solid-start";
+import { asc, type Column, desc } from "drizzle-orm";
 import type { PagesAccessContext } from "../../../../cadmea.config.js";
 import { pagesCollection } from "../../../../cadmea.config.js";
 import {
@@ -34,10 +35,43 @@ async function checkWriteRateLimit(session: { email: string }) {
   if (!allowed) throw new Error("Rate limit exceeded");
 }
 
-export const getPages = createServerFn({ method: "GET" }).handler(async () => {
-  const session = await requireAuthOrThrow();
-  return (await pagesApi()).find({ session });
-});
+export const getPages = createServerFn({ method: "GET" })
+  .validator(
+    (params: {
+      page: number;
+      pageSize: number;
+      sortField?: string;
+      sortDirection?: "asc" | "desc";
+    }) => params,
+  )
+  .handler(async ({ data }) => {
+    const session = await requireAuthOrThrow();
+    const api = await pagesApi();
+    // `sortField` comes from CollectionList's column picker, which only
+    // ever lists this collection's own field keys (see listableFields in
+    // @bowenlabs/cadmea), so it's always a real column on `pages` — still
+    // guarded here since it crosses a server-function boundary.
+    const column = data.sortField
+      ? (pages as unknown as Record<string, Column>)[data.sortField]
+      : undefined;
+    const orderBy = column
+      ? data.sortDirection === "desc"
+        ? desc(column)
+        : asc(column)
+      : undefined;
+    const [rows, total] = await Promise.all([
+      api.find(
+        { session },
+        {
+          limit: data.pageSize,
+          offset: (data.page - 1) * data.pageSize,
+          orderBy,
+        },
+      ),
+      api.count({ session }),
+    ]);
+    return { rows, total };
+  });
 
 export const getPage = createServerFn({ method: "GET" })
   .validator((id: number) => id)

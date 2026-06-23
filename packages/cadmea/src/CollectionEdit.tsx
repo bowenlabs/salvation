@@ -1,5 +1,12 @@
 import type { CollectionConfig, FieldConfig } from "@bowenlabs/cadmus/cms";
-import { createSignal, For, lazy, Show, Suspense } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  lazy,
+  Show,
+  Suspense,
+} from "solid-js";
 
 // Dynamic import, not a static one — @tiptap/core + @tiptap/starter-kit
 // are a large dependency (pushed a consuming route's bundle from ~9KB to
@@ -24,12 +31,33 @@ export interface RelationshipOption {
   label: string;
 }
 
+/**
+ * Replaces the generic "Save" button with "Save draft"/"Publish" when the
+ * collection has `versions: { drafts: true }` — a separate privilege from
+ * a plain update, matching `access.publish` in `@bowenlabs/cadmus/cms`.
+ * `onPublish` takes no values: publishing acts on whatever was last saved
+ * as a draft (the consuming route tracks which version that is), not on
+ * the live form state.
+ */
+export interface DraftActions {
+  onSaveDraft: (values: Record<string, unknown>) => void | Promise<void>;
+  onPublish?: () => void | Promise<void>;
+  saving?: boolean;
+  publishing?: boolean;
+  /** Disables Publish — e.g. until a draft has been saved at least once. */
+  canPublish?: boolean;
+  saveDraftLabel?: string;
+  publishLabel?: string;
+}
+
 export interface CollectionEditProps {
   config: CollectionConfig;
   initialValues?: Record<string, unknown>;
   onSubmit: (values: Record<string, unknown>) => void | Promise<void>;
   submitLabel?: string;
   error?: string;
+  /** Disables the Save button and shows a spinner in its place. */
+  saving?: boolean;
   /**
    * Resolves an `upload` field's selected file to a stored URL. Required
    * if the collection has any `upload` fields — `CollectionEdit` never
@@ -46,6 +74,14 @@ export interface CollectionEditProps {
    * and passes them in.
    */
   relationshipOptions?: Partial<Record<string, RelationshipOption[]>>;
+  /**
+   * Fired whenever the dirty (unsaved-changes) state changes — wire this
+   * to a router-level navigation guard (e.g. `useBlocker` in the
+   * consuming route) since `CollectionEdit` has no router access itself.
+   */
+  onDirtyChange?: (dirty: boolean) => void;
+  /** Only rendered when `config.versions?.drafts` is also true. */
+  draftActions?: DraftActions;
 }
 
 interface RenderContext {
@@ -54,29 +90,44 @@ interface RenderContext {
 }
 
 export function CollectionEdit(props: CollectionEditProps) {
+  const initialSnapshot = JSON.stringify(props.initialValues ?? {});
   const [values, setValues] = createSignal<Record<string, unknown>>(
     props.initialValues ?? {},
   );
+
+  // Reported via `onDirtyChange` rather than tracked by the consuming
+  // route itself — only this component sees every field edit as it
+  // happens. A plain JSON.stringify comparison is enough: form values are
+  // already plain JSON-shaped data (TipTap docs, array-field items), so
+  // there's no Date/Map/Set edge case to special-case here.
+  createEffect(() => {
+    props.onDirtyChange?.(JSON.stringify(values()) !== initialSnapshot);
+  });
 
   function setField(key: string, value: unknown) {
     setValues((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleSubmit(event: SubmitEvent) {
-    event.preventDefault();
-    // date fields are read-only — never include them in the submitted payload
-    const editable = Object.fromEntries(
+  // date fields are read-only — never include them in a submitted/draft payload
+  function editablePayload(): Record<string, unknown> {
+    return Object.fromEntries(
       Object.entries(values()).filter(
         ([key]) => props.config.fields[key]?.type !== "date",
       ),
     );
-    void props.onSubmit(editable);
+  }
+
+  function handleSubmit(event: SubmitEvent) {
+    event.preventDefault();
+    void props.onSubmit(editablePayload());
   }
 
   const ctx: RenderContext = {
     onUploadFile: props.onUploadFile,
     relationshipOptions: props.relationshipOptions,
   };
+
+  const versioned = () => props.config.versions?.drafts && props.draftActions;
 
   return (
     <form class="flex flex-col gap-4" onSubmit={handleSubmit}>
@@ -94,9 +145,55 @@ export function CollectionEdit(props: CollectionEditProps) {
           </div>
         )}
       </For>
-      <button type="submit" class="btn btn-primary self-start">
-        {props.submitLabel ?? "Save"}
-      </button>
+      {/* Bottom-anchored, full-width action bar — not a top toolbar, per
+          issue #25's mobile-first note. */}
+      <div class="bg-base-100 sticky bottom-0 flex gap-2 border-t py-3">
+        <Show
+          when={versioned()}
+          fallback={
+            <button
+              type="submit"
+              class="btn btn-primary flex-1"
+              disabled={props.saving}
+            >
+              <Show when={props.saving} fallback={props.submitLabel ?? "Save"}>
+                <span class="loading loading-spinner loading-sm" />
+              </Show>
+            </button>
+          }
+        >
+          <button
+            type="button"
+            class="btn flex-1"
+            disabled={props.draftActions?.saving}
+            onClick={() =>
+              void props.draftActions?.onSaveDraft(editablePayload())
+            }
+          >
+            <Show
+              when={props.draftActions?.saving}
+              fallback={props.draftActions?.saveDraftLabel ?? "Save draft"}
+            >
+              <span class="loading loading-spinner loading-sm" />
+            </Show>
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary flex-1"
+            disabled={
+              !props.draftActions?.canPublish || props.draftActions?.publishing
+            }
+            onClick={() => void props.draftActions?.onPublish?.()}
+          >
+            <Show
+              when={props.draftActions?.publishing}
+              fallback={props.draftActions?.publishLabel ?? "Publish"}
+            >
+              <span class="loading loading-spinner loading-sm" />
+            </Show>
+          </button>
+        </Show>
+      </div>
     </form>
   );
 }

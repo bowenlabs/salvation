@@ -21,7 +21,7 @@ function PagesPage() {
     collection: pagesCollection,
     label: "Pages",
     queryKey: ["pages"],
-    queryFn: () => getPages(),
+    queryFn: (params) => getPages({ data: params }),
     newHref: "/admin/pages/new",
     newLabel: "New page",
     onRowClick: (row) =>

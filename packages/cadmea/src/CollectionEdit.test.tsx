@@ -188,6 +188,99 @@ describe("CollectionEdit", () => {
     expect(submitted).toEqual({ links: [{ label: "First" }] });
   });
 
+  it("disables Save and shows a spinner while saving", () => {
+    render(() => (
+      <CollectionEdit config={pagesCollection} onSubmit={() => {}} saving />
+    ));
+    expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.queryByText("Save")).not.toBeInTheDocument();
+  });
+
+  it("reports dirty state via onDirtyChange as fields are edited", () => {
+    const dirtyStates: boolean[] = [];
+    render(() => (
+      <CollectionEdit
+        config={pagesCollection}
+        initialValues={{ title: "Home" }}
+        onSubmit={() => {}}
+        onDirtyChange={(dirty) => dirtyStates.push(dirty)}
+      />
+    ));
+    expect(dirtyStates).toEqual([false]);
+    fireEvent.input(screen.getByLabelText("title *"), {
+      target: { value: "Changed" },
+    });
+    expect(dirtyStates).toEqual([false, true]);
+    fireEvent.input(screen.getByLabelText("title *"), {
+      target: { value: "Home" },
+    });
+    expect(dirtyStates).toEqual([false, true, false]);
+  });
+
+  it("renders the generic Save button when the collection isn't versioned", () => {
+    render(() => (
+      <CollectionEdit
+        config={pagesCollection}
+        onSubmit={() => {}}
+        draftActions={{ onSaveDraft: () => {} }}
+      />
+    ));
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(screen.queryByText("Save draft")).not.toBeInTheDocument();
+  });
+
+  it("renders Save draft/Publish instead of Save when versioned with draftActions, and wires them up", () => {
+    const versionedCollection: CollectionConfig = {
+      ...pagesCollection,
+      versions: { drafts: true },
+    };
+    let draftSaved: Record<string, unknown> | undefined;
+    let published = false;
+    render(() => (
+      <CollectionEdit
+        config={versionedCollection}
+        initialValues={{ title: "Home" }}
+        onSubmit={() => {}}
+        draftActions={{
+          onSaveDraft: (values) => {
+            draftSaved = values;
+          },
+          onPublish: () => {
+            published = true;
+          },
+          canPublish: true,
+        }}
+      />
+    ));
+    expect(
+      screen.queryByRole("button", { name: "Save" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.input(screen.getByLabelText("title *"), {
+      target: { value: "Updated" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    expect(draftSaved).toEqual({ title: "Updated" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    expect(published).toBe(true);
+  });
+
+  it("disables Publish until canPublish is true", () => {
+    const versionedCollection: CollectionConfig = {
+      ...pagesCollection,
+      versions: { drafts: true },
+    };
+    render(() => (
+      <CollectionEdit
+        config={versionedCollection}
+        onSubmit={() => {}}
+        draftActions={{ onSaveDraft: () => {} }}
+      />
+    ));
+    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+  });
+
   it("renders richText fields as an editable container, lazy-loaded behind Suspense", async () => {
     const config: CollectionConfig = {
       slug: "blocks",

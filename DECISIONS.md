@@ -32,6 +32,64 @@ already depends on.
 
 ---
 
+## 2026-06-23 — Issue #25 (Phase 5 — Admin UI Gaps, mobile-first) shipped
+
+**Decision:** `LocalApi.find()` (`packages/cadmus/src/cms/localApi.ts`)
+gains `limit`/`offset`/`orderBy` options; a new `count()` method (gated by
+the same `read` access check) returns the total row count for a `where`,
+independent of `limit`/`offset` — both needed so pagination doesn't
+require fetching every row to know whether a "Next" page exists.
+
+**`@bowenlabs/cadmea`'s `CollectionList`** renders a desktop `<table>` and
+a stacked mobile/tablet card list in parallel (`hidden md:table` /
+`md:hidden`), per CLAUDE.md's "Mobile-first CMS" principle:
+- Sort is two `<select>` dropdowns (field + direction) — a native picker,
+  not clickable column headers, so it works identically on touch.
+- Pagination is a bottom-anchored Prev/Next bar with no page numbers,
+  disabling Next via `totalCount` when given, or a `rows.length <
+  pageSize` heuristic otherwise.
+- Bulk-select is an explicit "Select"/"Done" mode toggle exposing an
+  always-visible checkbox per row/card — never hover-revealed.
+
+**`CollectionEdit`** gains `saving` (disables Save, shows a spinner),
+`onDirtyChange` (fired on every edit vs. the initial snapshot — wired to
+`@tanstack/solid-router`'s `useBlocker` in the new `tanstack-start/
+edit.tsx` wrapper, covering in-app navigation, the mobile back-gesture
+which is just another history pop, and tab-close/refresh via
+`enableBeforeUnload`), and `draftActions` (`onSaveDraft`/`onPublish`),
+which replace the generic Save button with Save draft/Publish when
+`config.versions?.drafts` is set — `onPublish` takes no values, since
+publishing acts on the most recently saved draft, not the live form
+state. The action bar is bottom-anchored and full-width regardless of
+breakpoint, not a top toolbar.
+
+**`tanstack-start/list.tsx`'s `queryFn`** is now `(params: { page,
+pageSize, sortField?, sortDirection? }) => Promise<{ rows, total }>` —
+a breaking change from the old `() => Promise<TRow[]>`, justified since
+pagination/sorting now happen server-side (via `find`'s new options +
+`count()`), not by slicing an already-fetched array client-side. Query
+key includes page/sort state so TanStack Query treats each page/sort
+combination as its own cache entry.
+
+**App wiring:** `getPages` (`server-functions/pages.ts`) takes the same
+`{ page, pageSize, sortField?, sortDirection? }` shape, resolves
+`sortField` to a real column on the generated `pages` table, and returns
+`{ rows, total }`. `/admin/pages/$pageId` wires `draftActions` to
+`saveDraft`/`publishPage` (pages already has `versions.drafts: true`).
+
+**Verification:** `packages/cadmus`'s `localApi.test.ts` covers
+pagination/sort/`count()`, including through `read` access control;
+`packages/cadmea`'s `CollectionList.test.tsx`/`CollectionEdit.test.tsx`
+cover pagination-bar rendering and disabled states, the sort picker,
+bulk-select mode, dirty-state reporting, and the Save-vs-Save-draft/
+Publish branch; `tests/int/cms.test.ts` adds a real-D1 pagination/count
+test against the generated schema (closing the issue's "integration test
+against `getPages` with limit/offset" bar via the Local API call it
+wraps, matching this file's existing pattern of testing the primitive
+rather than the server-function shell).
+
+---
+
 ## 2026-06-23 — Issue #24 (Phase 4 — Relationship depth resolution) shipped
 
 **Decision:** `createLocalApi`/`createVersionedLocalApi`

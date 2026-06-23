@@ -2,6 +2,7 @@
 // Cadmus is MIT licensed. See LICENSE in the repo root.
 
 import {
+  count as countRows,
   desc,
   eq,
   type InferInsertModel,
@@ -43,6 +44,12 @@ export interface LocalApi<TTable extends AnyTable, TContext = unknown> {
     options?: {
       where?: SQL;
       depth?: RelationshipDepth;
+      /** Row cap, applied after `where` — for paginated list views. */
+      limit?: number;
+      /** Rows to skip, applied after `where` — pairs with `limit`. */
+      offset?: number;
+      /** One or more `asc(table.col)`/`desc(table.col)` expressions. */
+      orderBy?: SQL | SQL[];
     },
   ): Promise<InferSelectModel<TTable>[]>;
   findByID(
@@ -50,6 +57,12 @@ export interface LocalApi<TTable extends AnyTable, TContext = unknown> {
     id: number,
     options?: { depth?: RelationshipDepth },
   ): Promise<InferSelectModel<TTable>>;
+  /**
+   * Total row count for `where` (ignoring `limit`/`offset`) — pairs with
+   * `find` to compute page counts/next-page availability without fetching
+   * every row. Gated by the same `read` access check as `find`.
+   */
+  count(context: TContext, options?: { where?: SQL }): Promise<number>;
   create(
     context: TContext,
     input: InferInsertModel<TTable>,
@@ -296,10 +309,17 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
           `Relationship resolution depth ${options.depth} is not supported for collection "${config.slug}" (only 0 and 1 are)`,
         );
       }
-      const query = db.select().from(table);
-      const rows = options?.where
-        ? await query.where(options.where)
-        : await query;
+      let query = db.select().from(table).where(options?.where).$dynamic();
+      if (options?.orderBy !== undefined) {
+        query = query.orderBy(
+          ...(Array.isArray(options.orderBy)
+            ? options.orderBy
+            : [options.orderBy]),
+        );
+      }
+      if (options?.limit !== undefined) query = query.limit(options.limit);
+      if (options?.offset !== undefined) query = query.offset(options.offset);
+      const rows = await query;
       const afterHooks = hasReadHooks(config)
         ? await Promise.all(
             rows.map((row) =>
@@ -318,6 +338,15 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
             )
           : afterHooks;
       return resolved as InferSelectModel<TTable>[];
+    },
+
+    async count(context, options) {
+      await checkAccess(config, "read", context);
+      const [row] = await db
+        .select({ value: countRows() })
+        .from(table)
+        .where(options?.where);
+      return row?.value ?? 0;
     },
 
     async findByID(context, id, options) {

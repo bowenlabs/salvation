@@ -83,6 +83,46 @@ describe("createLocalApi", () => {
     expect(rows[0]?.slug).toBe("home");
   });
 
+  it("find({ limit, offset }) paginates rows", async () => {
+    await localApi.create(ctx, { title: "A", slug: "a" });
+    await localApi.create(ctx, { title: "B", slug: "b" });
+    await localApi.create(ctx, { title: "C", slug: "c" });
+
+    const page1 = await localApi.find(ctx, { limit: 2 });
+    expect(page1).toHaveLength(2);
+
+    const page2 = await localApi.find(ctx, { limit: 2, offset: 2 });
+    expect(page2).toHaveLength(1);
+  });
+
+  it("find({ orderBy }) sorts rows", async () => {
+    await localApi.create(ctx, { title: "B", slug: "b" });
+    await localApi.create(ctx, { title: "A", slug: "a" });
+
+    const { asc, desc } = await import("drizzle-orm");
+    const ascending = await localApi.find(ctx, {
+      orderBy: asc(pagesTable.slug),
+    });
+    expect(ascending.map((r) => r.slug)).toEqual(["a", "b"]);
+
+    const descending = await localApi.find(ctx, {
+      orderBy: desc(pagesTable.slug),
+    });
+    expect(descending.map((r) => r.slug)).toEqual(["b", "a"]);
+  });
+
+  it("count() returns the total row count, ignoring limit/offset", async () => {
+    await localApi.create(ctx, { title: "A", slug: "a" });
+    await localApi.create(ctx, { title: "B", slug: "b" });
+
+    expect(await localApi.count(ctx)).toBe(2);
+
+    const { eq } = await import("drizzle-orm");
+    expect(await localApi.count(ctx, { where: eq(pagesTable.slug, "a") })).toBe(
+      1,
+    );
+  });
+
   it("find({ depth: 1 }) is a no-op for a collection with no relationship fields", async () => {
     await localApi.create(ctx, { title: "Home", slug: "home" });
     // pagesCollection has no relationship fields, so depth: 1 has nothing
@@ -214,6 +254,13 @@ describe("createLocalApi access control", () => {
       CadmusAccessDeniedError,
     );
     await expect(api.findByID({ session: null }, created.id)).rejects.toThrow(
+      CadmusAccessDeniedError,
+    );
+  });
+
+  it("gates count() through the same `read` access function", async () => {
+    const api = withAccess({ read: () => false });
+    await expect(api.count({ session: null })).rejects.toThrow(
       CadmusAccessDeniedError,
     );
   });

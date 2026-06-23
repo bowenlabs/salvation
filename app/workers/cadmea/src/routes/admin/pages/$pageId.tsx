@@ -5,6 +5,8 @@ import { uploadMediaFile } from "../../../lib/upload-media";
 import {
   deletePage,
   getPage,
+  publishPage,
+  saveDraft,
   updatePage,
 } from "../../../server-functions/pages";
 
@@ -31,6 +33,13 @@ function EditPagePage() {
     invalidateQueryKey: ["pages"],
     onDeleted: () => navigate({ to: "/admin/pages" }),
     onUploadFile: uploadMediaFile,
+    // pagesCollection has versions.drafts: true (app/cadmea.config.ts) —
+    // see CollectionEdit's draftActions doc for why this replaces the
+    // generic Save button with Save draft/Publish.
+    draftActions: {
+      saveDraftFn: (values) => saveDraft({ data: { id: id(), values } }),
+      publishFn: (versionId) => publishPage({ data: versionId }),
+    },
   });
 
   return <Page />;
