@@ -9,6 +9,29 @@
 
 ---
 
+## 2026-06-23 — CI workflow built only `@bowenlabs/cadmus`, not the other 4 publishable packages — fixed
+
+**Problem:** `build-site`/`build-panel`/`test-int`/`test-e2e`/`bundle-size`
+jobs in `.github/workflows/ci.yml` each ran `pnpm build:cadmus` (and
+sometimes `build:cadmea-pkg`) before building/testing the app, but never
+`build:design-system` or `build:plugin-seo` — both extracted as their own
+packages on 2026-06-22 and imported directly by `app/workers/site/src/
+layouts/layout.astro`, several `app/workers/cadmea/src/components/design/
+*` files, and (transitively, via `app/cadmea.config.ts`) every test in
+`tests/int`. Each CI job runs in a fresh checkout with no shared
+filesystem, so any package's `dist/` not rebuilt in that job is simply
+missing — Vite/esbuild then fails to resolve the import.
+
+**Decision:** Replaced every per-package `build:X` invocation across
+these jobs with the existing `pnpm build:packages` script (already builds
+all five: cadmus, cadmea, design-system, plugin-seo, cf-images). Slightly
+more build time per job; in exchange, a sixth package landing later can't
+silently leave a job's `dist/` stale the way this one did — there's only
+one script to keep current, and it's the same one a local `pnpm build`
+already depends on.
+
+---
+
 ## 2026-06-23 — Issue #24 (Phase 4 — Relationship depth resolution) shipped
 
 **Decision:** `createLocalApi`/`createVersionedLocalApi`

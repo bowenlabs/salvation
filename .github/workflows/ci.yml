@@ -53,10 +53,15 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       # needs: build-cadmus only orders the jobs — each job is a fresh
-      # runner with no shared filesystem, so packages/cadmus/dist/ (what
-      # @bowenlabs/cadmus's package.json exports map actually resolves
-      # against) doesn't exist here unless built again in this job too.
-      - run: pnpm build:cadmus
+      # runner with no shared filesystem, so every publishable package's
+      # dist/ (what its package.json exports map actually resolves
+      # against — site's layout.astro pulls in both
+      # @bowenlabs/cadmea-design-system and @bowenlabs/cadmea-plugin-seo,
+      # not just @bowenlabs/cadmus) needs building again in this job too.
+      # `build:packages` builds all of them, deliberately, so a future
+      # package addition can't silently leave a CI job's dist/ stale the
+      # way this one did.
+      - run: pnpm build:packages
       - run: pnpm build:site
 
   build-panel:
@@ -72,8 +77,7 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       # same reason as build-site above — dist/ isn't shared across jobs.
-      - run: pnpm build:cadmus
-      - run: pnpm build:cadmea-pkg
+      - run: pnpm build:packages
       - run: pnpm build:cadmea
 
   test-cadmus:
@@ -116,9 +120,11 @@ jobs:
           node-version: '24'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      # @bowenlabs/cadmus/db and /cms resolve against dist/ — see
-      # build-site's comment above for why this is needed in every job.
-      - run: pnpm build:cadmus
+      # app/cadmea.config.ts (imported by cms.test.ts/cadmea-service.test.ts)
+      # pulls in @bowenlabs/cadmea-plugin-seo, not just @bowenlabs/cadmus —
+      # see build-site's comment above for why this needs every package's
+      # dist/, not just cadmus's, in every job.
+      - run: pnpm build:packages
       - run: pnpm test:int
 
   test-e2e:
@@ -133,7 +139,7 @@ jobs:
           node-version: '24'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build:cadmus
+      - run: pnpm build:packages
       - run: pnpm build:site
       - run: npx playwright install --with-deps chromium
       # playwright.config.ts's webServer already runs db:migrate + seed
@@ -170,8 +176,7 @@ jobs:
           node-version: '24'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build:cadmus
-      - run: pnpm build:cadmea-pkg
+      - run: pnpm build:packages
       - run: pnpm build:site
       - run: pnpm build:cadmea
       - name: Check thebes-site upload size
