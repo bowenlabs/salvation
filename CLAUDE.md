@@ -5,12 +5,15 @@
 > Do not substitute alternatives without flagging them explicitly.
 >
 > Also read CADMUS.md before touching anything in packages/cadmus/.
+> Also read CADMEA.md before touching anything in packages/cadmea/,
+> app/cadmea.config.ts, or app/workers/cadmea/.
 
 ---
 
 ## What is Thebes?
 
-Thebes is a monorepo containing two open-source projects:
+Thebes is a monorepo containing two open-source projects today, with a third
+planned (not yet built — see "Future: Spartoi" below):
 
 **Cadmus** — a V8-first, Cloudflare-native full-stack framework. Zero Node.js
 assumptions. Cloudflare primitives (D1, KV, R2, Email Workers, Cache API) as
@@ -45,6 +48,16 @@ credited with bringing the alphabet to Greece — the resonance worth
 keeping in mind is "communicator/protocol designer," not "monster-slayer."
 See `README.md` for the full version.
 
+**Future: Spartoi.** A standalone, render-agnostic SolidJS framework for
+native (mobile) rendering — parallel to Cadmus, not a Cadmus rename and not
+a Cadmea feature. Cadmea will eventually split into web (today's
+`packages/cadmea`) and native targets sharing one logic layer; Spartoi is
+the native rendering substrate for that split. Tracked in
+[issue #31](https://github.com/bowenlabs/project-thebes/issues/31), blocked
+by [issue #30](https://github.com/bowenlabs/project-thebes/issues/30).
+**Not started. Do not scaffold packages or restructure code for this until
+#30 lands** — see CADMEA.md's "Future: the native split" section for why.
+
 ---
 
 ## Naming — do not change these
@@ -57,6 +70,7 @@ See `README.md` for the full version.
 | **Cadmea** | The CMS product (`app/workers/cadmea/`) |
 | **Cadmea Panel** | The owner-facing admin UI at `/admin/*` |
 | **Extensions** | Cadmea add-ons (Section 3+, was "thimbles") |
+| **Spartoi** | Planned standalone native-rendering framework (parallel to Cadmus) — not started, see #31 |
 | **citadel-tooling** | Private Go Orchestrator repo (provisioning, email, distribution) — separate repo, name unchanged by this rename |
 
 ---

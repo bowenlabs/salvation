@@ -115,7 +115,23 @@ Cloudflare's V8 isolates.
 - **Operator-owned** — your Cloudflare account, your data, your domain
 - **Mobile-first** — the CMS admin is designed for phones and tablets first
 
-**[Read the Cadmea docs →](./app/README.md)**
+**[Read the Cadmea deploy guide →](./app/README.md)** ·
+**[Read the Cadmea design briefing →](./CADMEA.md)**
+
+---
+
+## What's next
+
+Cadmus and Cadmea are the two projects shipping today. Planned, not yet
+started: **Spartoi**, a standalone, render-agnostic SolidJS framework for
+native (mobile) rendering, parallel to Cadmus rather than a feature of either
+existing project. The long-term direction is for Cadmea to split into web and
+native targets sharing one logic layer, with Spartoi as the native rendering
+substrate. Tracked in
+[issue #31](https://github.com/bowenlabs/project-thebes/issues/31), blocked
+on [issue #30](https://github.com/bowenlabs/project-thebes/issues/30) (the
+VoidZero Void/Vite+/Rolldown migration). See CLAUDE.md and CADMEA.md for the
+full reasoning.
 
 ---
 
