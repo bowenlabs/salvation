@@ -212,6 +212,24 @@ async function resolveRelationships<TContext>(
 // checkAccess() below, before any hook or DB work runs for that operation.
 type AnyRecord = Record<string, unknown>;
 
+/**
+ * Non-throwing counterpart to `checkAccess` below, for UI code that wants
+ * to hide/disable an action a context can't perform rather than let it
+ * fail server-side after a click (see Phase 6 / issue #26's
+ * `getPageCapabilities`). `checkAccess` calls through this same function
+ * rather than duplicating the "no access fn = allowed" logic, so `can()`'s
+ * answer and the real operation's enforcement can never disagree.
+ */
+export async function can<TContext>(
+  config: CollectionConfig,
+  operation: keyof CollectionAccess,
+  context: TContext,
+): Promise<boolean> {
+  const fn = config.access?.[operation];
+  if (!fn) return true;
+  return await fn(context);
+}
+
 // Runs config.access[operation](context) if configured, throwing
 // CadmusAccessDeniedError when it resolves false. No access function for
 // an operation means that operation is unconditionally allowed — matches
@@ -221,14 +239,10 @@ async function checkAccess<TContext>(
   operation: keyof CollectionAccess,
   context: TContext,
 ): Promise<void> {
-  const fn = config.access?.[operation];
-  if (!fn) return;
-  const allowed = await fn(context);
-  if (!allowed) {
-    throw new CadmusAccessDeniedError(
-      `Access denied for "${operation}" on collection "${config.slug}"`,
-    );
-  }
+  if (await can(config, operation, context)) return;
+  throw new CadmusAccessDeniedError(
+    `Access denied for "${operation}" on collection "${config.slug}"`,
+  );
 }
 
 async function runBeforeChange(

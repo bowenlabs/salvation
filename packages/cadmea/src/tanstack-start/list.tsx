@@ -3,6 +3,7 @@ import { Link } from "@tanstack/solid-router";
 import type { CollectionConfig } from "@thebes/cadmus/cms";
 import { createSignal, Show } from "solid-js";
 import { CollectionList } from "../CollectionList.js";
+import type { CollectionCapabilities } from "../capabilities.js";
 
 export interface CollectionListQueryParams {
   page: number;
@@ -42,6 +43,13 @@ export interface CollectionListPageOptions<
   newLabel?: string;
   /** Called when a row is clicked — wire this to your router's navigate(). */
   onRowClick?: (row: TRow) => void;
+  /**
+   * A function, not a plain value — re-evaluated on every reactive read,
+   * so it stays correct as the underlying capabilities query resolves/
+   * refetches. Hides the "New …" button when `canCreate` is `false`. See
+   * issue #26's RBAC-aware admin UI.
+   */
+  capabilities?: () => CollectionCapabilities | undefined;
 }
 
 /**
@@ -106,7 +114,11 @@ export function createCollectionListPage<TRow extends Record<string, unknown>>(
           <h1 class="text-xl font-semibold">
             {options.label ?? options.collection.slug}
           </h1>
-          <Show when={options.newHref}>
+          <Show
+            when={
+              options.newHref && options.capabilities?.()?.canCreate !== false
+            }
+          >
             <Link to={options.newHref} class="btn btn-primary btn-sm">
               {options.newLabel ?? `New ${options.collection.slug}`}
             </Link>

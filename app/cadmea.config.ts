@@ -1,6 +1,6 @@
 import { seoPlugin } from "@thebes/cadmea-plugin-seo";
 import { defineCmsConfig } from "@thebes/cadmus/cms";
-import type { Session } from "./core/lib/session.js";
+import type { Role, Session } from "./core/lib/session.js";
 
 // The context every collection's `access` functions receive, passed
 // through unchanged from each Local API call site. `session` is the
@@ -14,16 +14,21 @@ export interface PagesAccessContext {
   internal?: boolean;
 }
 
-function requireSessionOrInternal({ session, internal }: PagesAccessContext) {
-  return internal === true || session !== null;
+// First place `role` becomes load-bearing (Phase 6 / issue #26) — the
+// internal Service Binding RPC always passes, real sessions are checked
+// against `allowed`. Viewers get read-only; editors can draft/edit but
+// not delete or publish; owner can do everything.
+function requireRole(...allowed: Role[]) {
+  return ({ session, internal }: PagesAccessContext) =>
+    internal === true || (session !== null && allowed.includes(session.role));
 }
 
+const requireEditorOrAbove = requireRole("owner", "editor");
+
 // Publishing is a separate privilege from editing a draft (Payload's own
-// model) — for Section 1's single-owner setup this is currently the same
-// rule as create/update/delete, but kept as its own access key so a
-// future role split (e.g. "editor" can draft, only "owner" can publish)
-// is a one-line change here, not a new code path.
-const requirePublishPermission = requireSessionOrInternal;
+// model) — owner-only, same as delete. Kept as its own access key so this
+// stays a one-line change if the split ever needs to move.
+const requirePublishPermission = requireRole("owner");
 
 // The base `pages` definition. NOTE: consumers must not import this — they
 // import the resolved `pagesCollection` below, which is this definition
@@ -40,9 +45,9 @@ const pagesBase = {
   // real admin session or the internal Service Binding RPC.
   access: {
     read: () => true,
-    create: requireSessionOrInternal,
-    update: requireSessionOrInternal,
-    delete: requireSessionOrInternal,
+    create: requireEditorOrAbove,
+    update: requireEditorOrAbove,
+    delete: requireRole("owner"),
     publish: requirePublishPermission,
   },
   // Real draft/published separation with version history — see

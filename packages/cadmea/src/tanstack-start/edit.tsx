@@ -7,6 +7,7 @@ import { useBlocker } from "@tanstack/solid-router";
 import type { CollectionConfig } from "@thebes/cadmus/cms";
 import { createSignal, Show } from "solid-js";
 import { CollectionEdit } from "../CollectionEdit.js";
+import type { CollectionCapabilities } from "../capabilities.js";
 
 export interface CollectionEditDraftOptions {
   /** Saves the live form values as a new draft version, returning its id. */
@@ -47,6 +48,14 @@ export interface CollectionEditPageOptions {
    * `CollectionEdit`'s `draftActions` doc).
    */
   draftActions?: CollectionEditDraftOptions;
+  /**
+   * A function, not a plain value — same reactivity rationale as
+   * `queryKey` above (re-evaluated on every tracking read, so it stays
+   * correct as the underlying capabilities query resolves/refetches).
+   * Hides the Delete button when `canDelete` is `false`; forwarded to
+   * `CollectionEdit` to gate Save via `canUpdate`. See issue #26.
+   */
+  capabilities?: () => CollectionCapabilities | undefined;
 }
 
 /**
@@ -136,6 +145,7 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
             onSubmit={(values) => update.mutate(values)}
             onUploadFile={options.onUploadFile}
             onDirtyChange={setDirty}
+            capabilities={options.capabilities?.()}
             draftActions={
               options.draftActions && {
                 onSaveDraft: (values) => saveDraft.mutate(values),
@@ -149,13 +159,15 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
             }
           />
         </Show>
-        <button
-          type="button"
-          class="btn btn-error btn-outline btn-sm self-start"
-          onClick={() => remove.mutate()}
-        >
-          {options.deleteLabel ?? `Delete ${options.collection.slug}`}
-        </button>
+        <Show when={options.capabilities?.()?.canDelete !== false}>
+          <button
+            type="button"
+            class="btn btn-error btn-outline btn-sm self-start"
+            onClick={() => remove.mutate()}
+          >
+            {options.deleteLabel ?? `Delete ${options.collection.slug}`}
+          </button>
+        </Show>
       </div>
     );
   };

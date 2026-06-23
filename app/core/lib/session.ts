@@ -13,17 +13,19 @@ import {
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 const SESSION_KEY_PREFIX = "session:";
 
+export type Role = "owner" | "editor" | "viewer";
+
 export interface Session {
   userId: number;
   email: string;
-  role: string;
+  role: Role;
   createdAt: number;
 }
 
 /** Creates a session, stores it in KV under a generated session ID, with TTL. */
 export async function createSession(
   kv: KVNamespace,
-  user: { userId: number; email: string; role: string },
+  user: { userId: number; email: string; role: Role },
 ): Promise<{ sessionId: string }> {
   const sessionId = generateSessionId();
   const session: Session = { ...user, createdAt: Date.now() };

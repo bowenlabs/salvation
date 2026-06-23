@@ -165,7 +165,7 @@ jobs:
       - run: pnpm test:e2e
 
   bundle-size:
-    name: Worker bundle size check (10MB Workers Paid limit)
+    name: Worker bundle size check (Free 3MB / Paid 10MB limits)
     runs-on: ubuntu-latest
     needs: [build-site, build-panel]
     steps:
@@ -179,9 +179,18 @@ jobs:
       - run: pnpm build:packages
       - run: pnpm build:site
       - run: pnpm build:cadmea
-      - name: Check thebes-site upload size
-        working-directory: app/workers/site
-        run: npx wrangler deploy --dry-run --outdir /tmp/dry-site
-      - name: Check thebes-cadmea upload size
-        working-directory: app/workers/cadmea
-        run: npx wrangler deploy --dry-run --outdir /tmp/dry-cadmea
+      # check-bundle-size.ts parses wrangler --dry-run's own "gzip: ... KiB"
+      # line, so this is a real assertion (process.exit(1) over the limit),
+      # not just a dry-run for someone to eyeball in the log.
+      - name: Check thebes-site fits the Workers Free plan (3MB)
+        run: npx tsx app/scripts/check-bundle-size.ts app/workers/site 3
+      - name: Check thebes-site fits the Workers Paid plan (10MB)
+        run: npx tsx app/scripts/check-bundle-size.ts app/workers/site 10
+      # Cadmea is Cadmus's reference implementation and is meant to stay
+      # deployable on the Free plan (CLAUDE.md's "five questions" #3 —
+      # the free-forever promise) — its 3MB check is the one most likely
+      # to ever actually trip.
+      - name: Check thebes-cadmea fits the Workers Free plan (3MB)
+        run: npx tsx app/scripts/check-bundle-size.ts app/workers/cadmea 3
+      - name: Check thebes-cadmea fits the Workers Paid plan (10MB)
+        run: npx tsx app/scripts/check-bundle-size.ts app/workers/cadmea 10

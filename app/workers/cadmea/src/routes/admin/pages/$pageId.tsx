@@ -1,3 +1,4 @@
+import { createQuery } from "@tanstack/solid-query";
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { createCollectionEditPage } from "@thebes/cadmea/tanstack-start";
 import { pagesCollection } from "../../../../../../cadmea.config.js";
@@ -5,6 +6,7 @@ import { uploadMediaFile } from "../../../lib/upload-media";
 import {
   deletePage,
   getPage,
+  getPageCapabilities,
   publishPage,
   saveDraft,
   updatePage,
@@ -22,6 +24,11 @@ function EditPagePage() {
   const navigate = useNavigate();
   const id = () => Number(params().pageId);
 
+  const capabilities = createQuery(() => ({
+    queryKey: ["pages", "capabilities"],
+    queryFn: () => getPageCapabilities(),
+  }));
+
   const Page = createCollectionEditPage({
     collection: pagesCollection,
     label: "Edit page",
@@ -33,6 +40,7 @@ function EditPagePage() {
     invalidateQueryKey: ["pages"],
     onDeleted: () => navigate({ to: "/admin/pages" }),
     onUploadFile: uploadMediaFile,
+    capabilities: () => capabilities.data,
     // pagesCollection has versions.drafts: true (app/cadmea.config.ts) —
     // see CollectionEdit's draftActions doc for why this replaces the
     // generic Save button with Save draft/Publish.

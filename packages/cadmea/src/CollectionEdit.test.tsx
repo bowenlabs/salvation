@@ -196,6 +196,26 @@ describe("CollectionEdit", () => {
     expect(screen.queryByText("Save")).not.toBeInTheDocument();
   });
 
+  it("hides the Save button when capabilities.canUpdate is false", () => {
+    render(() => (
+      <CollectionEdit
+        config={pagesCollection}
+        onSubmit={() => {}}
+        capabilities={{ canUpdate: false }}
+      />
+    ));
+    expect(
+      screen.queryByRole("button", { name: "Save" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the Save button when capabilities is omitted (default allowed)", () => {
+    render(() => (
+      <CollectionEdit config={pagesCollection} onSubmit={() => {}} />
+    ));
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+
   it("reports dirty state via onDirtyChange as fields are edited", () => {
     const dirtyStates: boolean[] = [];
     render(() => (

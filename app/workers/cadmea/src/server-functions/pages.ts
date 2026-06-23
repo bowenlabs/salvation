@@ -1,6 +1,6 @@
 import { pages, pages_versions } from "@core/db/schema.generated";
 import { createServerFn } from "@tanstack/solid-start";
-import { createVersionedLocalApi } from "@thebes/cadmus/cms";
+import { can, createVersionedLocalApi } from "@thebes/cadmus/cms";
 import { db } from "@thebes/cadmus/db";
 import { checkRateLimit } from "@thebes/cadmus/rate-limit";
 import { asc, type Column, desc } from "drizzle-orm";
@@ -72,6 +72,23 @@ export const getPages = createServerFn({ method: "GET" })
     ]);
     return { rows, total };
   });
+
+// Drives the admin UI's New/Save/Delete button gating (see
+// @thebes/cadmea's CollectionCapabilities) — non-throwing, defense in
+// depth only. The real enforcement is still `checkAccess` inside every
+// Local API call above; this just lets the UI hide what would fail.
+export const getPageCapabilities = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const session = await requireAuthOrThrow();
+    const context: PagesAccessContext = { session };
+    const [canCreate, canUpdate, canDelete] = await Promise.all([
+      can(pagesCollection, "create", context),
+      can(pagesCollection, "update", context),
+      can(pagesCollection, "delete", context),
+    ]);
+    return { canCreate, canUpdate, canDelete };
+  },
+);
 
 export const getPage = createServerFn({ method: "GET" })
   .validator((id: number) => id)

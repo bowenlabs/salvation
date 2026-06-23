@@ -12,7 +12,9 @@ import { check, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   email: text("email").notNull().unique(),
-  role: text("role").notNull().default("owner"),
+  role: text("role", { enum: ["owner", "editor", "viewer"] })
+    .notNull()
+    .default("owner"),
   firstName: text("first_name"),
   lastName: text("last_name"),
   createdAt: integer("created_at", { mode: "timestamp" })

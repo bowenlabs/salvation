@@ -7,6 +7,7 @@ import {
   Show,
   Suspense,
 } from "solid-js";
+import type { CollectionCapabilities } from "./capabilities.js";
 
 // Dynamic import, not a static one — @tiptap/core + @tiptap/starter-kit
 // are a large dependency (pushed a consuming route's bundle from ~9KB to
@@ -82,6 +83,13 @@ export interface CollectionEditProps {
   onDirtyChange?: (dirty: boolean) => void;
   /** Only rendered when `config.versions?.drafts` is also true. */
   draftActions?: DraftActions;
+  /**
+   * Hides the Save button when `canUpdate` is `false` — see issue #26's
+   * RBAC-aware admin UI. Undefined (the default — most collections don't
+   * wire this up) reads as "allowed", same as `@thebes/cadmus/cms`'s own
+   * "no access fn = allowed" default.
+   */
+  capabilities?: CollectionCapabilities;
 }
 
 interface RenderContext {
@@ -151,15 +159,20 @@ export function CollectionEdit(props: CollectionEditProps) {
         <Show
           when={versioned()}
           fallback={
-            <button
-              type="submit"
-              class="btn btn-primary flex-1"
-              disabled={props.saving}
-            >
-              <Show when={props.saving} fallback={props.submitLabel ?? "Save"}>
-                <span class="loading loading-spinner loading-sm" />
-              </Show>
-            </button>
+            <Show when={props.capabilities?.canUpdate !== false}>
+              <button
+                type="submit"
+                class="btn btn-primary flex-1"
+                disabled={props.saving}
+              >
+                <Show
+                  when={props.saving}
+                  fallback={props.submitLabel ?? "Save"}
+                >
+                  <span class="loading loading-spinner loading-sm" />
+                </Show>
+              </button>
+            </Show>
           }
         >
           <button

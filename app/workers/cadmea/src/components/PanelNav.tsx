@@ -26,6 +26,7 @@ const contentLinks = cadmeaConfig.collections.map((collection) => ({
 }));
 
 const siteLinks = [
+  { slug: "users", label: "Users", href: "/admin/users" },
   { slug: "settings", label: "Settings", href: "/admin/settings" },
   { slug: "design", label: "Design", href: "/admin/design" },
   { slug: "extensions", label: "Extensions", href: "/admin/extensions" },

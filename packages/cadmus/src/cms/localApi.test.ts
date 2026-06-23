@@ -4,7 +4,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
 import { collectionToTable, collectionVersionsTable } from "./codegen.js";
-import { createLocalApi, createVersionedLocalApi } from "./localApi.js";
+import { can, createLocalApi, createVersionedLocalApi } from "./localApi.js";
 import type { CollectionConfig } from "./types.js";
 
 // Mirrors the pagesCollection fixture in codegen.test.ts — duplicated
@@ -291,6 +291,62 @@ describe("createLocalApi access control", () => {
       { title: "X", slug: "x" },
     );
     expect(created.title).toBe("X");
+  });
+});
+
+describe("can", () => {
+  interface Ctx {
+    session: { role: string } | null;
+  }
+
+  // Parametrized against the same access configs/contexts as the
+  // "createLocalApi access control" suite above — can()'s answer must
+  // agree with whatever the real operation does, since checkAccess()
+  // calls through can() rather than duplicating its logic. See issue #26.
+  it.each([
+    {
+      access: { create: () => false },
+      context: { session: null },
+      expected: false,
+    },
+    {
+      access: { create: () => true },
+      context: { session: { role: "owner" } },
+      expected: true,
+    },
+    {
+      access: { create: async ({ session }: Ctx) => session?.role === "owner" },
+      context: { session: { role: "viewer" } },
+      expected: false,
+    },
+    {
+      access: { create: async ({ session }: Ctx) => session?.role === "owner" },
+      context: { session: { role: "owner" } },
+      expected: true,
+    },
+  ])("agrees with the real create() outcome for a given access fn and context", async ({
+    access,
+    context,
+    expected,
+  }) => {
+    const config: CollectionConfig = { ...pagesCollection, access };
+    const api = createLocalApi<typeof pagesTable, Ctx>(db, pagesTable, config);
+
+    expect(await can(config, "create", context)).toBe(expected);
+
+    const outcome = await api
+      .create(context, { title: "X", slug: `x-${Math.random()}` })
+      .then(() => true)
+      .catch((e) => {
+        if (e instanceof CadmusAccessDeniedError) return false;
+        throw e;
+      });
+    expect(outcome).toBe(expected);
+  });
+
+  it("returns true when no access function is configured for the operation", async () => {
+    const config: CollectionConfig = { ...pagesCollection, access: {} };
+    expect(await can(config, "read", { session: null })).toBe(true);
   });
 });
 
