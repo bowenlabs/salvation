@@ -3,10 +3,12 @@
 import { CadmusStorageError } from "@bowenlabs/cadmus";
 import { checkRateLimit } from "@bowenlabs/cadmus/rate-limit";
 import { verifySessionCookie } from "@core/lib/auth";
+import { mountPublicCmsApi } from "@core/lib/cms-api";
 import { createImageService } from "@core/lib/image-service";
 import { securityHeaders } from "@core/lib/security-headers";
-import { getSession } from "@core/lib/session";
+import { getSession, type Session } from "@core/lib/session";
 import startHandler from "@tanstack/solid-start/server-entry";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 
@@ -15,6 +17,19 @@ export { CadmeaService } from "./service.js";
 const app = new Hono<{ Bindings: Env }>();
 
 app.use("*", securityHeaders);
+
+// Shared by the media upload route and the public REST API below — both
+// re-derive the admin session from the signed cookie rather than trusting
+// a beforeLoad route guard, since neither has one protecting it.
+async function sessionFromCookie(
+  c: Context<{ Bindings: Env }>,
+): Promise<Session | null> {
+  const cookieValue = getCookie(c, "cadmea_session");
+  const sessionId = cookieValue
+    ? await verifySessionCookie(cookieValue, c.env.SESSION_SECRET)
+    : null;
+  return sessionId ? await getSession(c.env.SESSION, sessionId) : null;
+}
 
 // 1. Custom API routes — checked first
 
@@ -25,11 +40,7 @@ app.use("*", securityHeaders);
 // does for server functions (see middleware.ts) — this route has no
 // beforeLoad guard protecting it.
 app.post("/api/media/upload", async (c) => {
-  const cookieValue = getCookie(c, "cadmea_session");
-  const sessionId = cookieValue
-    ? await verifySessionCookie(cookieValue, c.env.SESSION_SECRET)
-    : null;
-  const session = sessionId ? await getSession(c.env.SESSION, sessionId) : null;
+  const session = await sessionFromCookie(c);
   if (!session) return c.json({ error: "Unauthorized" }, 401);
 
   // Same-origin check — see middleware.ts's requireSameOriginOrThrow for
@@ -72,6 +83,13 @@ app.post("/api/media/upload", async (c) => {
 // SECTION_1_PLAN.md's 2026-06-21 Phase 1 audit. Don't pre-add
 // unimplemented stubs here; an early draft of this file had them and
 // they were removed for looking functional when they weren't.
+
+// Public REST API (Payload Parity Roadmap issue #23) — see
+// @core/lib/cms-api.ts for the CORS/rate-limit/mounting logic. Pulled out
+// into its own module (rather than inlined here) so it can be exercised
+// in tests/int without dragging in this file's
+// `@tanstack/solid-start/server-entry` import.
+mountPublicCmsApi(app, { getSession: sessionFromCookie });
 
 // 2. TanStack Start — fallback for everything else, must be last
 app.all("*", async (c) => startHandler.fetch(c.req.raw));

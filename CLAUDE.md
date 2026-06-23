@@ -187,9 +187,14 @@ framework/CMS boundary as above. Full guide: **`EXTENDING.md`**.
   `@bowenlabs/cadmea-plugin-seo`. **Consumers must read the resolved config
   (post-plugin), never the raw definition** — see `app/cadmea.config.ts`.
 
-Collection `hooks` are enforced by `createLocalApi`; `access` is still reserved
-(not enforced). Community extensions on either axis live under
-`@cadmus-community/*`.
+Collection `hooks` and `access` are both enforced by `createLocalApi` — a
+rejected `access` check throws `CadmusAccessDeniedError`. The public REST API
+(`mountCmsRoutes`, `@bowenlabs/cadmus/hono`) is mounted at `/api/*` in
+`app/workers/cadmea/app/server.ts` via `app/core/lib/cms-api.ts`'s
+`mountPublicCmsApi` — every collection's own `access` rules are what gate
+each request; see `packages/cadmus/src/cms/README.md` for the full Local
+API/access/REST API reference. Community extensions on either axis live
+under `@cadmus-community/*`.
 
 Shared code that is **neither** axis (no CMS config, no Cadmus interface) ships
 as a plain library, not an extension — e.g. `@bowenlabs/cadmea-design-system`,

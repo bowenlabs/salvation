@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
 import { mountCmsRoutes } from "./cms.js";
 
@@ -71,6 +71,7 @@ function buildApp(widgetsApi: ReturnType<typeof createFakeWidgetsApi>) {
   return mountCmsRoutes(new Hono(), {
     // biome-ignore lint/suspicious/noExplicitAny: the fake satisfies LocalApi's call shape; cms.ts's generic is `any` for the same reason
     collections: { widgets: widgetsApi as any },
+    resolveContext: async () => undefined,
   });
 }
 
@@ -142,6 +143,7 @@ describe("mountCmsRoutes", () => {
         // biome-ignore lint/suspicious/noExplicitAny: simulating create() throwing the unique-constraint error
         widgets: { ...widgetsApi, create: widgetsApi.createDuplicate } as any,
       },
+      resolveContext: async () => undefined,
     });
     const res = await app.request("/api/widgets", {
       method: "POST",
@@ -166,6 +168,7 @@ describe("mountCmsRoutes", () => {
           // biome-ignore lint/suspicious/noExplicitAny: simulating find() throwing CadmusAccessDeniedError
         } as any,
       },
+      resolveContext: async () => undefined,
     });
     const res = await app.request("/api/widgets");
     expect(res.status).toBe(403);
@@ -185,11 +188,30 @@ describe("mountCmsRoutes", () => {
         // biome-ignore lint/suspicious/noExplicitAny: simulating find() throwing a genuine bug
         widgets: { ...widgetsApi, find: widgetsApi.throwUnexpected } as any,
       },
+      resolveContext: async () => undefined,
     });
     // router.onError rethrows non-CadmusCmsError failures; Hono's own
     // top-level default error handler then converts that into a 500 —
     // not a 200, and not a silently-rejected promise either.
     const res = await app.request("/api/widgets");
     expect(res.status).toBe(500);
+  });
+
+  it("calls resolveContext once per request and passes its result to the Local API", async () => {
+    const widgetsApi = createFakeWidgetsApi();
+    const findSpy = vi.fn(widgetsApi.find);
+    const resolveContext = vi.fn(async () => ({ userId: 42 }));
+    const app = mountCmsRoutes(new Hono(), {
+      collections: {
+        // biome-ignore lint/suspicious/noExplicitAny: simulating a typed TContext flowing through
+        widgets: { ...widgetsApi, find: findSpy } as any,
+      },
+      resolveContext,
+    });
+
+    const res = await app.request("/api/widgets");
+    expect(res.status).toBe(200);
+    expect(resolveContext).toHaveBeenCalledTimes(1);
+    expect(findSpy).toHaveBeenCalledWith({ userId: 42 });
   });
 });

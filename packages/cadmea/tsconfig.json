@@ -12,6 +12,6 @@
     "declaration": false,
     "noEmit": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "vitest.setup.ts"],
   "exclude": ["node_modules"]
 }

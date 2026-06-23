@@ -83,13 +83,22 @@ describe("createLocalApi", () => {
     expect(rows[0]?.slug).toBe("home");
   });
 
-  it("find({ depth: 1 }) throws — relationship resolution is reserved, not yet implemented", async () => {
+  it("find({ depth: 1 }) is a no-op for a collection with no relationship fields", async () => {
+    await localApi.create(ctx, { title: "Home", slug: "home" });
+    // pagesCollection has no relationship fields, so depth: 1 has nothing
+    // to resolve and doesn't require a registry — see the dedicated
+    // "relationship depth resolution" suite below for the real behavior.
+    const rows = await localApi.find(ctx, { depth: 1 });
+    expect(rows).toHaveLength(1);
+  });
+
+  it("find() throws CadmusCmsError for an unsupported depth value", async () => {
     await expect(
-      // depth is typed as `0 | undefined`; cast simulates a
+      // depth is typed as `0 | 1 | undefined`; cast simulates a
       // non-type-checked caller passing an unsupported value.
       localApi.find(ctx, {
-        depth: 1,
-      } as Parameters<typeof localApi.find>[1]),
+        depth: 2,
+      } as unknown as Parameters<typeof localApi.find>[1]),
     ).rejects.toThrow(CadmusCmsError);
   });
 
@@ -544,5 +553,124 @@ describe("createVersionedLocalApi", () => {
     await expect(
       versionedApi.unpublish({ canPublish: false }, created.id),
     ).rejects.toThrow(CadmusAccessDeniedError);
+  });
+});
+
+describe("createLocalApi relationship depth resolution", () => {
+  interface RelCtx {
+    canReadAuthors: boolean;
+  }
+
+  const authorsCollection: CollectionConfig = {
+    slug: "authors",
+    fields: {
+      id: { type: "number", autoIncrement: true },
+      name: { type: "text", required: true },
+    },
+    access: {
+      read: ({ canReadAuthors }: RelCtx) => canReadAuthors,
+    },
+  };
+
+  const postsCollection: CollectionConfig = {
+    slug: "posts",
+    fields: {
+      id: { type: "number", autoIncrement: true },
+      title: { type: "text", required: true },
+      authorId: { type: "relationship", relationTo: "authors" },
+    },
+  };
+
+  const authorsTable = collectionToTable(authorsCollection);
+  const postsTable = collectionToTable(postsCollection);
+  const registry = {
+    tables: { authors: authorsTable, posts: postsTable },
+    configs: { authors: authorsCollection, posts: postsCollection },
+  };
+  const postsApi = createLocalApi<typeof postsTable, RelCtx>(
+    db,
+    postsTable,
+    postsCollection,
+    registry,
+  );
+  const postsApiNoRegistry = createLocalApi<typeof postsTable, RelCtx>(
+    db,
+    postsTable,
+    postsCollection,
+  );
+
+  beforeEach(async () => {
+    await db.run(sql`
+      CREATE TABLE IF NOT EXISTS authors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL
+      )
+    `);
+    await db.run(sql`
+      CREATE TABLE IF NOT EXISTS posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        author_id INTEGER
+      )
+    `);
+  });
+
+  afterEach(async () => {
+    await db.run(sql`DROP TABLE IF EXISTS authors`);
+    await db.run(sql`DROP TABLE IF EXISTS posts`);
+  });
+
+  it("resolves a relationship field to the related document when read is allowed", async () => {
+    const authorsApi = createLocalApi(db, authorsTable, authorsCollection);
+    const author = await authorsApi.create(undefined, { name: "Ada" });
+    const post = await postsApi.create(
+      { canReadAuthors: true },
+      {
+        title: "Hello",
+        authorId: author.id,
+      },
+    );
+
+    const [resolved] = await postsApi.find(
+      { canReadAuthors: true },
+      { depth: 1 },
+    );
+    expect(resolved?.authorId).toEqual(author);
+
+    const byId = await postsApi.findByID({ canReadAuthors: true }, post.id, {
+      depth: 1,
+    });
+    expect(byId.authorId).toEqual(author);
+  });
+
+  it("leaves the relationship as a bare id (no throw) when the related collection's read access denies", async () => {
+    const authorsApi = createLocalApi(db, authorsTable, authorsCollection);
+    const author = await authorsApi.create(undefined, { name: "Ada" });
+    await postsApi.create(
+      { canReadAuthors: true },
+      {
+        title: "Hello",
+        authorId: author.id,
+      },
+    );
+
+    const [resolved] = await postsApi.find(
+      { canReadAuthors: false },
+      { depth: 1 },
+    );
+    expect(resolved?.authorId).toBe(author.id);
+  });
+
+  it("throws CadmusCmsError when depth: 1 is requested without a registry", async () => {
+    await postsApi.create(
+      { canReadAuthors: true },
+      {
+        title: "Hello",
+        authorId: null,
+      },
+    );
+    await expect(
+      postsApiNoRegistry.find({ canReadAuthors: true }, { depth: 1 }),
+    ).rejects.toThrow(CadmusCmsError);
   });
 });

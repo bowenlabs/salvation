@@ -53,6 +53,7 @@
     "@playwright/test": "latest",
     "concurrently": "latest",
     "drizzle-kit": "latest",
+    "hono": "latest",
     "tsx": "latest",
     "vitest": "latest",
     "wrangler": "latest"

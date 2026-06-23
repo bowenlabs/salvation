@@ -1,14 +1,26 @@
 // Copyright (c) 2026 BowenLabs. All rights reserved.
 // Cadmus is MIT licensed. See LICENSE in the repo root.
 
+import type { Context } from "hono";
 import { Hono } from "hono";
 import type { ClientErrorStatusCode } from "hono/utils/http-status";
 import type { LocalApi } from "../cms/index.js";
 import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
 
-export interface CmsRoutesOptions {
+export interface CmsRoutesOptions<TContext> {
   // biome-ignore lint/suspicious/noExplicitAny: see above
-  collections: Record<string, LocalApi<any>>;
+  collections: Record<string, LocalApi<any, TContext>>;
+  /**
+   * Resolves the per-request access context passed as the first argument
+   * to every Local API call below — called once per request, not once per
+   * collection method, so e.g. a session lookup only happens once even
+   * though a write touches `create` and its `afterChange` hooks. Cadmus
+   * doesn't standardize the context shape (see LocalApi's `TContext`) —
+   * the caller's `resolveContext` is the one place that decides it, the
+   * same way Cadmea's server functions each call `requireAuthOrThrow()`
+   * themselves today.
+   */
+  resolveContext: (c: Context) => Promise<TContext>;
 }
 
 // Coupled to the exact message strings localApi.ts's notFound() and
@@ -24,11 +36,11 @@ function statusForError(error: CadmusCmsError): ClientErrorStatusCode {
   return 400;
 }
 
-function getApi(
-  collections: CmsRoutesOptions["collections"],
+function getApi<TContext>(
+  collections: CmsRoutesOptions<TContext>["collections"],
   slug: string,
   // biome-ignore lint/suspicious/noExplicitAny: see CmsRoutesOptions
-): LocalApi<any> {
+): LocalApi<any, TContext> {
   const api = collections[slug];
   if (!api) throw new CadmusCmsError(`Unknown collection "${slug}"`);
   return api;
@@ -40,7 +52,10 @@ function getApi(
 //   POST   /api/:collection
 //   PATCH  /api/:collection/:id
 //   DELETE /api/:collection/:id
-export function mountCmsRoutes(app: Hono, options: CmsRoutesOptions): Hono {
+export function mountCmsRoutes<TContext>(
+  app: Hono,
+  options: CmsRoutesOptions<TContext>,
+): Hono {
   const router = new Hono();
 
   router.onError((error, c) => {
@@ -50,35 +65,38 @@ export function mountCmsRoutes(app: Hono, options: CmsRoutesOptions): Hono {
     throw error;
   });
 
-  // `context` is `undefined` for every route below — mountCmsRoutes doesn't
-  // yet resolve a per-request access context (that's `resolveContext`,
-  // landing when this REST surface is actually mounted in an app). Until
-  // then, every collection mounted here must either configure no `access`
-  // rules (unconditionally allowed) or rules that tolerate `undefined`.
+  // `resolveContext` runs once per request, before any Local API call —
+  // every route below shares the one resolved context across its method
+  // call and that method's own hooks (e.g. create()'s afterChange).
   router.get("/:collection", async (c) => {
     const api = getApi(options.collections, c.req.param("collection"));
-    return c.json(await api.find(undefined));
+    const context = await options.resolveContext(c);
+    return c.json(await api.find(context));
   });
 
   router.get("/:collection/:id", async (c) => {
     const api = getApi(options.collections, c.req.param("collection"));
-    return c.json(await api.findByID(undefined, Number(c.req.param("id"))));
+    const context = await options.resolveContext(c);
+    return c.json(await api.findByID(context, Number(c.req.param("id"))));
   });
 
   router.post("/:collection", async (c) => {
     const api = getApi(options.collections, c.req.param("collection"));
-    return c.json(await api.create(undefined, await c.req.json()), 201);
+    const context = await options.resolveContext(c);
+    return c.json(await api.create(context, await c.req.json()), 201);
   });
 
   router.patch("/:collection/:id", async (c) => {
     const api = getApi(options.collections, c.req.param("collection"));
+    const context = await options.resolveContext(c);
     const id = Number(c.req.param("id"));
-    return c.json(await api.update(undefined, id, await c.req.json()));
+    return c.json(await api.update(context, id, await c.req.json()));
   });
 
   router.delete("/:collection/:id", async (c) => {
     const api = getApi(options.collections, c.req.param("collection"));
-    return c.json(await api.deleteByID(undefined, Number(c.req.param("id"))));
+    const context = await options.resolveContext(c);
+    return c.json(await api.deleteByID(context, Number(c.req.param("id"))));
   });
 
   app.route("/api", router);

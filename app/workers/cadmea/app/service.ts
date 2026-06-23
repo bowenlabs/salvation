@@ -1,16 +1,6 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { CadmusCmsError } from "@bowenlabs/cadmus";
-import { createLocalApi, type LocalApi } from "@bowenlabs/cadmus/cms";
-import { db } from "@bowenlabs/cadmus/db";
-import { pages } from "@core/db/schema.generated";
-import { pagesCollection } from "../../../cadmea.config.js";
-
-// Collection registry — mirrors mountCmsRoutes's `collections` shape.
-// Only `pages` exists today; add entries here as new collections land.
-// biome-ignore lint/suspicious/noExplicitAny: each collection's LocalApi is typed to its own table; the registry is necessarily generic across all of them
-function collections(env: Env): Record<string, LocalApi<any>> {
-  return { pages: createLocalApi(db(env.DB), pages, pagesCollection) };
-}
+import { createCmsCollections } from "@core/lib/cms-collections";
 
 // Exposes the write-with-CMS-logic path for Worker 1 (Astro/site) via a
 // Service Binding (Worker-to-Worker RPC, no fetch/HTTP overhead) — per
@@ -18,7 +8,7 @@ function collections(env: Env): Record<string, LocalApi<any>> {
 // calls the Local API directly against its own D1 binding for those.
 export class CadmeaService extends WorkerEntrypoint<Env> {
   private api(collection: string) {
-    const api = collections(this.env)[collection];
+    const api = createCmsCollections(this.env)[collection];
     if (!api) throw new CadmusCmsError(`Unknown collection "${collection}"`);
     return api;
   }

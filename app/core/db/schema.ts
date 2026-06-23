@@ -5,6 +5,7 @@
 // See DECISIONS.md 2026-06-21 "`site_settings` stays a hand-written core
 // table". `sessions` and `magic_link_tokens` are intentionally absent —
 // they live in KV (see CLAUDE.md "Authentication"), not D1.
+import type { JsonValue } from "@bowenlabs/cadmus/cms";
 import { sql } from "drizzle-orm";
 import { check, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -41,7 +42,7 @@ export const siteSettings = sqliteTable(
       .default(false),
     theme: text("theme"),
     spacingPreset: text("spacing_preset"),
-    typeTokens: text("type_tokens", { mode: "json" }),
+    typeTokens: text("type_tokens", { mode: "json" }).$type<JsonValue>(),
 
     // structural colors
     navBackground: text("nav_background"),
@@ -55,10 +56,10 @@ export const siteSettings = sqliteTable(
     contactEmail: text("contact_email"),
     contactPhone: text("contact_phone"),
     contactAddress: text("contact_address"),
-    socialLinks: text("social_links", { mode: "json" }),
+    socialLinks: text("social_links", { mode: "json" }).$type<JsonValue>(),
 
     // nav
-    navLinks: text("nav_links", { mode: "json" }),
+    navLinks: text("nav_links", { mode: "json" }).$type<JsonValue>(),
 
     // seo
     metaDescription: text("meta_description"),
@@ -86,7 +87,7 @@ export const siteSettings = sqliteTable(
       .default(false),
 
     // feature toggles
-    features: text("features", { mode: "json" }),
+    features: text("features", { mode: "json" }).$type<JsonValue>(),
   },
   (table) => [check("site_settings_singleton", sql`${table.id} = 1`)],
 );

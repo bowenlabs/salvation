@@ -43,6 +43,25 @@ export interface RichTextFieldConfig extends BaseFieldConfig {
   type: "richText";
 }
 
+/**
+ * The TS type every JSON-mode column (`richText`/`array` fields,
+ * `versionData`) is given via drizzle's `.$type<JsonValue>()` — see
+ * codegen.ts's and schema-gen.ts's richText/array cases. Without it,
+ * drizzle infers a JSON column as `unknown`, which TanStack Start's
+ * server-function return-type validator rejects outright (`unknown`
+ * doesn't structurally match its `Serializable` check the way a plain
+ * object/array/primitive union does). Recursive on purpose — that's what
+ * lets the validator recurse through it instead of bottoming out at
+ * `unknown`.
+ */
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
 export interface CheckboxFieldConfig extends BaseFieldConfig {
   type: "checkbox";
   defaultValue?: boolean;
@@ -59,6 +78,17 @@ export interface RelationshipFieldConfig extends BaseFieldConfig {
    */
   hasMany?: boolean;
 }
+
+/**
+ * `0` (default): a relationship field's column comes back as the bare
+ * related-row id. `1`: `createLocalApi`'s `registry` param is used to
+ * batch-resolve `hasMany: false` relationship fields into the related
+ * row's full document — see localApi.ts's `resolveRelationships`. Depths
+ * beyond 1 (resolving a relationship's own relationships) aren't
+ * implemented; there's no nested-relationship fixture yet to validate
+ * that design against.
+ */
+export type RelationshipDepth = 0 | 1;
 
 export interface ArrayFieldConfig extends BaseFieldConfig {
   type: "array";

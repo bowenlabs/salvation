@@ -50,6 +50,9 @@ importers:
       drizzle-kit:
         specifier: latest
         version: 0.31.10
+      hono:
+        specifier: latest
+        version: 4.12.26
       tsx:
         specifier: latest
         version: 4.22.4

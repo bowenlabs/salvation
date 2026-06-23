@@ -6,6 +6,7 @@ import {
   eq,
   type InferInsertModel,
   type InferSelectModel,
+  inArray,
   type SQL,
 } from "drizzle-orm";
 import type {
@@ -13,7 +14,11 @@ import type {
   SQLiteTableWithColumns,
 } from "drizzle-orm/sqlite-core";
 import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
-import type { CollectionAccess, CollectionConfig } from "./types.js";
+import type {
+  CollectionAccess,
+  CollectionConfig,
+  RelationshipDepth,
+} from "./types.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: matches drizzle-orm's own SQLiteTableWithColumns default generic usage
 type AnyTable = SQLiteTableWithColumns<any>;
@@ -27,20 +32,24 @@ type AnyTable = SQLiteTableWithColumns<any>;
  */
 export interface LocalApi<TTable extends AnyTable, TContext = unknown> {
   /**
-   * `depth` reserves the shape for relationship resolution (depth: 0 = no
-   * extra queries, depth: 1 = one batched query, depth > 1 throws) — only
-   * `0` (the default) is implemented; any other value throws
-   * CadmusCmsError. Real resolution is deferred until a collection
-   * actually has a relationship field to validate the design against.
+   * `depth: 0` (default) returns relationship fields as bare ids; `depth: 1`
+   * batch-resolves `hasMany: false` relationship fields into the related
+   * row, gated by that collection's own `read` access fn — see
+   * `resolveRelationships` below. Requires `createLocalApi`'s `registry`
+   * param; throws CadmusCmsError if `depth: 1` is requested without one.
    */
   find(
     context: TContext,
     options?: {
       where?: SQL;
-      depth?: 0;
+      depth?: RelationshipDepth;
     },
   ): Promise<InferSelectModel<TTable>[]>;
-  findByID(context: TContext, id: number): Promise<InferSelectModel<TTable>>;
+  findByID(
+    context: TContext,
+    id: number,
+    options?: { depth?: RelationshipDepth },
+  ): Promise<InferSelectModel<TTable>>;
   create(
     context: TContext,
     input: InferInsertModel<TTable>,
@@ -97,6 +106,89 @@ function wrapWriteError(config: CollectionConfig, error: unknown): never {
 
 function notFound(config: CollectionConfig, id: number): never {
   throw new CadmusCmsError(`No "${config.slug}" document found with id ${id}`);
+}
+
+/**
+ * Lets `createLocalApi` resolve `depth: 1` relationship fields without
+ * importing every other collection's Local API (which would be a circular
+ * dependency the moment two collections relate to each other). The
+ * registry is just the raw ingredients — a table and a config per
+ * collection slug — built once by the app (e.g. from `cadmeaConfig.collections`)
+ * and passed to every `createLocalApi` call that has relationship fields.
+ */
+export interface CmsRegistry {
+  tables: Record<string, AnyTable>;
+  configs: Record<string, CollectionConfig>;
+}
+
+/**
+ * Batch-resolves this collection's `hasMany: false` relationship fields
+ * for an already-fetched page of `rows`, one query per relationship field
+ * (not one query per row — the N+1 the `depth: 1` design note in types.ts
+ * calls out avoiding). The related collection's `read` access fn is run
+ * once per field against `context`, not once per row: there's a single
+ * yes/no for "can this context read collection X", not a row-by-row
+ * filter. When it rejects, the field is left as the bare id rather than
+ * throwing — a denied relationship is an omission, not a failed request.
+ * `hasMany: true` relationship fields are untouched (no column on this
+ * table to resolve from — they live in a join table, out of scope here).
+ */
+async function resolveRelationships<TContext>(
+  db: BaseSQLiteDatabase<"async", unknown>,
+  config: CollectionConfig,
+  rows: AnyRecord[],
+  context: TContext,
+  registry: CmsRegistry | undefined,
+): Promise<AnyRecord[]> {
+  const relationshipFields = Object.entries(config.fields).filter(
+    ([, field]) => field.type === "relationship" && !field.hasMany,
+  );
+  if (relationshipFields.length === 0) return rows;
+  if (!registry) {
+    throw new CadmusCmsError(
+      `Collection "${config.slug}" requested depth: 1 but createLocalApi was not given a registry to resolve relationship fields against`,
+    );
+  }
+
+  let result = rows;
+  for (const [key, field] of relationshipFields) {
+    const relationTo = (field as { relationTo: string }).relationTo;
+    const relatedConfig = registry.configs[relationTo];
+    const relatedTable = registry.tables[relationTo];
+    if (!relatedConfig || !relatedTable) {
+      throw new CadmusCmsError(
+        `Collection "${config.slug}" field "${key}" relates to unknown collection "${relationTo}" — not present in the registry`,
+      );
+    }
+
+    const readFn = relatedConfig.access?.read;
+    const allowed = readFn ? await readFn(context) : true;
+    if (!allowed) continue;
+
+    const ids = [
+      ...new Set(
+        result
+          .map((row) => row[key])
+          .filter((id): id is number => typeof id === "number"),
+      ),
+    ];
+    if (ids.length === 0) continue;
+
+    const relatedRows = await db
+      .select()
+      .from(relatedTable)
+      .where(inArray(relatedTable.id, ids));
+    const byId = new Map(
+      relatedRows.map((row) => [(row as AnyRecord).id, row as AnyRecord]),
+    );
+
+    result = result.map((row) => {
+      const id = row[key];
+      const related = typeof id === "number" ? byId.get(id) : undefined;
+      return related ? { ...row, [key]: related } : row;
+    });
+  }
+  return result;
 }
 
 // Hook runners. `config.hooks` (CollectionHooks) is folded into every
@@ -188,37 +280,75 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
   db: BaseSQLiteDatabase<"async", unknown>,
   table: TTable,
   config: CollectionConfig,
+  registry?: CmsRegistry,
 ): LocalApi<TTable, TContext> {
   const idColumn = table.id;
 
   return {
     async find(context, options) {
       await checkAccess(config, "read", context);
-      if (options?.depth !== undefined && options.depth !== 0) {
+      if (
+        options?.depth !== undefined &&
+        options.depth !== 0 &&
+        options.depth !== 1
+      ) {
         throw new CadmusCmsError(
-          `Relationship resolution (depth > 0) is not yet implemented for collection "${config.slug}"`,
+          `Relationship resolution depth ${options.depth} is not supported for collection "${config.slug}" (only 0 and 1 are)`,
         );
       }
       const query = db.select().from(table);
       const rows = options?.where
         ? await query.where(options.where)
         : await query;
-      if (!hasReadHooks(config)) return rows as InferSelectModel<TTable>[];
-      const hooked = await Promise.all(
-        rows.map((row) => runReadHooks(config, row as Record<string, unknown>)),
-      );
-      return hooked as InferSelectModel<TTable>[];
+      const afterHooks = hasReadHooks(config)
+        ? await Promise.all(
+            rows.map((row) =>
+              runReadHooks(config, row as Record<string, unknown>),
+            ),
+          )
+        : rows;
+      const resolved =
+        options?.depth === 1
+          ? await resolveRelationships(
+              db,
+              config,
+              afterHooks as AnyRecord[],
+              context,
+              registry,
+            )
+          : afterHooks;
+      return resolved as InferSelectModel<TTable>[];
     },
 
-    async findByID(context, id) {
+    async findByID(context, id, options) {
       await checkAccess(config, "read", context);
+      if (
+        options?.depth !== undefined &&
+        options.depth !== 0 &&
+        options.depth !== 1
+      ) {
+        throw new CadmusCmsError(
+          `Relationship resolution depth ${options.depth} is not supported for collection "${config.slug}" (only 0 and 1 are)`,
+        );
+      }
       const [row] = await db.select().from(table).where(eq(idColumn, id));
       if (!row) notFound(config, id);
-      if (!hasReadHooks(config)) return row as InferSelectModel<TTable>;
-      return (await runReadHooks(
-        config,
-        row as Record<string, unknown>,
-      )) as InferSelectModel<TTable>;
+      const afterHooks = hasReadHooks(config)
+        ? await runReadHooks(config, row as Record<string, unknown>)
+        : row;
+      const resolved =
+        options?.depth === 1
+          ? (
+              await resolveRelationships(
+                db,
+                config,
+                [afterHooks as AnyRecord],
+                context,
+                registry,
+              )
+            )[0]
+          : afterHooks;
+      return resolved as InferSelectModel<TTable>;
     },
 
     async create(context, input) {
@@ -340,8 +470,9 @@ export function createVersionedLocalApi<
   table: TTable,
   versionsTable: TVersionsTable,
   config: CollectionConfig,
+  registry?: CmsRegistry,
 ): VersionedLocalApi<TTable, TVersionsTable, TContext> {
-  const base = createLocalApi<TTable, TContext>(db, table, config);
+  const base = createLocalApi<TTable, TContext>(db, table, config, registry);
   const idColumn = table.id;
   const versionsIdColumn = versionsTable.id;
   const versionsParentIdColumn = versionsTable.parentId;

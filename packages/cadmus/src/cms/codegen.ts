@@ -9,7 +9,12 @@ import {
   text,
 } from "drizzle-orm/sqlite-core";
 import { CadmusCmsError } from "../errors.js";
-import type { CmsConfig, CollectionConfig, FieldConfig } from "./types.js";
+import type {
+  CmsConfig,
+  CollectionConfig,
+  FieldConfig,
+  JsonValue,
+} from "./types.js";
 
 function toSnakeCase(value: string): string {
   return value.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
@@ -45,10 +50,16 @@ function fieldToColumn(
       // TipTap JSON / array-group content — a single JSON column. The
       // nested `fields` on an array config describe the JSON shape for
       // introspection only; not enforced at write time in this step.
-      let column = text(columnName, { mode: "json" });
+      // `.$type<JsonValue>()` overrides drizzle's inferred `unknown` —
+      // see types.ts's JsonValue doc comment for why that matters.
+      let column = text(columnName, { mode: "json" }).$type<JsonValue>();
       if (field.required) column = column.notNull();
       if (field.defaultValue !== undefined) {
-        column = column.default(field.defaultValue);
+        // BaseFieldConfig types `defaultValue` as `unknown` (it's shared
+        // across every field type); a richText/array default is always
+        // JSON-shaped data by construction, so this is a narrowing cast,
+        // not an escape hatch.
+        column = column.default(field.defaultValue as JsonValue);
       }
       return column;
     }
@@ -142,7 +153,9 @@ export function collectionVersionsTable(config: CollectionConfig) {
   return sqliteTable(`${config.slug}_versions`, {
     id: integer("id").primaryKey({ autoIncrement: true }),
     parentId: integer("parent_id").notNull(),
-    versionData: text("version_data", { mode: "json" }).notNull(),
+    versionData: text("version_data", { mode: "json" })
+      .$type<JsonValue>()
+      .notNull(),
     status: text("status", { enum: ["draft", "published"] }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
       () => new Date(),

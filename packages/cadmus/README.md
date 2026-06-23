@@ -51,6 +51,19 @@ Hono users get ergonomic middleware via a separate entrypoint:
 import { cadmusAuth, cadmusRateLimit } from '@bowenlabs/cadmus/hono'
 ```
 
+**A CMS engine on top of the primitives above** — model content as
+collections and get a generated Drizzle schema, a typed, access-controlled,
+hook-driven Local API, and a Payload-equivalent REST API
+(`mountCmsRoutes`, also from `@bowenlabs/cadmus/hono`):
+
+```typescript
+import { createLocalApi, defineCmsConfig } from '@bowenlabs/cadmus/cms'
+```
+
+See [`src/cms/README.md`](./src/cms/README.md) for the full reference —
+config/plugins, access control, hooks, relationship `depth` resolution,
+draft/publish versioning, and mounting the REST API.
+
 ---
 
 ## Design principles

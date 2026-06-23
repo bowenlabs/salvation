@@ -84,11 +84,27 @@ describe("generateSchemaSource", () => {
     expect(source).toContain('fileUrl: text("file_url").notNull()');
   });
 
-  it("emits richText/array fields as a JSON-mode text column", () => {
+  it("emits richText/array fields as a JSON-mode text column typed as JsonValue", () => {
     const source = generateSchemaSource({
       collections: [{ slug: "blocks", fields: { body: { type: "richText" } } }],
     });
-    expect(source).toContain('body: text("body", { mode: "json" })');
+    expect(source).toContain(
+      'body: text("body", { mode: "json" }).$type<JsonValue>()',
+    );
+  });
+
+  it("imports the JsonValue type only when a collection actually has a JSON column", () => {
+    const withJson = generateSchemaSource({
+      collections: [{ slug: "blocks", fields: { body: { type: "richText" } } }],
+    });
+    expect(withJson).toContain(
+      'import type { JsonValue } from "@bowenlabs/cadmus/cms";',
+    );
+
+    const withoutJson = generateSchemaSource({
+      collections: [pagesCollection],
+    });
+    expect(withoutJson).not.toContain("JsonValue");
   });
 
   it("emits a hasMany:false relationship as a plain integer column", () => {
@@ -127,7 +143,7 @@ describe("generateSchemaSource", () => {
     );
     expect(source).toContain('parentId: integer("parent_id").notNull()');
     expect(source).toContain(
-      'versionData: text("version_data", { mode: "json" }).notNull()',
+      'versionData: text("version_data", { mode: "json" }).$type<JsonValue>().notNull()',
     );
     expect(source).toContain(
       'status: text("status", { enum: ["draft", "published"] }).notNull()',

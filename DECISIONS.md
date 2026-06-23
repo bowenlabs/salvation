@@ -9,6 +9,69 @@
 
 ---
 
+## 2026-06-23 — Issue #24 (Phase 4 — Relationship depth resolution) shipped
+
+**Decision:** `createLocalApi`/`createVersionedLocalApi`
+(`packages/cadmus/src/cms/localApi.ts`) gain an optional 4th `registry`
+param (`{ tables, configs }`, exported as `CmsRegistry`). `find`/`findByID`
+accept `depth: 1` (widened from `0` — see `types.ts`'s `RelationshipDepth`),
+which batch-resolves every `hasMany: false` relationship field via the
+new `resolveRelationships` helper: one query per relationship field
+(never per row — the N+1 the original "depth: 1 = one batched query"
+comment was reserving against), the related collection's own `read`
+access fn checked once per field against the caller's context, and a
+denied read leaves the field as the bare id rather than throwing (an
+omission, not a failure). `depth: 1` on a collection with relationship
+fields but no `registry` throws `CadmusCmsError` with a clear message.
+`app/core/lib/cms-registry.ts` builds the registry once from
+`cadmeaConfig.collections`, sourcing tables from the generated schema
+(not a fresh `collectionToTable()` call) so it never drifts from what's
+actually migrated.
+
+**Also fixed while implementing this:** every JSON-mode Drizzle column
+(`richText`/`array` fields, `versionData`) was typed `unknown` by
+drizzle's inference, which TanStack Start's server-function
+return-type validator rejects outright — `unknown` doesn't structurally
+satisfy its `Serializable` check the way a plain object/array/primitive
+union does, breaking every server function that returns a `pages` row
+once the array became part of any inferred return type. Fixed by adding
+a recursive `JsonValue` type (`packages/cadmus/src/cms/types.ts`) and
+applying `.$type<JsonValue>()` to every JSON column — in `codegen.ts`
+(the runtime table builder), `schema-gen.ts` (the generated-source
+emitter, which now also conditionally emits a `JsonValue` type import),
+and the hand-written `site_settings` JSON columns in
+`app/core/db/schema.ts`. Pure type-level change — no SQL/migration
+impact, since the column is still `TEXT` either way.
+
+---
+
+## 2026-06-23 — Issue #23 (Phase 3 — Public REST API) shipped
+
+**Decision:** `mountCmsRoutes` (`packages/cadmus/src/hono/cms.ts`) gains
+`resolveContext: (c: Context) => Promise<TContext>` on
+`CmsRoutesOptions<TContext>` — resolved once per request, passed as the
+first argument to every Local API call so a session lookup isn't
+repeated across a write's own hooks. Mounted for real in
+`app/workers/cadmea/app/server.ts` via the new
+`app/core/lib/cms-api.ts`'s `mountPublicCmsApi`: CORS scoped to `/api/*`
+(permissive on GET — most reads are public content; no
+`Access-Control-Allow-Origin` at all on mutating verbs, same-origin only,
+matching `/api/media/upload`'s existing manual origin check) and rate
+limiting via `@bowenlabs/cadmus/rate-limit` (IP-keyed for anonymous GET,
+session-email-keyed for authenticated writes). `mountPublicCmsApi` lives
+in `app/core/`, deliberately free of any TanStack/Vite import, so it can
+be exercised directly against real D1/KV in `tests/int` without needing
+the full Vite build — every collection's own `access` rules
+(`app/cadmea.config.ts`) are what actually gate each request; this layer
+only resolves the context they're checked against.
+
+**Also fixed while implementing this:** `service.ts`'s and `server.ts`'s
+duplicate `{ slug: LocalApi }` registry construction was extracted into
+`app/core/lib/cms-collections.ts` (`createCmsCollections`), shared by
+both the Service Binding RPC and the public REST mount.
+
+---
+
 ## 2026-06-22 — Watch item: VoidZero's Void, Vite+, and Rolldown — defer adoption, re-evaluate at GA
 
 **Decision:** No code changes now. Tracking three related VoidZero

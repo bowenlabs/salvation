@@ -66,6 +66,43 @@ Published first-party plugins live under `@bowenlabs/cadmea-plugin-*` (e.g.
 
 ---
 
+## Access control
+
+Each collection may declare per-operation `access` functions, modeled on
+Payload's own `access` shape:
+
+```ts
+defineCollection({
+  slug: "posts",
+  fields: { title: { type: "text", required: true } },
+  access: {
+    read: () => true, // public reads
+    create: ({ session }) => session !== null,
+    update: ({ session }) => session !== null,
+    delete: ({ session }) => session !== null,
+    // publish is checked by createVersionedLocalApi's publish/unpublish —
+    // a separate privilege from update, matching Payload's own model.
+    publish: ({ session }) => session?.role === "owner",
+  },
+});
+```
+
+`createLocalApi` enforces these on every call — `read` for `find`/`findByID`,
+`create`/`update`/`delete` for their namesakes — **before** touching the
+database. No access function configured for an operation means that
+operation is unconditionally allowed. A rejected check throws
+`CadmusAccessDeniedError` (a `CadmusCmsError` subclass, so existing
+`instanceof CadmusCmsError` handling still catches it — `mountCmsRoutes`,
+below, maps it to an HTTP 403 specifically).
+
+Cadmus doesn't standardize the context shape access functions receive — it's
+the `TContext` generic every `LocalApi` method takes as its first argument
+(see Local API below). Your app decides what it looks like (a session, an
+internal-RPC flag, both — see `app/cadmea.config.ts`'s `PagesAccessContext`
+for a real example).
+
+---
+
 ## Hooks
 
 Each collection may declare lifecycle `hooks`. They are enforced by
@@ -85,7 +122,8 @@ for their effects.
 required field (this is how `@bowenlabs/cadmea-plugin-seo` defaults `metaTitle`
 from `title`). `afterChange` runs outside the write `try` so a side-effect error
 is never mis-reported as a write failure. Read hooks do **not** run on the doc
-returned from `create`/`update`. All hooks may be async.
+returned from `create`/`update`. All hooks may be async. Access checks run
+before any hook for that operation.
 
 ```ts
 defineCollection({
@@ -97,21 +135,100 @@ defineCollection({
 });
 ```
 
-> `access` on a collection is **reserved and not yet enforced** — setting it has
-> no effect. Hooks are enforced; access checks are deferred.
-
 ---
 
 ## Local API
 
-```ts
-const posts = createLocalApi(db(env.DB, schema), postsTable, postsCollection);
+Every method takes a `context` (the access-control value above) as its first
+argument — required, not optional, so a call site can't forget it:
 
-await posts.create({ title: "Hello" });
-await posts.find({ where: eq(postsTable.status, "published") });
+```ts
+const posts = createLocalApi<typeof postsTable, MyContext>(
+  db(env.DB, schema),
+  postsTable,
+  postsCollection,
+);
+
+await posts.create(context, { title: "Hello" });
+await posts.find(context, { where: eq(postsTable.status, "published") });
 ```
 
 Pass the **resolved** collection (post-plugin) as the third argument — it
-carries the injected fields and registered hooks. `create`/`update` reject
-unknown fields and enforce required fields; `relationship` resolution
-(`depth > 0`) is reserved and currently throws.
+carries the injected fields, registered hooks, and access rules.
+`create`/`update` reject unknown fields and enforce required fields.
+
+### Relationship resolution (`depth`)
+
+`find`/`findByID`'s `options.depth` is `0` (default, the bare related-row id)
+or `1` (batch-resolve every `hasMany: false` relationship field into the
+related row, one query per field — never one per row). `depth: 1` requires a
+4th `registry` argument to `createLocalApi`:
+
+```ts
+const registry: CmsRegistry = {
+  tables: { authors: authorsTable, posts: postsTable },
+  configs: { authors: authorsCollection, posts: postsCollection },
+};
+const posts = createLocalApi(db(env.DB, schema), postsTable, postsCollection, registry);
+
+const [post] = await posts.find(context, { depth: 1 });
+// post.authorId is now the related `authors` row, not a bare id —
+// unless that collection's own `read` access fn rejects `context`, in
+// which case the field is left as the bare id rather than throwing.
+```
+
+Omitting `registry` when a collection has no relationship fields is fine —
+`depth: 1` is then a no-op. Requesting `depth: 1` on a collection that *does*
+have relationship fields, without a `registry`, throws `CadmusCmsError`.
+`hasMany: true` relationship fields (join-table backed) aren't resolved by
+`depth: 1` yet.
+
+### Versioned Local API (drafts/publish)
+
+Collections with `versions: { drafts: true }` get a generated
+`${slug}_versions` table and a `createVersionedLocalApi` factory layering
+`findVersions`/`saveDraft`/`publish`/`unpublish` on top of the plain
+`LocalApi`:
+
+```ts
+const pages = createVersionedLocalApi(db(env.DB), pagesTable, pagesVersionsTable, pagesCollection);
+
+const draft = await pages.saveDraft(context, pageId, { title: "New title" });
+// saveDraft never validates required fields — an incomplete draft is valid.
+await pages.publish(context, draft.id);
+// publish validates the full document (like create/update) and copies the
+// version's data onto the main row, setting publishedVersionId.
+```
+
+`publish`/`unpublish` are gated by the collection's `access.publish`, not
+`access.update` — see Access control above.
+
+---
+
+## Public REST API (`@bowenlabs/cadmus/hono`)
+
+`mountCmsRoutes` mounts a Payload-equivalent REST surface (`GET`/`POST`
+`/api/:collection`, `GET`/`PATCH`/`DELETE` `/api/:collection/:id`) over a
+static `{ slug: LocalApi }` registry:
+
+```ts
+import { mountCmsRoutes } from "@bowenlabs/cadmus/hono";
+
+mountCmsRoutes(app, {
+  collections: { posts },
+  // Called once per request, before any Local API call — its return
+  // value is the `context` every route below passes through. Cadmus
+  // doesn't resolve sessions/auth itself; this is the one place your app
+  // decides what `context` looks like for this request.
+  resolveContext: async (c) => ({ session: await getSessionFromCookie(c) }),
+});
+```
+
+Every collection's own `access` rules are what actually gate each request —
+`mountCmsRoutes` just resolves the context they're checked against and maps
+`CadmusAccessDeniedError` to an HTTP 403 (`CadmusCmsError`'s other
+recognized message shapes map to 404/409; anything else falls through to a
+generic 400, and non-Cadmus errors are rethrown rather than swallowed as a
+200). It has no opinion on CORS or rate limiting — see
+`app/core/lib/cms-api.ts` in this repo's own app for a real example layering
+both on top before mounting.
