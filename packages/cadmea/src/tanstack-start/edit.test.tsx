@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from "@solidjs/testing-library";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@solidjs/testing-library";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import {
   createMemoryHistory,
@@ -7,7 +13,7 @@ import {
   RouterProvider,
 } from "@tanstack/solid-router";
 import type { CollectionConfig } from "@thebes/cadmus/cms";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCollectionEditPage } from "./edit.js";
 
 const pagesCollection: CollectionConfig = {
@@ -16,6 +22,11 @@ const pagesCollection: CollectionConfig = {
     id: { type: "number", autoIncrement: true },
     title: { type: "text", required: true },
   },
+};
+
+const versionedPagesCollection: CollectionConfig = {
+  ...pagesCollection,
+  versions: { drafts: true },
 };
 
 afterEach(cleanup);
@@ -98,5 +109,42 @@ describe("createCollectionEditPage", () => {
     expect(
       screen.getByRole("button", { name: "Delete pages" }),
     ).toBeInTheDocument();
+  });
+
+  it("resolves a preview URL via previewFn and opens it, only after a draft is saved", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    const previewFn = vi.fn(async (versionId: number) => ({
+      url: `https://thebes-site.example/preview/pages/home?token=v${versionId}`,
+    }));
+    const Page = createCollectionEditPage({
+      ...buildOptions(),
+      collection: versionedPagesCollection,
+      draftActions: {
+        saveDraftFn: async () => ({ id: 7 }),
+        publishFn: async () => ({}),
+        previewFn,
+      },
+    });
+    renderPage(Page);
+
+    const previewButton = await screen.findByRole("button", {
+      name: "Preview",
+    });
+    expect(previewButton).toBeDisabled();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Save draft" }));
+    await waitFor(() => expect(previewButton).not.toBeDisabled());
+
+    fireEvent.click(previewButton);
+    await waitFor(() =>
+      expect(openSpy).toHaveBeenCalledWith(
+        "https://thebes-site.example/preview/pages/home?token=v7",
+        "_blank",
+        "noopener,noreferrer",
+      ),
+    );
+    expect(previewFn).toHaveBeenCalledWith(7);
+
+    openSpy.mockRestore();
   });
 });

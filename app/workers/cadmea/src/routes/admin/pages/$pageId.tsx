@@ -7,6 +7,7 @@ import {
   deletePage,
   getPage,
   getPageCapabilities,
+  getPreviewUrl,
   publishPage,
   saveDraft,
   updatePage,
@@ -47,6 +48,8 @@ function EditPagePage() {
     draftActions: {
       saveDraftFn: (values) => saveDraft({ data: { id: id(), values } }),
       publishFn: (versionId) => publishPage({ data: versionId }),
+      previewFn: (versionId) =>
+        getPreviewUrl({ data: { id: id(), versionId } }),
     },
   });
 

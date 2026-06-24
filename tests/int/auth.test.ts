@@ -1,6 +1,10 @@
 import { env, SELF } from "cloudflare:test";
 import { db } from "@thebes/cadmus/db";
-import { createMagicLinkToken } from "@core/lib/auth";
+import {
+  createMagicLinkToken,
+  createPreviewToken,
+  verifyPreviewToken,
+} from "@core/lib/auth";
 import { users } from "@core/db/schema";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -57,5 +61,45 @@ describe("magic-link auth", () => {
     // No token issued for an unknown email — nothing written to KV.
     const keys = await env.KV.list({ prefix: "magiclink:" });
     expect(keys.keys).toHaveLength(0);
+  });
+});
+
+// Mirrors the magic-link suite above, but for the stateless preview token
+// (issue #28) — signature/expiry checks, no KV involved (see
+// createPreviewToken's doc in app/core/lib/auth.ts for why).
+describe("preview token", () => {
+  it("verifies a freshly issued token", async () => {
+    const { token } = await createPreviewToken(env.SESSION_SECRET, 1, 2);
+    const verified = await verifyPreviewToken(env.SESSION_SECRET, token);
+    expect(verified).toEqual({ parentId: 1, versionId: 2 });
+  });
+
+  it("rejects a token signed with a different secret", async () => {
+    const { token } = await createPreviewToken("wrong-secret", 1, 2);
+    const verified = await verifyPreviewToken(env.SESSION_SECRET, token);
+    expect(verified).toBeNull();
+  });
+
+  it("rejects a tampered payload", async () => {
+    const { token } = await createPreviewToken(env.SESSION_SECRET, 1, 2);
+    const [parentId, versionId, expiresAt, signature] = token.split(".");
+    const tampered = [parentId, "999", expiresAt, signature].join(".");
+    const verified = await verifyPreviewToken(env.SESSION_SECRET, tampered);
+    expect(verified).toBeNull();
+  });
+
+  it("rejects an expired token", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const payload = `1.2.${now - 10}`;
+    const { signSession } = await import("@thebes/cadmus/auth");
+    const signature = await signSession(payload, env.SESSION_SECRET);
+    const expired = `${payload}.${signature}`;
+    const verified = await verifyPreviewToken(env.SESSION_SECRET, expired);
+    expect(verified).toBeNull();
+  });
+
+  it("rejects a malformed token", async () => {
+    const verified = await verifyPreviewToken(env.SESSION_SECRET, "not-a-token");
+    expect(verified).toBeNull();
   });
 });

@@ -3,9 +3,12 @@ import {
   env,
   waitOnExecutionContext,
 } from "cloudflare:test";
+import { createPreviewToken } from "@core/lib/auth";
 import { db } from "@thebes/cadmus/db";
-import { pages } from "@core/db/schema.generated";
+import { createVersionedLocalApi } from "@thebes/cadmus/cms";
+import { pages, pages_versions } from "@core/db/schema.generated";
 import { beforeEach, describe, expect, it } from "vitest";
+import { pagesCollection } from "../../app/cadmea.config";
 import { CadmeaService } from "../../app/workers/cadmea/app/service";
 
 // Closes the gap flagged on issue #15: CadmeaService (the Service Binding
@@ -46,6 +49,77 @@ describe("CadmeaService", () => {
     const ctx = createExecutionContext();
     const service = new CadmeaService(ctx, env);
     await expect(service.create("not-a-collection", {})).rejects.toThrow();
+    await waitOnExecutionContext(ctx);
+  });
+});
+
+// Closes issue #28's verification bar for getDraftVersion — the Service
+// Binding RPC method Worker 1's preview route calls — against real local
+// D1, the same direct-instantiation approach as the suite above.
+describe("CadmeaService.getDraftVersion", () => {
+  const versionedApi = createVersionedLocalApi(
+    db(env.DB),
+    pages,
+    pages_versions,
+    pagesCollection,
+  );
+  const writerCtx = { session: { userId: 1, email: "owner@example.com", role: "owner" as const, createdAt: Date.now() } };
+
+  beforeEach(async () => {
+    await db(env.DB, { pages, pages_versions }).delete(pages_versions);
+    await db(env.DB, { pages, pages_versions }).delete(pages);
+  });
+
+  it("resolves a valid token to the draft's versionData", async () => {
+    const created = await versionedApi.create(writerCtx, {
+      title: "Home",
+      slug: `preview-${Date.now()}`,
+      status: "draft",
+    });
+    const draft = await versionedApi.saveDraft(writerCtx, created.id, {
+      title: "Home (draft edit)",
+    });
+    const { token } = await createPreviewToken(
+      env.SESSION_SECRET,
+      created.id,
+      draft.id,
+    );
+
+    const ctx = createExecutionContext();
+    const service = new CadmeaService(ctx, env);
+    const versionData = await service.getDraftVersion("pages", token);
+    // The SEO plugin's metaTitle hook (app/cadmea.config.ts) defaults
+    // metaTitle from title on beforeChange — saveDraft runs through that
+    // same hook, so it's present here too, not just on a real create.
+    expect(versionData).toEqual({
+      title: "Home (draft edit)",
+      metaTitle: "Home (draft edit)",
+    });
+    await waitOnExecutionContext(ctx);
+  });
+
+  it("returns null for a token with an invalid signature", async () => {
+    const { token } = await createPreviewToken("wrong-secret", 1, 2);
+    const ctx = createExecutionContext();
+    const service = new CadmeaService(ctx, env);
+    expect(await service.getDraftVersion("pages", token)).toBeNull();
+    await waitOnExecutionContext(ctx);
+  });
+
+  it("returns null when the version id doesn't exist", async () => {
+    const created = await versionedApi.create(writerCtx, {
+      title: "Home",
+      slug: `preview-missing-${Date.now()}`,
+      status: "draft",
+    });
+    const { token } = await createPreviewToken(
+      env.SESSION_SECRET,
+      created.id,
+      999999,
+    );
+    const ctx = createExecutionContext();
+    const service = new CadmeaService(ctx, env);
+    expect(await service.getDraftVersion("pages", token)).toBeNull();
     await waitOnExecutionContext(ctx);
   });
 });

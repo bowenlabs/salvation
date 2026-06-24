@@ -43,12 +43,22 @@ export interface RelationshipOption {
 export interface DraftActions {
   onSaveDraft: (values: Record<string, unknown>) => void | Promise<void>;
   onPublish?: () => void | Promise<void>;
+  /**
+   * Opens a live preview of the last saved draft (issue #28) — like
+   * `onPublish`, acts on whatever was last saved as a draft, not the live
+   * form state. Omit to not render the Preview button at all.
+   */
+  onPreview?: () => void | Promise<void>;
   saving?: boolean;
   publishing?: boolean;
+  previewing?: boolean;
   /** Disables Publish — e.g. until a draft has been saved at least once. */
   canPublish?: boolean;
+  /** Disables Preview — same gating as canPublish, a draft must exist first. */
+  canPreview?: boolean;
   saveDraftLabel?: string;
   publishLabel?: string;
+  previewLabel?: string;
 }
 
 export interface CollectionEditProps {
@@ -205,6 +215,24 @@ export function CollectionEdit(props: CollectionEditProps) {
               <span class="loading loading-spinner loading-sm" />
             </Show>
           </button>
+          <Show when={props.draftActions?.onPreview}>
+            <button
+              type="button"
+              class="btn btn-outline flex-1"
+              disabled={
+                !props.draftActions?.canPreview ||
+                props.draftActions?.previewing
+              }
+              onClick={() => void props.draftActions?.onPreview?.()}
+            >
+              <Show
+                when={props.draftActions?.previewing}
+                fallback={props.draftActions?.previewLabel ?? "Preview"}
+              >
+                <span class="loading loading-spinner loading-sm" />
+              </Show>
+            </button>
+          </Show>
         </Show>
       </div>
     </form>

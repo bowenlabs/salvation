@@ -1,4 +1,5 @@
 import { pages, pages_versions } from "@core/db/schema.generated";
+import { createPreviewToken } from "@core/lib/auth";
 import { createServerFn } from "@tanstack/solid-start";
 import {
   can,
@@ -184,4 +185,33 @@ export const unpublishPage = createServerFn({ method: "POST" })
     await requireSameOriginOrThrow();
     await checkWriteRateLimit(session);
     return (await pagesApi()).unpublish({ session }, id);
+  });
+
+// Issue #28 — builds the signed, time-limited preview URL the "Preview"
+// button opens. `versionId` must actually belong to `id` — findVersions
+// (gated on the collection's `read` access, same as every other call
+// through pagesApi()) both confirms that and gets us the version's slug
+// snapshot in one round trip, so the token only ever gets minted for a
+// version that's real.
+export const getPreviewUrl = createServerFn({ method: "GET" })
+  .validator((input: { id: number; versionId: number }) => input)
+  .handler(async ({ data }) => {
+    const session = await requireAuthOrThrow();
+    const versions = await (await pagesApi()).findVersions(
+      { session },
+      data.id,
+    );
+    const version = versions.find((v) => v.id === data.versionId);
+    if (!version) throw new Error("Version not found");
+
+    const { env } = await import("cloudflare:workers");
+    const { token } = await createPreviewToken(
+      env.SESSION_SECRET,
+      data.id,
+      data.versionId,
+    );
+    const slug = (version.versionData as { slug?: string }).slug ?? "";
+    const url = new URL(`/preview/pages/${slug}`, env.SERVER_URL);
+    url.searchParams.set("token", token);
+    return { url: url.toString() };
   });

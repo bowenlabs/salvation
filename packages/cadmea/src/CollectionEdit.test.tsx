@@ -286,6 +286,61 @@ describe("CollectionEdit", () => {
     expect(published).toBe(true);
   });
 
+  it("renders Preview only when onPreview is provided, gated on canPreview", () => {
+    const versionedCollection: CollectionConfig = {
+      ...pagesCollection,
+      versions: { drafts: true },
+    };
+    let previewed = false;
+    render(() => (
+      <CollectionEdit
+        config={versionedCollection}
+        onSubmit={() => {}}
+        draftActions={{
+          onSaveDraft: () => {},
+          onPreview: () => {
+            previewed = true;
+          },
+          canPreview: true,
+        }}
+      />
+    ));
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    expect(previewed).toBe(true);
+  });
+
+  it("omits the Preview button when onPreview isn't provided", () => {
+    const versionedCollection: CollectionConfig = {
+      ...pagesCollection,
+      versions: { drafts: true },
+    };
+    render(() => (
+      <CollectionEdit
+        config={versionedCollection}
+        onSubmit={() => {}}
+        draftActions={{ onSaveDraft: () => {} }}
+      />
+    ));
+    expect(
+      screen.queryByRole("button", { name: "Preview" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disables Preview until canPreview is true", () => {
+    const versionedCollection: CollectionConfig = {
+      ...pagesCollection,
+      versions: { drafts: true },
+    };
+    render(() => (
+      <CollectionEdit
+        config={versionedCollection}
+        onSubmit={() => {}}
+        draftActions={{ onSaveDraft: () => {}, onPreview: () => {} }}
+      />
+    ));
+    expect(screen.getByRole("button", { name: "Preview" })).toBeDisabled();
+  });
+
   it("disables Publish until canPublish is true", () => {
     const versionedCollection: CollectionConfig = {
       ...pagesCollection,

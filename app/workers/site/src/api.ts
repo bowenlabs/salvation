@@ -9,7 +9,10 @@ import {
   createMagicLinkToken,
   signSessionCookie,
   verifyMagicLinkToken,
+  verifyPreviewToken,
 } from "@core/lib/auth";
+import { parseBlocks, renderBlocksToHtml } from "@core/lib/blocks";
+import { createImageService } from "@core/lib/image-service";
 import { sendEmail } from "@core/lib/notify";
 import { securityHeaders } from "@core/lib/security-headers";
 import { createSession, deleteSession } from "@core/lib/session";
@@ -151,6 +154,51 @@ api.get("/api/auth/verify", async (c) => {
       : "/admin/dashboard";
   return c.redirect(new URL(redirectTo, c.env.CADMEA_URL).toString());
 });
+
+// Live preview (issue #28) — renders a draft version behind a signed,
+// time-limited token instead of the published row [slug].astro reads. A
+// Hono route rather than an Astro page, like every other route in this
+// file (see the module comment above) — Astro pages aren't reachable from
+// tests/int, and the verification bar for this phase is a route test, not
+// a manual/e2e check. `:slug` is only for a human-readable URL; the actual
+// lookup is entirely driven by the token, so a mismatched slug still
+// renders correctly — it's not re-validated against the token's page id.
+//
+// Verifies the token's signature/expiry locally before ever calling the
+// CADMEA service binding — cheap, and means an invalid/expired token never
+// reaches the RPC call (CadmeaService.getDraftVersion re-verifies it too;
+// defense in depth, same pattern as the admin server functions re-checking
+// auth despite a route guard).
+api.get("/preview/pages/:slug", async (c) => {
+  const token = c.req.query("token");
+  if (!token || !(await verifyPreviewToken(c.env.SESSION_SECRET, token))) {
+    return c.text("Invalid or expired preview link", 403);
+  }
+
+  const versionData = await c.env.CADMEA.getDraftVersion("pages", token);
+  if (!versionData) return c.text("Invalid or expired preview link", 403);
+
+  const page = versionData as {
+    title: string;
+    blocks: unknown;
+  };
+  const imageService = createImageService(c.env.R2, c.env.MEDIA_URL);
+  const body = renderBlocksToHtml(parseBlocks(page.blocks), imageService);
+
+  return c.html(
+    `<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>${escapeHtml(page.title)} (draft preview)</title></head><body><div style="background:#fde68a;padding:8px;text-align:center;font-family:sans-serif">Draft preview — not published</div><article><h1>${escapeHtml(page.title)}</h1>${body}</article></body></html>`,
+    200,
+    { "Cache-Control": "private, no-store" },
+  );
+});
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 // Logout — clears the session both in KV and the browser cookie.
 api.post("/api/auth/logout", async (c) => {

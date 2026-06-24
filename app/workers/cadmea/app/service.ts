@@ -1,5 +1,9 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
-import { createCmsCollections } from "@core/lib/cms-collections";
+import { verifyPreviewToken } from "@core/lib/auth";
+import {
+  createCmsCollections,
+  createVersionedCmsCollections,
+} from "@core/lib/cms-collections";
 import { CadmusCmsError } from "@thebes/cadmus";
 
 // Exposes the write-with-CMS-logic path for Worker 1 (Astro/site) via a
@@ -35,5 +39,33 @@ export class CadmeaService extends WorkerEntrypoint<Env> {
 
   async deleteByID(collection: string, id: number) {
     return this.api(collection).deleteByID(this.internalContext, id);
+  }
+
+  // Worker 1's preview route (app/workers/site/src/api.ts, issue #28) calls
+  // this to resolve a signed preview token into the draft snapshot it
+  // points at — never a real session, so this goes through the same
+  // internalContext path as the write methods above. Returns null for an
+  // invalid/expired token or a version that's vanished, rather than
+  // throwing — the caller turns that into a 403, not a 500.
+  async getDraftVersion(
+    collection: string,
+    token: string,
+  ): Promise<Record<string, unknown> | null> {
+    const verified = await verifyPreviewToken(this.env.SESSION_SECRET, token);
+    if (!verified) return null;
+
+    const versioned = createVersionedCmsCollections(this.env)[collection];
+    if (!versioned) {
+      throw new CadmusCmsError(`Unknown versioned collection "${collection}"`);
+    }
+
+    const versions = await versioned.findVersions(
+      this.internalContext,
+      verified.parentId,
+    );
+    const version = versions.find((v) => v.id === verified.versionId);
+    if (!version) return null;
+
+    return version.versionData as Record<string, unknown>;
   }
 }

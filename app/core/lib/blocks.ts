@@ -78,3 +78,49 @@ function renderNode(node: TipTapJSONContent): string {
 export function renderRichText(content: TipTapJSONContent): string {
   return (content.content ?? []).map(renderNode).join("");
 }
+
+// Mirrors BlockRenderer.astro's switch, as a plain string builder — the
+// preview route (app/workers/site/src/api.ts, issue #28) is a Hono route,
+// not an Astro page (it has to be, to stay reachable from tests/int —
+// Astro's Vite plugin pulls in a virtual module the vitest-pool-workers
+// runtime doesn't provide, same gotcha api.ts's own module comment
+// documents), so it can't render the .astro component directly.
+export function renderBlocksToHtml(
+  blocks: Block[],
+  imageService: {
+    render: (image: { url: string; alt: string }) => { src: string };
+  },
+): string {
+  return blocks
+    .map((block) => {
+      switch (block.type) {
+        case "richText":
+          return `<div>${renderRichText(block.content)}</div>`;
+        case "image": {
+          const { src } = imageService.render({
+            url: block.url,
+            alt: block.alt,
+          });
+          const caption = block.caption
+            ? `<figcaption>${escapeHtml(block.caption)}</figcaption>`
+            : "";
+          return `<figure><img src="${escapeHtml(src)}" alt="${escapeHtml(block.alt)}" loading="lazy" decoding="async">${caption}</figure>`;
+        }
+        case "hero": {
+          const subtext = block.subtext
+            ? `<p>${escapeHtml(block.subtext)}</p>`
+            : "";
+          const cta =
+            block.ctaLabel && block.ctaHref
+              ? `<a href="${escapeHtml(block.ctaHref)}">${escapeHtml(block.ctaLabel)}</a>`
+              : "";
+          return `<section><h1>${escapeHtml(block.heading)}</h1>${subtext}${cta}</section>`;
+        }
+        case "divider":
+          return "<hr>";
+        default:
+          return "";
+      }
+    })
+    .join("");
+}

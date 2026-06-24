@@ -14,8 +14,14 @@ export interface CollectionEditDraftOptions {
   saveDraftFn: (values: Record<string, unknown>) => Promise<{ id: number }>;
   /** Publishes a saved draft by id — the most recent one from `saveDraftFn`. */
   publishFn: (versionId: number) => Promise<unknown>;
+  /**
+   * Resolves a saved draft by id to a live preview URL (issue #28) — opens
+   * in a new tab on success. Omit to not render the Preview button.
+   */
+  previewFn?: (versionId: number) => Promise<{ url: string }>;
   saveDraftLabel?: string;
   publishLabel?: string;
+  previewLabel?: string;
 }
 
 export interface CollectionEditPageOptions {
@@ -130,6 +136,21 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
       onError: (e: Error) => setError(e.message),
     }));
 
+    const preview = createMutation(() => ({
+      mutationFn: () => {
+        const versionId = latestDraftId();
+        if (versionId === undefined || !options.draftActions?.previewFn) {
+          return Promise.reject(new Error("No draft saved yet"));
+        }
+        return options.draftActions.previewFn(versionId);
+      },
+      onSuccess: ({ url }) => {
+        setError(undefined);
+        window.open(url, "_blank", "noopener,noreferrer");
+      },
+      onError: (e: Error) => setError(e.message),
+    }));
+
     return (
       <div class="flex flex-col gap-4">
         <h1 class="text-xl font-semibold">
@@ -150,11 +171,17 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
               options.draftActions && {
                 onSaveDraft: (values) => saveDraft.mutate(values),
                 onPublish: () => publish.mutate(),
+                onPreview: options.draftActions.previewFn
+                  ? () => preview.mutate()
+                  : undefined,
                 saving: saveDraft.isPending,
                 publishing: publish.isPending,
+                previewing: preview.isPending,
                 canPublish: latestDraftId() !== undefined,
+                canPreview: latestDraftId() !== undefined,
                 saveDraftLabel: options.draftActions.saveDraftLabel,
                 publishLabel: options.draftActions.publishLabel,
+                previewLabel: options.draftActions.previewLabel,
               }
             }
           />
