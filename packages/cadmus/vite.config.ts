@@ -19,6 +19,7 @@ export default defineConfig({
       "queues/index": "src/queues/index.ts",
       "hono/index": "src/hono/index.ts",
       "cms/index": "src/cms/index.ts",
+      "astro/index": "src/astro/index.ts",
     },
     format: ["esm", "cjs"],
     dts: true,
@@ -27,6 +28,6 @@ export default defineConfig({
     target: "es2022",
     // Cloudflare Workers target — no Node.js built-ins
     platform: "browser",
-    deps: { neverBundle: ["hono", "drizzle-orm", "cloudflare:email"] },
+    deps: { neverBundle: ["hono", "drizzle-orm", "cloudflare:email", "astro"] },
   },
 });

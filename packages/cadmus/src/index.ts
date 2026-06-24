@@ -25,6 +25,9 @@ export interface CadmusEnv {
   SESSION_SECRET: string;
 }
 
-// Note: @thebes/cadmus/hono is intentionally excluded from the root
-// export — it has hono as a peer dependency and is opt-in only.
-// Import it directly: import { cadmusAuth } from '@thebes/cadmus/hono'
+// Note: @thebes/cadmus/hono and @thebes/cadmus/astro are intentionally
+// excluded from the root export — each has its own framework as an
+// optional peer dependency and is opt-in only.
+// Import them directly:
+//   import { mountCmsRoutes } from '@thebes/cadmus/hono'
+//   import { createMagicLinkHandlers } from '@thebes/cadmus/astro'
