@@ -521,3 +521,12 @@ a {
   }
 }
 
+/* Global keyboard focus indicator (WCAG 2.4.7). A safety net for any
+   interactive element whose component-library focus style is missing or
+   gets reset — keyboard users always get a visible, consistent ring.
+   :focus-visible (not :focus) keeps it off mouse/touch interactions. */
+:focus-visible {
+  outline: 2px solid var(--lagoon-deep);
+  outline-offset: 2px;
+}
+

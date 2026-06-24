@@ -1,8 +1,11 @@
 // Copyright (c) 2026 BowenLabs. All rights reserved.
 // MIT licensed. See LICENSE in the repo root.
 
-import { For, type JSX, Show } from "solid-js";
+import { createEffect, For, type JSX, onCleanup, Show } from "solid-js";
 import { useCart } from "./CartProvider.js";
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function formatPrice(cents: number, currency: string): string {
   return new Intl.NumberFormat(undefined, {
@@ -19,6 +22,56 @@ export interface CartDrawerProps {
 export function CartDrawer(props: CartDrawerProps) {
   const cart = useCart();
 
+  let asideRef: HTMLElement | undefined;
+  let closeButtonRef: HTMLButtonElement | undefined;
+  let triggeredBy: HTMLElement | null = null;
+
+  // The drawer is a modal dialog while open: move focus in, cycle Tab
+  // within it, close on Escape, restore focus on close, and lock body
+  // scroll behind it. Mirrors PanelNav/SearchPalette's focus-trap idiom.
+  createEffect(() => {
+    if (!cart.isOpen()) {
+      triggeredBy?.focus();
+      return;
+    }
+
+    triggeredBy = document.activeElement as HTMLElement | null;
+    closeButtonRef?.focus();
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        cart.close();
+        return;
+      }
+      if (event.key !== "Tab" || !asideRef) return;
+
+      const focusable = Array.from(
+        asideRef.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      );
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    onCleanup(() => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    });
+  });
+
   return (
     <Show when={cart.isOpen()}>
       <div class="cart-drawer fixed inset-0 z-50" data-testid="cart-drawer">
@@ -28,10 +81,26 @@ export function CartDrawer(props: CartDrawerProps) {
           aria-label="Close cart"
           onClick={() => cart.close()}
         />
-        <aside class="fixed right-0 top-0 h-full w-full max-w-sm bg-base-100 p-4 shadow-xl">
+        {/* Announce cart contents to assistive tech as items change. */}
+        <div aria-live="polite" aria-atomic="true" class="sr-only">
+          <Show when={cart.items().length > 0} fallback="Cart is empty.">
+            {`Cart has ${cart.items().length} item${cart.items().length === 1 ? "" : "s"}, subtotal ${formatPrice(
+              cart.subtotal(),
+              cart.items()[0]?.unitPrice.currency ?? "USD",
+            )}.`}
+          </Show>
+        </div>
+        <aside
+          ref={asideRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Shopping cart"
+          class="fixed right-0 top-0 h-full w-full max-w-sm bg-base-100 p-4 shadow-xl"
+        >
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-bold">Your cart</h2>
             <button
+              ref={closeButtonRef}
               type="button"
               class="btn btn-sm btn-circle"
               aria-label="Close cart"

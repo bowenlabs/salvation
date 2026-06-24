@@ -150,14 +150,24 @@ export function CollectionEdit(props: CollectionEditProps) {
   return (
     <form class="flex flex-col gap-4" onSubmit={handleSubmit}>
       <Show when={props.error}>
-        <p class="text-sm text-error">{props.error}</p>
+        {/* role="alert" so assistive tech announces submit failures the
+            moment they appear, not only if the user happens to navigate to
+            them. */}
+        <p class="text-sm text-error" role="alert">
+          {props.error}
+        </p>
       </Show>
       <For each={editableFields(props.config)}>
         {([key, field]) => (
           <div class="form-control">
+            {/* The " *" stays inside the label's accessible name (it reads
+                as "required" alongside each input's `required` attribute);
+                the span only colors it, it does not change the text. */}
             <label class="label" for={key}>
               {key}
-              {field.required ? " *" : ""}
+              <Show when={field.required}>
+                <span class="text-error">{" *"}</span>
+              </Show>
             </label>
             {renderInput(key, field, values()[key], setField, ctx)}
           </div>
@@ -469,7 +479,9 @@ function renderArrayInput(
                   <div class="form-control">
                     <label class="label" for={inputId}>
                       {itemKey}
-                      {itemField.required ? " *" : ""}
+                      <Show when={itemField.required}>
+                        <span class="text-error">{" *"}</span>
+                      </Show>
                     </label>
                     {renderInput(
                       inputId,
