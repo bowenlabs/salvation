@@ -53,10 +53,15 @@ native (mobile) rendering — parallel to Cadmus, not a Cadmus rename and not
 a Cadmea feature. Cadmea will eventually split into web (today's
 `packages/cadmea`) and native targets sharing one logic layer; Spartoi is
 the native rendering substrate for that split. Tracked in
-[issue #31](https://github.com/bowenlabs/project-thebes/issues/31), blocked
-by [issue #30](https://github.com/bowenlabs/project-thebes/issues/30).
-**Not started. Do not scaffold packages or restructure code for this until
-#30 lands** — see CADMEA.md's "Future: the native split" section for why.
+[issue #31](https://github.com/bowenlabs/project-thebes/issues/31).
+[Issue #30](https://github.com/bowenlabs/project-thebes/issues/30) (the
+blocker) closed 2026-06-24 — Void was rejected, `vp pack` was adopted, so the
+toolchain Spartoi's compiler/renderer tooling builds on is now settled.
+**NativeScript + SolidJS is the current leaning for Spartoi's native
+renderer target** — fits #31's render-agnostic architecture decision (one
+component tree, compiled to DOM for web and to a native renderer), not a
+replacement of Spartoi itself. Still Section 4+ scope, not started as code —
+see CADMEA.md's "Future: the native split" section for why.
 
 ---
 
@@ -70,7 +75,7 @@ by [issue #30](https://github.com/bowenlabs/project-thebes/issues/30).
 | **Cadmea** | The CMS product (`app/workers/cadmea/`) |
 | **Cadmea Panel** | The owner-facing admin UI at `/admin/*` |
 | **Extensions** | Cadmea add-ons (Section 3+, was "thimbles") |
-| **Spartoi** | Planned standalone native-rendering framework (parallel to Cadmus) — not started, see #31 |
+| **Spartoi** | Planned standalone native-rendering framework (parallel to Cadmus) — not started as code; leaning NativeScript+SolidJS for the native renderer target, see #31 |
 | **citadel-tooling** | Private Go Orchestrator repo (provisioning, email, distribution) — separate repo, name unchanged by this rename |
 
 ---
@@ -226,7 +231,7 @@ force a library onto an axis.
 |-------|-----------|
 | Framework | **@thebes/cadmus** — V8-first CF primitives |
 | Framework build | **Vite+'s `vp pack`** (Rolldown-based, wraps tsdown) → `dist/` (ESM + CJS + `.d.ts`), configured via a `pack` block in `vite.config.ts` — see DECISIONS.md 2026-06-24 entry |
-| Public site SSR | **Astro** with `@astrojs/cloudflare` adapter — Worker 1. Astro is Cadmus's officially recommended frontend; a peer-integration layer (`@thebes/cadmus/astro`, #32, blocked by #30) is planned but not built yet — see CADMUS.md design philosophy point 4 |
+| Public site SSR | **Astro** with `@astrojs/cloudflare` adapter — Worker 1. Astro is Cadmus's officially recommended frontend; the peer-integration layer (`@thebes/cadmus/astro`, #32) shipped 2026-06-24 — see CADMUS.md design philosophy point 4 |
 | CMS engine | **@thebes/cadmus/cms** — collections, fields, schema codegen, Local API, admin-UI introspection metadata |
 | CMS admin UI components | **@thebes/cadmea** — generic SolidJS list/edit views, driven by the engine's admin metadata; built with **Vite+'s `vp pack`** + `@rolldown/plugin-babel` + `babel-preset-solid` (see DECISIONS.md 2026-06-24 entry) |
 | CMS route-mounting helper | **@thebes/cadmea/tanstack-start** — factory functions wiring the UI components to `@tanstack/solid-query`, the equivalent of `@payloadcms/next`'s catch-all route pattern |

@@ -2,6 +2,7 @@
 
 import { verifySessionCookie } from "@core/lib/auth";
 import { mountPublicCmsApi } from "@core/lib/cms-api";
+import { getSiteSettings } from "@core/lib/get-site-settings";
 import { createImageService } from "@core/lib/image-service";
 import { securityHeaders } from "@core/lib/security-headers";
 import { getSession, type Session } from "@core/lib/session";
@@ -78,6 +79,40 @@ app.post("/api/media/upload", async (c) => {
     }
     throw err;
   }
+});
+
+// Admin PWA manifest — dynamic, not a static public/ file, because it's
+// branded per-operator from site_settings (siteName, logoUrl, brandColor).
+// Scoped to /admin: this is the CMS-admin PWA, not the public site, per
+// CLAUDE.md's "mobile-first CMS" principle. Falls back to the bundled
+// placeholder icons (public/logo192.png, logo512.png — still
+// create-tanstack-app boilerplate, real Cadmea iconography not designed
+// yet) when an operator hasn't set a logoUrl.
+app.get("/admin/manifest.webmanifest", async (c) => {
+  const settings = await getSiteSettings(c.env.DB);
+  const siteName = settings?.siteName?.trim() || "Cadmea";
+  const icons = settings?.logoUrl
+    ? [{ src: settings.logoUrl, sizes: "any", type: "image/png", purpose: "any" }]
+    : [
+        { src: "/logo192.png", sizes: "192x192", type: "image/png" },
+        { src: "/logo512.png", sizes: "512x512", type: "image/png" },
+      ];
+
+  return c.json(
+    {
+      name: `${siteName} — Cadmea Panel`,
+      short_name: siteName,
+      description: "Cadmea CMS admin panel",
+      start_url: "/admin",
+      scope: "/admin",
+      display: "standalone",
+      background_color: settings?.pageBackground || "#ffffff",
+      theme_color: settings?.brandColor || "#111111",
+      icons,
+    },
+    200,
+    { "Content-Type": "application/manifest+json" },
+  );
 });
 
 // Form submission and magic-link auth routes land in Phase 3/7

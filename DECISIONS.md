@@ -57,6 +57,35 @@ it.
 
 ---
 
+## 2026-06-24 — Closed a consistency gap: `packages/cadmea-design-system` moved off `tsup` onto `vp pack` too
+
+**Context:** the entry above migrated `cadmus`/`cadmea` off their old
+packaging tool. `cadmea-design-system` was never on `tsdown` — it was on
+plain `tsup` from the start — but it ended up the odd one out once the
+other two packages moved, flagged as a follow-up rather than acted on
+immediately.
+
+**What changed:** `tsup.config.ts` → `vite.config.ts`'s `pack` block,
+same single-entry shape (`{ index: "src/index.ts" }`, `format: ["esm",
+"cjs"]`, `dts`, `sourcemap`, `clean`, `target: "es2022"`, `platform:
+"browser"`) — a direct port, this package has no deps to list in
+`deps.neverBundle`. `package.json`'s `build`/`dev` scripts changed from
+`tsup`/`tsup --watch` to `vp pack`/`vp pack --watch`; `tsup` dropped from
+`devDependencies`, `vite-plus` added.
+
+**Verified, not assumed:** ran the build (`dist/index.{js,cjs}` +
+real `.d.ts`/`.d.cts`, not stubs — spot-checked the generated `.d.ts`
+content), ran the package's own Vitest suite (11/11 passing), and
+typechecked `app/workers/cadmea` (the consumer) against the new output —
+clean.
+
+**Known friction:** could not delete the now-dead `tsup.config.ts` file
+(filesystem write denied in the environment this was done in) — it's
+harmless dead weight since `vp pack` doesn't read it, but should be
+removed by hand.
+
+---
+
 ## 2026-06-24 — Correction: `vp pack` does compile Solid correctly (follow-up to the 2026-06-23 entry below)
 
 **Context:** the 2026-06-23 entry's "`vp pack` — rejected, confirmed broken
@@ -2668,6 +2697,70 @@ by setting `"target": "solid"` explicitly.
 
 **Revisit if:** an official `@phosphor-icons/solid` or TipTap Solid wrapper
 ships, at which point swap off the web-component/vanilla-core fallbacks.
+
+---
+
+## 2026-06-23 — Spike: can NativeScript consume `@thebes/cadmea-design-system`'s tokens?
+
+**Context:** Issue #31 (Spartoi) is currently leaning toward NativeScript +
+SolidJS as the native renderer target. CADMEA.md's "Future: the native
+split" section already leans on `@thebes/cadmea-design-system` as a solved
+prerequisite — "the hardest prerequisite for a universal renderer's styling
+story is already solved, for an unrelated reason." This spike checks that
+claim against NativeScript specifically, the same way the #30 spike checked
+Void against the actual CLI rather than its marketing claims.
+
+**Method:** Read every exported function in `packages/cadmea-design-system/src`
+and checked its actual output format against NativeScript's documented CSS
+engine support (`old.docs.nativescript.org/ui/styling` + the long-running
+CSS-variables tracking issue, NativeScript/NativeScript#4864).
+
+**What's portable as-is:**
+- The *data layer* is genuinely platform-agnostic: `resolveSpacingTokens`,
+  `resolveTypeTokens`, and the internal OKLCH math in `generateColorScale`
+  are pure functions with no DOM/CSS-string coupling at the data level.
+- NativeScript's CSS engine does support custom properties (`--foo` /
+  `var()`) and attribute selectors — the *mechanism* `buildTokenStyle`
+  is built on (CSS variables, cascade, selector-scoped overrides) is not a
+  foreign concept to NativeScript, contrary to an initial assumption that
+  NativeScript styling would need a completely different approach.
+
+**Two real, confirmed gaps — not blockers, but real adapter work:**
+1. **Color format.** `generateColorScale`/`pickContentColor` emit
+   `oklch(L% C h)` CSS-function strings for every color role (primary,
+   secondary, accent, plus all `-content` pairs) — that's 100% of the
+   color tokens. NativeScript's documented color support is named colors
+   and hex only; no OKLCH. The package already computes hex internally
+   (`oklchToRgb` → `rgbToHex`, used today only for the internal AA-contrast
+   check) — exposing a hex-output variant is a small addition, not a
+   redesign, but it doesn't exist yet.
+2. **Length units.** Every font-size/tracking token in `type-defaults.ts`
+   and roughly half of `spacing-presets.ts` (`sectionPaddingY`,
+   `cardPaddingX/Y`, `gridGap`, `stackGap`, `containerPaddingX`) use `rem`
+   or `em`. NativeScript's measurement units are DIPs, `px`, and partial
+   `%` — no `rem`/`em` support. These need a numeric conversion (rem → DIP)
+   before use, not a re-author.
+
+**Not portable, don't try to reuse:** `buildTokenStyle`'s and
+`buildSpacingTokenStyles`'s actual string output (CSS text targeting
+`[data-theme="theme-{name}"]` against a DOM `<style>` tag) is web-specific
+serialization. A NativeScript path needs its own serializer consuming the
+same underlying token data — same shape as the choice already made for
+`buildTokenStyle` itself (one cascade-logic file, not three copy-pasted
+versions) — not a reuse of that function.
+
+**Conclusion:** The prerequisite is *half* solved — the token-generation
+math is reusable, but "consume `@thebes/cadmea-design-system`'s tokens" as
+literally stated is not true yet for color or measurement output. Needs a
+hex-output color mode and a rem/em → DIP conversion before NativeScript
+(or any non-DOM renderer) can actually consume this package. Scope is small
+(two focused additions to an existing pure-function library), not a
+rewrite.
+
+**Revisit if:** Spartoi's renderer choice moves off NativeScript before this
+is built — re-run the same check against whatever replaces it, since the
+gaps above are NativeScript-specific (a different native CSS engine may
+support OKLCH/rem natively).
 
 ---
 

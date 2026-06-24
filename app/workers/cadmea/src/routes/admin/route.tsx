@@ -13,7 +13,23 @@ import { getCadmeaSiteSettings } from "../../server-functions/site-settings";
 // statically prerendered. See scripts/check-prerender.ts.
 export const prerender = false;
 
+// Registers admin-sw.js scoped to "/admin/" only — see that file's own
+// comment. Runs client-side after hydration; failures are swallowed since
+// PWA install is an enhancement, not a requirement to use the panel.
+const SW_REGISTER_SCRIPT = `if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/admin-sw.js', { scope: '/admin/' }).catch(function(){}); }`;
+
 export const Route = createFileRoute("/admin")({
+  head: () => ({
+    meta: [
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Cadmea" },
+    ],
+    links: [
+      { rel: "manifest", href: "/admin/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/logo192.png" },
+    ],
+  }),
   beforeLoad: async ({ location }) => {
     const user = await requireAuth();
     if (!user) {
@@ -44,13 +60,18 @@ function AdminLayout() {
   const data = Route.useLoaderData();
 
   return (
-    <PanelShell
-      siteName={data().settings?.siteName ?? "Cadmea"}
-      publicSiteUrl={data().publicSiteUrl}
-      logoutUrl={data().logoutUrl}
-    >
-      <Outlet />
-    </PanelShell>
+    <>
+      {/* Same inline-script pattern as __root.tsx's THEME_INIT_SCRIPT —
+          runs after hydration, scoped to "/admin/" only. */}
+      <script innerHTML={SW_REGISTER_SCRIPT} />
+      <PanelShell
+        siteName={data().settings?.siteName ?? "Cadmea"}
+        publicSiteUrl={data().publicSiteUrl}
+        logoutUrl={data().logoutUrl}
+      >
+        <Outlet />
+      </PanelShell>
+    </>
   );
 }
 

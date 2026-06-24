@@ -171,23 +171,32 @@ logic layer:
 - **Native** — a future companion rendered through **Spartoi**, a standalone
   render-agnostic SolidJS framework (parallel to Cadmus, not a Cadmus rename
   or a Cadmea feature). Tracked in
-  [issue #31](https://github.com/bowenlabs/project-thebes/issues/31), blocked
-  by [issue #30](https://github.com/bowenlabs/project-thebes/issues/30)
-  (the Void/Vite+/Rolldown migration).
+  [issue #31](https://github.com/bowenlabs/project-thebes/issues/31).
+  [Issue #30](https://github.com/bowenlabs/project-thebes/issues/30) (the
+  Void/Vite+/Rolldown migration that was blocking this) closed 2026-06-24 —
+  Void was rejected, `vp pack` (real `tsdown` + `babel-preset-solid`) was
+  adopted instead, so the toolchain question Spartoi's compiler/renderer
+  tooling needed settled first is resolved.
 
 What's already decided: both targets will share `cadmus/cms`'s Local API,
 admin metadata, and the TanStack Query layer unchanged — the architecture
 described in design philosophy point 3 above is what makes this possible
-without touching the data layer. What's *not* decided: whether the
-presentational components themselves end up shared via a render-agnostic
-component vocabulary (`solid-js/universal`-style) or implemented twice against
-shared logic — see issue #31 for the reasoning, currently leaning toward the
-former with explicit platform-specific escape hatches.
+without touching the data layer. The presentational components themselves
+are decided to be shared via a render-agnostic component vocabulary
+(`solid-js/universal`-style: `View`/`Text`/`Pressable`) compiled to both DOM
+(web) and a native renderer, with explicit platform-specific escape hatches
+— see issue #31 for the reasoning. **NativeScript + SolidJS is the current
+leaning for the native renderer Spartoi compiles to** — not yet committed,
+but the working assumption to design the render-agnostic vocabulary against.
+Confirm NativeScript's styling model can consume `@thebes/cadmea-design-system`'s
+token engine before treating this as settled.
 
 **Do not pre-emptively restructure `packages/cadmea` or scaffold a native
-package for this.** Spartoi has no code yet and its real component API won't
-be known until issue #30 lands. Building against a guessed shape now risks
-the exact rework this section exists to avoid.
+package for this.** Spartoi has no code yet. The #30 blocker on its toolchain
+is cleared, but this remains Section 4+ scope (see #31) — clearing the
+blocker is not the same as it being time to start. Building against a
+guessed component API now still risks the exact rework this section exists
+to avoid.
 
 ---
 
