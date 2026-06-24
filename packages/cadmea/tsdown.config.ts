@@ -1,17 +1,19 @@
 import babel from "@rolldown/plugin-babel";
 import { defineConfig } from "tsdown";
 
-// Replaces tsup + tsup-preset-solid — see DECISIONS.md's entry superseding
-// the 2026-06-22 Void/Vite+/Rolldown watch-item. Vite+'s own `vp pack`
-// doesn't compile Solid JSX at all (confirmed: it defaults to React's
-// automatic JSX runtime, which doesn't even resolve since this package has
-// no react dependency, let alone produce Solid's fine-grained-reactive
-// output if it did). tsdown is the real engine vite-plus's pack command
-// wraps; calling it directly and wiring in @rolldown/plugin-babel +
-// babel-preset-solid — the same pattern Void's own React scaffold uses
-// for React (@rolldown/plugin-babel + reactCompilerPreset()) — produces
-// genuine template()/insert()/delegateEvents() output, verified in the
-// issue #30 spike.
+// Replaces tsup + tsup-preset-solid — see DECISIONS.md's 2026-06-23 entry.
+// Note the 2026-06-24 follow-up there: `vp pack` does compile Solid JSX
+// correctly when the babel plugin is declared in a `pack` block inside
+// `vite.config.ts` (the documented config surface) rather than a
+// standalone `tsdown.config.ts` like this one — the original "doesn't
+// compile Solid JSX at all" finding was against the wrong config surface,
+// not a real vite-plus bug. tsdown is the real engine vite-plus's pack
+// command wraps; this package calls it directly and wires in
+// @rolldown/plugin-babel + babel-preset-solid — the same pattern Void's
+// own React scaffold uses for React (@rolldown/plugin-babel +
+// reactCompilerPreset()) — producing genuine
+// template()/insert()/delegateEvents() output, verified in the issue #30
+// spike. Switching to `vp pack` instead is a separate decision, not made.
 //
 // tsup-preset-solid built every Solid entry twice (esbuild-plugin-solid,
 // `generate: server ? "ssr" : "dom"`) to get separate browser and SSR

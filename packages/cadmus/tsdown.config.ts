@@ -1,9 +1,11 @@
 import { defineConfig } from "tsdown";
 
-// tsdown (Rolldown-based) replaces tsup here — see DECISIONS.md's entry
-// superseding the 2026-06-22 Void/Vite+/Rolldown watch-item for why:
-// Vite+'s own `vp pack` doesn't load this config file (confirmed bug,
-// not a Solid-specific gap), so the underlying engine is used directly.
+// tsdown (Rolldown-based) replaces tsup here — see DECISIONS.md's
+// 2026-06-23 entry for why. Note the 2026-06-24 follow-up: `vp pack` does
+// correctly compile Solid and does read config, just from a `pack` block
+// in `vite.config.ts`, not a standalone `tsdown.config.ts` (which Vite+
+// explicitly doesn't recommend). This package is kept on `tsdown` directly
+// regardless — switching to `vp pack` is a separate decision, not made yet.
 // No JSX in this package, so this config needs no Solid-specific setup —
 // see packages/cadmea/tsdown.config.ts for that.
 export default defineConfig({

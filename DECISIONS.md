@@ -9,6 +9,37 @@
 
 ---
 
+## 2026-06-24 — Correction: `vp pack` does compile Solid correctly (follow-up to the 2026-06-23 entry below)
+
+**Context:** the 2026-06-23 entry's "`vp pack` — rejected, confirmed broken
+for Solid" finding was re-checked against vite-plus's actual docs
+(`viteplus.dev/guide/pack`) and source (`packages/cli/src/pack.ts`:
+`PackUserConfig extends TsdownUserConfig`). The docs explicitly say not to
+use `tsdown.config.ts` with Vite+ at all — packaging config belongs in a
+`pack: {...}` block inside `vite.config.ts`, using the identical schema
+(including `plugins`). The original spike never tried that surface: it ran
+`vp pack --dts` with the entry passed as a CLI arg and a standalone
+`tsdown.config.ts`, which vite-plus doesn't read by design, not by bug.
+
+**Re-verified:** a fresh spike using `defineConfig` from `vite-plus` with
+a `pack: { entry, plugins: [babel({ presets: [["solid", ...]] })] }` block
+in `vite.config.ts`, then a plain `vp pack` (no CLI entry arg), produced
+genuine `template()`/`insert()`/`delegateEvents()` output from
+`solid-js/web` — identical to calling `tsdown` directly. `--debug` showed
+real config-file discovery this time (`input: { index: 'src/index.tsx' }`
+read from `vite.config.ts`), unlike the original spike's CLI-arg run.
+
+**Conclusion:** there is no vite-plus bug here — nothing was filed
+upstream. The 2026-06-23 entry's "confirmed broken"/"worth filing
+upstream" language is superseded by this finding; left in place below for
+history rather than rewritten. The decision to adopt `tsdown` directly for
+`packages/cadmus`/`packages/cadmea` stands as-is for now — whether to move
+to `vp pack` instead is a separate, larger call (also touches the
+already-deferred Biome-vs-Oxlint-via-`vp lint`/`fmt` decision) and isn't
+made by this correction alone.
+
+---
+
 ## 2026-06-23 — Void/Vite+/Rolldown: Void rejected, Vite+'s packaging rejected, tsdown + babel-preset-solid adopted (supersedes 2026-06-22 watch-item)
 
 **Context:** the 2026-06-22 watch-item entry below deferred all three
