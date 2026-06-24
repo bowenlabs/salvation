@@ -187,6 +187,62 @@ export function relationshipJoinTables(
   return joinTables;
 }
 
+// FTS5 virtual tables aren't representable as a drizzle-orm sqliteTable —
+// drizzle has no virtual-table column builder, so unlike collectionToTable/
+// collectionVersionsTable above this emits raw SQL text rather than a
+// runtime table object. The migration itself is hand-authored (drizzle-kit
+// can't diff a TS schema it was never given), this function just keeps that
+// migration's SQL in one place, generated from the same config that drives
+// the rest of codegen — see app/core/db/migrations/0006_pages_search_fts.sql.
+export function collectionSearchTableName(config: CollectionConfig): string {
+  return `${config.slug}_fts`;
+}
+
+export function collectionSearchTableSQL(config: CollectionConfig): string {
+  const fields = config.search?.fields ?? [];
+  if (fields.length === 0) return "";
+  const columns = fields.map((key) => `"${key}"`).join(", ");
+  return `CREATE VIRTUAL TABLE IF NOT EXISTS "${collectionSearchTableName(config)}" USING fts5(${columns});`;
+}
+
+// Flattens a richText field's TipTap JSON into plain text for FTS5
+// indexing — walks every node's `text` leaves (TipTap's own shape for a
+// run of plain text) and joins them with spaces, ignoring marks/attrs
+// entirely since FTS5 only ever sees plain text. Anything that isn't
+// TipTap JSON (a bare string, a non-object) is coerced to its own string
+// form rather than throwing — search indexing is best-effort, not a
+// validation pass.
+function flattenRichText(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value !== "object") return String(value);
+  if (Array.isArray(value)) {
+    return value.map(flattenRichText).filter(Boolean).join(" ");
+  }
+  const node = value as Record<string, unknown>;
+  const parts: string[] = [];
+  if (typeof node.text === "string") parts.push(node.text);
+  if (Array.isArray(node.content)) parts.push(flattenRichText(node.content));
+  return parts.filter(Boolean).join(" ");
+}
+
+// Builds the row inserted into a collection's FTS5 table from a freshly
+// written document — one column per `search.fields` entry, in that order,
+// matching collectionSearchTableSQL's column list. `text`/`upload` fields
+// are indexed as-is; `richText` fields go through flattenRichText first.
+export function extractSearchText(
+  config: CollectionConfig,
+  doc: Record<string, unknown>,
+): string[] {
+  const fields = config.search?.fields ?? [];
+  return fields.map((key) => {
+    const field = config.fields[key];
+    const raw = doc[key];
+    if (field?.type === "richText") return flattenRichText(raw);
+    return typeof raw === "string" ? raw : "";
+  });
+}
+
 export function cmsConfigToSchema(
   config: CmsConfig,
 ): Record<

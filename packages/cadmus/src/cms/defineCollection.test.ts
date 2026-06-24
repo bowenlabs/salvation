@@ -65,6 +65,42 @@ describe("defineCollection", () => {
     ).toThrow(CadmusCmsError);
   });
 
+  it("accepts a search config over text/richText/upload fields", () => {
+    const config: CollectionConfig = {
+      slug: "posts",
+      fields: {
+        title: { type: "text", required: true },
+        body: { type: "richText" },
+        cover: { type: "upload" },
+      },
+      search: { fields: ["title", "body", "cover"] },
+    };
+    expect(defineCollection(config)).toBe(config);
+  });
+
+  it("throws CadmusCmsError when search.fields references an unknown field", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { title: { type: "text" } },
+        search: { fields: ["missing"] },
+      }),
+    ).toThrow(CadmusCmsError);
+  });
+
+  it("throws CadmusCmsError when search.fields references a non-indexable field type", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: {
+          title: { type: "text" },
+          views: { type: "number" },
+        },
+        search: { fields: ["views"] },
+      }),
+    ).toThrow(CadmusCmsError);
+  });
+
   it("accepts access and hooks config unchanged — reserved, not enforced (issue #16 step 7)", () => {
     const config: CollectionConfig = {
       slug: "posts",

@@ -64,6 +64,11 @@ function createFakeWidgetsApi() {
     async throwUnexpected(_context: unknown) {
       throw new Error("boom");
     },
+    async search(_context: unknown, query: string) {
+      return rows.filter((row) =>
+        row.name.toLowerCase().includes(query.toLowerCase()),
+      );
+    },
   };
 }
 
@@ -81,6 +86,22 @@ describe("mountCmsRoutes", () => {
     const res = await app.request("/api/widgets");
     expect(res.status).toBe(200);
     expect(await res.json()).toHaveLength(2);
+  });
+
+  it("GET /api/:collection/search?q=... returns matching records", async () => {
+    const app = buildApp(createFakeWidgetsApi());
+    const res = await app.request("/api/widgets/search?q=alp");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([{ id: 1, name: "Alpha" }]);
+  });
+
+  it('GET /api/:collection/search is never parsed as findByID with id="search"', async () => {
+    const app = buildApp(createFakeWidgetsApi());
+    const res = await app.request("/api/widgets/search?q=alpha");
+    expect(res.status).toBe(200);
+    expect(await res.json()).not.toEqual({
+      error: 'No "widgets" document found with id NaN',
+    });
   });
 
   it("GET /api/:collection/:id returns a single record", async () => {

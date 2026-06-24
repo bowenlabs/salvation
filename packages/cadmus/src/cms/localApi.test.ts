@@ -796,3 +796,76 @@ describe("createLocalApi relationship depth resolution", () => {
     ).rejects.toThrow(CadmusCmsError);
   });
 });
+
+describe("createLocalApi search (issue #29)", () => {
+  const searchablePages: CollectionConfig = {
+    ...pagesCollection,
+    search: { fields: ["title"] },
+  };
+  const searchableTable = collectionToTable(searchablePages);
+  const searchApi = createLocalApi(db, searchableTable, searchablePages);
+
+  beforeEach(async () => {
+    await db.run(sql`
+      CREATE TABLE IF NOT EXISTS pages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL DEFAULT 'draft',
+        created_at INTEGER
+      )
+    `);
+    await db.run(
+      sql`CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5("title")`,
+    );
+  });
+
+  afterEach(async () => {
+    await db.run(sql`DROP TABLE IF EXISTS pages`);
+    await db.run(sql`DROP TABLE IF EXISTS pages_fts`);
+  });
+
+  it("finds a created document by matching its indexed field", async () => {
+    await searchApi.create(ctx, { title: "Hello world", slug: "hello" });
+    await searchApi.create(ctx, { title: "Goodbye", slug: "goodbye" });
+
+    const results = await searchApi.search(ctx, "world");
+    expect(results).toHaveLength(1);
+    expect(results[0]?.title).toBe("Hello world");
+  });
+
+  it("reflects an update to the indexed field", async () => {
+    const doc = await searchApi.create(ctx, {
+      title: "Original title",
+      slug: "doc",
+    });
+    await searchApi.update(ctx, doc.id, { title: "Renamed entirely" });
+
+    expect(await searchApi.search(ctx, "Original")).toHaveLength(0);
+    expect(await searchApi.search(ctx, "Renamed")).toHaveLength(1);
+  });
+
+  it("removes a deleted document from search results", async () => {
+    const doc = await searchApi.create(ctx, { title: "Ephemeral", slug: "e" });
+    await searchApi.deleteByID(ctx, doc.id);
+
+    expect(await searchApi.search(ctx, "Ephemeral")).toHaveLength(0);
+  });
+
+  it("checks read access before searching", async () => {
+    const gated: CollectionConfig = {
+      ...searchablePages,
+      access: { read: () => false },
+    };
+    const gatedApi = createLocalApi(db, searchableTable, gated);
+    await expect(gatedApi.search(ctx, "anything")).rejects.toThrow(
+      CadmusAccessDeniedError,
+    );
+  });
+
+  it("throws CadmusCmsError when the collection has no search config", async () => {
+    await expect(localApi.search(ctx, "anything")).rejects.toThrow(
+      CadmusCmsError,
+    );
+  });
+});

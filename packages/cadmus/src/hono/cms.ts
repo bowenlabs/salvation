@@ -48,6 +48,7 @@ function getApi<TContext>(
 
 // Mounts a Payload-equivalent REST surface at /api:
 //   GET    /api/:collection
+//   GET    /api/:collection/search?q=...
 //   GET    /api/:collection/:id
 //   POST   /api/:collection
 //   PATCH  /api/:collection/:id
@@ -72,6 +73,17 @@ export function mountCmsRoutes<TContext>(
     const api = getApi(options.collections, c.req.param("collection"));
     const context = await options.resolveContext(c);
     return c.json(await api.find(context));
+  });
+
+  // Registered before "/:collection/:id" — Hono's router prioritizes a
+  // static path segment ("search") over a dynamic one (":id") regardless
+  // of registration order, but the ordering here documents the intent
+  // either way: a request for /api/pages/search must never be parsed as
+  // findByID with id="search".
+  router.get("/:collection/search", async (c) => {
+    const api = getApi(options.collections, c.req.param("collection"));
+    const context = await options.resolveContext(c);
+    return c.json(await api.search(context, c.req.query("q") ?? ""));
   });
 
   router.get("/:collection/:id", async (c) => {

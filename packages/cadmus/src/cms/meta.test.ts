@@ -21,7 +21,18 @@ const pagesCollection: CollectionConfig = {
 describe("getCollectionsMeta", () => {
   it("returns a serializable slug + fields entry per collection", () => {
     const meta = getCollectionsMeta({ collections: [pagesCollection] });
-    expect(meta).toEqual([{ slug: "pages", fields: pagesCollection.fields }]);
+    expect(meta).toEqual([
+      { slug: "pages", fields: pagesCollection.fields, searchable: false },
+    ]);
+  });
+
+  it("marks a collection searchable when it declares search.fields", () => {
+    const searchable: CollectionConfig = {
+      ...pagesCollection,
+      search: { fields: ["title"] },
+    };
+    const meta = getCollectionsMeta({ collections: [searchable] });
+    expect(meta[0].searchable).toBe(true);
   });
 
   it("preserves collection order across multiple collections", () => {

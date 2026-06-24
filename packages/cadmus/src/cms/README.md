@@ -205,11 +205,54 @@ await pages.publish(context, draft.id);
 
 ---
 
+## Full-text search (issue #29)
+
+Collections may opt into search by listing which of their own `text`/
+`richText`/`upload` fields to index:
+
+```ts
+defineCollection({
+  slug: "pages",
+  fields: {
+    title: { type: "text", required: true },
+    body: { type: "richText" },
+  },
+  search: { fields: ["title", "body"] },
+});
+```
+
+This describes a companion SQLite **FTS5** virtual table (`${slug}_fts` —
+see `codegen.ts`'s `collectionSearchTableSQL`), kept in sync automatically
+by `createLocalApi` on every `create`/`update`/`deleteByID` (and
+`publish`, for versioned collections) — there's nothing to wire up in
+`hooks`. `richText` fields are flattened to plain text (TipTap JSON's
+`text` leaves, concatenated) before indexing; nested `array`/block content
+isn't indexed in this phase.
+
+```ts
+const results = await pages.search(context, "hello world");
+```
+
+`search` is gated by the same `read` access fn as `find`/`findByID`, and
+throws `CadmusCmsError` if the collection has no `search` config.
+
+**The FTS5 table itself isn't drizzle-modelable** — drizzle-orm has no
+virtual-table column builder, so unlike the `versions` companion table it
+isn't part of `schema.generated.ts`/`pnpm db:generate`'s diff. Generate it
+once as a hand-authored migration instead:
+
+```bash
+npx drizzle-kit generate --custom --name=my_collection_search_fts
+# paste collectionSearchTableSQL(myCollection) into the generated file
+```
+
+---
+
 ## Public REST API (`@thebes/cadmus/hono`)
 
 `mountCmsRoutes` mounts a Payload-equivalent REST surface (`GET`/`POST`
-`/api/:collection`, `GET`/`PATCH`/`DELETE` `/api/:collection/:id`) over a
-static `{ slug: LocalApi }` registry:
+`/api/:collection`, `GET /api/:collection/search?q=...`, `GET`/`PATCH`/
+`DELETE` `/api/:collection/:id`) over a static `{ slug: LocalApi }` registry:
 
 ```ts
 import { mountCmsRoutes } from "@thebes/cadmus/hono";

@@ -6,6 +6,8 @@ import type { CmsConfig, CollectionConfig } from "./types.js";
 export interface CollectionMeta {
   slug: string;
   fields: CollectionConfig["fields"];
+  /** Whether `LocalApi.search()` is usable for this collection — see `CollectionConfig.search`. */
+  searchable: boolean;
 }
 
 // Serializable introspection contract a CMS admin (or any other
@@ -17,5 +19,6 @@ export function getCollectionsMeta(config: CmsConfig): CollectionMeta[] {
   return config.collections.map((collection) => ({
     slug: collection.slug,
     fields: collection.fields,
+    searchable: Boolean(collection.search?.fields.length),
   }));
 }

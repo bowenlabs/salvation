@@ -57,6 +57,15 @@ const pagesBase = {
   // rather than the inherited update() directly once a page has been
   // created.
   versions: { drafts: true },
+  // Issue #29 — Cmd+K search in the admin panel runs against this. Only
+  // `title` is indexed for now; `blocks` is an `array` field (TipTap
+  // content lives inside its discriminated items, not as a top-level
+  // richText field), which cadmus/cms's search.fields doesn't reach into
+  // yet — see CADMUS.md's cms/README.md for the field-type restriction.
+  // The companion `pages_fts` table is a hand-authored migration (FTS5
+  // virtual tables aren't drizzle-modelable, so drizzle-kit can't
+  // generate it) — see app/core/db/migrations/0006_pages_search_fts.sql.
+  search: { fields: ["title"] },
   fields: {
     id: { type: "number", autoIncrement: true },
     title: { type: "text", required: true },

@@ -50,6 +50,25 @@ function validateCollectionConfig(config: CollectionConfig): void {
       );
     }
   }
+
+  const SEARCHABLE_FIELD_TYPES: ReadonlySet<FieldConfig["type"]> = new Set([
+    "text",
+    "richText",
+    "upload",
+  ]);
+  for (const key of config.search?.fields ?? []) {
+    const field = config.fields[key];
+    if (!field) {
+      throw new CadmusCmsError(
+        `Collection "${config.slug}" search.fields references unknown field "${key}"`,
+      );
+    }
+    if (!SEARCHABLE_FIELD_TYPES.has(field.type)) {
+      throw new CadmusCmsError(
+        `Collection "${config.slug}" search.fields field "${key}" has type "${field.type}" — only "text", "richText", and "upload" fields can be indexed`,
+      );
+    }
+  }
 }
 
 function validateUniqueSlugs(collections: readonly CollectionConfig[]): void {

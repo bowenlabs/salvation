@@ -9,12 +9,14 @@ import {
   type InferSelectModel,
   inArray,
   type SQL,
+  sql,
 } from "drizzle-orm";
 import type {
   BaseSQLiteDatabase,
   SQLiteTableWithColumns,
 } from "drizzle-orm/sqlite-core";
 import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
+import { collectionSearchTableName, extractSearchText } from "./codegen.js";
 import type {
   CollectionAccess,
   CollectionConfig,
@@ -63,6 +65,18 @@ export interface LocalApi<TTable extends AnyTable, TContext = unknown> {
    * every row. Gated by the same `read` access check as `find`.
    */
   count(context: TContext, options?: { where?: SQL }): Promise<number>;
+  /**
+   * Full-text search over this collection's `search.fields`-configured
+   * companion FTS5 table — see types.ts's `CollectionConfig.search` and
+   * codegen.ts's `collectionSearchTableSQL`. Gated by `read` access, same
+   * as `find`/`findByID`. Throws `CadmusCmsError` if the collection has no
+   * `search` config.
+   */
+  search(
+    context: TContext,
+    query: string,
+    options?: { limit?: number },
+  ): Promise<InferSelectModel<TTable>[]>;
   create(
     context: TContext,
     input: InferInsertModel<TTable>,
@@ -304,6 +318,51 @@ async function runAfterDelete(
   }
 }
 
+// Keeps a collection's FTS5 companion table (see codegen.ts's
+// collectionSearchTableSQL) in sync on every create/update — issue #29's
+// "populated via an afterChange hook" wording, but wired in here rather
+// than exposed on `CollectionHooks.afterChange` since it's derived
+// entirely from `config.search` (no operator-authored hook function),
+// the same precedent as the `versions` companion table being built into
+// createVersionedLocalApi rather than a user-facing hook. FTS5 has no
+// native UPSERT; a plain DELETE-then-INSERT keyed by rowid (== the main
+// table's `id`) is the standard pattern for keeping an external,
+// non-content FTS5 table in sync with its source row.
+async function syncSearchIndex(
+  db: BaseSQLiteDatabase<"async", unknown>,
+  config: CollectionConfig,
+  doc: AnyRecord,
+): Promise<void> {
+  const fields = config.search?.fields;
+  if (!fields?.length) return;
+  const id = doc.id;
+  if (typeof id !== "number") return;
+  const fts = sql.identifier(collectionSearchTableName(config));
+  const columnList = sql.join(
+    fields.map((key) => sql.identifier(key)),
+    sql.raw(", "),
+  );
+  const values = extractSearchText(config, doc);
+  const valueList = sql.join(
+    values.map((value) => sql`${value}`),
+    sql.raw(", "),
+  );
+  await db.run(sql`DELETE FROM ${fts} WHERE rowid = ${id}`);
+  await db.run(
+    sql`INSERT INTO ${fts} (rowid, ${columnList}) VALUES (${id}, ${valueList})`,
+  );
+}
+
+async function removeFromSearchIndex(
+  db: BaseSQLiteDatabase<"async", unknown>,
+  config: CollectionConfig,
+  id: number,
+): Promise<void> {
+  if (!config.search?.fields.length) return;
+  const fts = sql.identifier(collectionSearchTableName(config));
+  await db.run(sql`DELETE FROM ${fts} WHERE rowid = ${id}`);
+}
+
 export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
   db: BaseSQLiteDatabase<"async", unknown>,
   table: TTable,
@@ -395,6 +454,25 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
       return resolved as InferSelectModel<TTable>;
     },
 
+    async search(context, query, options) {
+      await checkAccess(config, "read", context);
+      if (!config.search?.fields.length) {
+        throw new CadmusCmsError(
+          `Collection "${config.slug}" has no "search" config — cannot run search()`,
+        );
+      }
+      const fts = sql.identifier(collectionSearchTableName(config));
+      const limit = options?.limit ?? 20;
+      const rows = await db.all(sql`
+        SELECT ${table}.* FROM ${fts}
+        JOIN ${table} ON ${idColumn} = ${fts}.rowid
+        WHERE ${fts} MATCH ${query}
+        ORDER BY rank
+        LIMIT ${limit}
+      `);
+      return rows as InferSelectModel<TTable>[];
+    },
+
     async create(context, input) {
       await checkAccess(config, "create", context);
       // beforeChange runs before validation so a hook may supply or default
@@ -419,6 +497,7 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
       // wrapWriteError returns `never`, so reaching here means the insert
       // succeeded and `doc` is set. afterChange runs outside the try so its
       // side-effect errors aren't mis-reported as write failures.
+      await syncSearchIndex(db, config, doc as AnyRecord);
       await runAfterChange(config, doc as Record<string, unknown>, "create");
       return doc as InferSelectModel<TTable>;
     },
@@ -443,6 +522,7 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
       } catch (error) {
         wrapWriteError(config, error);
       }
+      await syncSearchIndex(db, config, doc as AnyRecord);
       await runAfterChange(config, doc as Record<string, unknown>, "update");
       return doc as InferSelectModel<TTable>;
     },
@@ -452,6 +532,7 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
       await runBeforeDelete(config, id);
       const [row] = await db.delete(table).where(eq(idColumn, id)).returning();
       if (!row) notFound(config, id);
+      await removeFromSearchIndex(db, config, id);
       await runAfterDelete(config, id);
       return row as InferSelectModel<TTable>;
     },
@@ -589,6 +670,7 @@ export function createVersionedLocalApi<
         // biome-ignore lint/suspicious/noExplicitAny: status is a fixed two-value enum column
         .set({ status: "published" } as any)
         .where(eq(versionsIdColumn, versionId));
+      await syncSearchIndex(db, config, doc as AnyRecord);
       // publish() writes to an already-existing row, never a new one —
       // counts as "update" the same way createLocalApi.update() does.
       await runAfterChange(config, doc as Record<string, unknown>, "update");

@@ -219,6 +219,21 @@ export interface CollectionConfig {
     /** Reserved for future pruning of old versions; not enforced yet. */
     maxPerDoc?: number;
   };
+  /**
+   * Opts this collection into full-text search (issue #29). `fields` names
+   * which of this collection's own `text`/`richText`/`upload` fields are
+   * indexed — `defineCmsConfig`/`defineCollection` reject any other field
+   * type or an unknown key. When set, codegen (see codegen.ts's
+   * `collectionSearchTableSQL`) describes a companion `${slug}_fts` SQLite
+   * FTS5 virtual table, and `createLocalApi` both becomes able to run
+   * `.search()` and keeps that table in sync on every create/update/delete
+   * — see localApi.ts's `syncSearchIndex`. `richText` fields are flattened
+   * to plain text (TipTap JSON's `text` leaves, concatenated) before being
+   * indexed; nested `array`/block content is out of scope for this phase.
+   */
+  search?: {
+    fields: readonly string[];
+  };
 }
 
 /**

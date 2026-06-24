@@ -2,8 +2,11 @@ import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
   cmsConfigToSchema,
+  collectionSearchTableName,
+  collectionSearchTableSQL,
   collectionToTable,
   collectionVersionsTable,
+  extractSearchText,
   relationshipJoinTables,
 } from "./codegen.js";
 import type { CollectionConfig } from "./types.js";
@@ -258,5 +261,67 @@ describe("cmsConfigToSchema", () => {
     };
     const schema = cmsConfigToSchema({ collections: [config] });
     expect(Object.keys(schema).sort()).toEqual(["posts", "posts_tags"]);
+  });
+});
+
+describe("collectionSearchTableName / collectionSearchTableSQL", () => {
+  it("returns an empty string when the collection has no search config", () => {
+    expect(collectionSearchTableSQL(pagesCollection)).toBe("");
+  });
+
+  it("names the FTS5 table after the collection slug", () => {
+    expect(collectionSearchTableName(pagesCollection)).toBe("pages_fts");
+  });
+
+  it("emits a CREATE VIRTUAL TABLE statement with one column per search field", () => {
+    const config: CollectionConfig = {
+      ...pagesCollection,
+      search: { fields: ["title", "slug"] },
+    };
+    expect(collectionSearchTableSQL(config)).toBe(
+      'CREATE VIRTUAL TABLE IF NOT EXISTS "pages_fts" USING fts5("title", "slug");',
+    );
+  });
+});
+
+describe("extractSearchText", () => {
+  it("returns one string per search field, in order", () => {
+    const config: CollectionConfig = {
+      ...pagesCollection,
+      search: { fields: ["title", "slug"] },
+    };
+    const values = extractSearchText(config, { title: "Home", slug: "home" });
+    expect(values).toEqual(["Home", "home"]);
+  });
+
+  it("flattens richText (TipTap JSON) fields to plain text", () => {
+    const config: CollectionConfig = {
+      slug: "posts",
+      fields: { body: { type: "richText" } },
+      search: { fields: ["body"] },
+    };
+    const doc = {
+      body: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "Hello" },
+              { type: "text", text: "world" },
+            ],
+          },
+        ],
+      },
+    };
+    expect(extractSearchText(config, doc)).toEqual(["Hello world"]);
+  });
+
+  it("returns an empty string for a missing or non-string field value", () => {
+    const config: CollectionConfig = {
+      ...pagesCollection,
+      search: { fields: ["title"] },
+    };
+    expect(extractSearchText(config, {})).toEqual([""]);
   });
 });
