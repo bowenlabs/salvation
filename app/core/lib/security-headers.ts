@@ -32,7 +32,10 @@ function buildCsp(mediaUrl: string | undefined): string {
 
 export const securityHeaders: MiddlewareHandler = async (c, next) => {
   await next();
-  c.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  c.header(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains; preload",
+  );
   c.header("X-Content-Type-Options", "nosniff");
   c.header("X-Frame-Options", "SAMEORIGIN");
   c.header("Referrer-Policy", "strict-origin-when-cross-origin");

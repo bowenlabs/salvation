@@ -101,6 +101,18 @@ async function hmacSha256Base64(
   return btoa(String.fromCharCode(...new Uint8Array(signature)));
 }
 
+// Constant-time string comparison — a plain `===` on a signature leaks,
+// via early-exit timing, how many leading bytes matched, which is enough
+// to forge a valid HMAC byte-by-byte. Mirrors the Stripe provider's helper.
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
 interface SquareCatalogObject {
   id: string;
   type: string;
@@ -266,7 +278,7 @@ async function verifyWebhookSignature(args: {
     args.notificationUrl + args.rawBody,
     args.secret,
   );
-  return expected === signatureHeader;
+  return timingSafeEqual(expected, signatureHeader);
 }
 
 interface SquareWebhookPayload {

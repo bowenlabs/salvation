@@ -256,6 +256,39 @@ describe("createSquarePaymentProvider", () => {
       expect(verified).toBe(false);
     });
 
+    it("rejects a same-length but incorrect signature (constant-time path)", async () => {
+      const provider = createSquarePaymentProvider(config);
+      const rawBody = '{"event_id":"evt_1"}';
+      const notificationUrl = "https://example.com/api/square/webhook";
+      const secret = "whsec_test";
+
+      // Compute the real signature, then flip its first character so the
+      // forgery is byte-for-byte the same length — this exercises the
+      // constant-time comparison loop, not the early length-mismatch return.
+      const key = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(secret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const sig = await crypto.subtle.sign(
+        "HMAC",
+        key,
+        new TextEncoder().encode(notificationUrl + rawBody),
+      );
+      const real = btoa(String.fromCharCode(...new Uint8Array(sig)));
+      const tampered = `${real[0] === "A" ? "B" : "A"}${real.slice(1)}`;
+
+      const verified = await provider.verifyWebhookSignature({
+        rawBody,
+        headers: new Headers({ "x-square-hmacsha256-signature": tampered }),
+        secret,
+        notificationUrl,
+      });
+      expect(verified).toBe(false);
+    });
+
     it("fails closed when no notificationUrl is provided", async () => {
       const provider = createSquarePaymentProvider(config);
       const headers = new Headers({
