@@ -4,7 +4,13 @@ import { drizzle } from "drizzle-orm/d1";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
 import { collectionToTable, collectionVersionsTable } from "./codegen.js";
-import { can, createLocalApi, createVersionedLocalApi } from "./localApi.js";
+import {
+  type CmsRegistry,
+  can,
+  createLocalApi,
+  createVersionedLocalApi,
+  getRegisteredApi,
+} from "./localApi.js";
 import type { CollectionConfig } from "./types.js";
 
 // Mirrors the pagesCollection fixture in codegen.test.ts — duplicated
@@ -867,5 +873,185 @@ describe("createLocalApi search (issue #29)", () => {
     await expect(localApi.search(ctx, "anything")).rejects.toThrow(
       CadmusCmsError,
     );
+  });
+});
+
+describe("createLocalApi with a group field", () => {
+  const ordersCollection: CollectionConfig = {
+    slug: "orders",
+    fields: {
+      id: { type: "number", autoIncrement: true },
+      orderNumber: { type: "text", required: true, unique: true },
+      shippingAddress: {
+        type: "group",
+        fields: {
+          firstName: { type: "text", required: true },
+          city: { type: "text" },
+        },
+      },
+    },
+  };
+  const ordersTable = collectionToTable(ordersCollection);
+  const ordersApi = createLocalApi(db, ordersTable, ordersCollection);
+
+  beforeEach(async () => {
+    await db.run(sql`
+      CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_number TEXT NOT NULL UNIQUE,
+        shipping_address_first_name TEXT NOT NULL,
+        shipping_address_city TEXT
+      )
+    `);
+  });
+
+  afterEach(async () => {
+    await db.run(sql`DROP TABLE IF EXISTS orders`);
+  });
+
+  it("create() accepts a nested group value and returns it nested back", async () => {
+    const created = await ordersApi.create(ctx, {
+      orderNumber: "ORD-1",
+      shippingAddress: { firstName: "Jane", city: "Springfield" },
+    });
+    expect(created.shippingAddress).toEqual({
+      firstName: "Jane",
+      city: "Springfield",
+    });
+  });
+
+  it("stores the group field as flattened, prefixed columns", async () => {
+    await ordersApi.create(ctx, {
+      orderNumber: "ORD-2",
+      shippingAddress: { firstName: "Jo", city: "Metropolis" },
+    });
+    const rows = await db.all(
+      sql`SELECT shipping_address_first_name, shipping_address_city FROM orders WHERE order_number = 'ORD-2'`,
+    );
+    const raw = rows[0] as Record<string, unknown> | undefined;
+    expect(raw?.shipping_address_first_name).toBe("Jo");
+    expect(raw?.shipping_address_city).toBe("Metropolis");
+  });
+
+  it("findByID() re-nests the group field from flattened columns", async () => {
+    const created = await ordersApi.create(ctx, {
+      orderNumber: "ORD-3",
+      shippingAddress: { firstName: "Sam", city: "Gotham" },
+    });
+    const found = await ordersApi.findByID(ctx, created.id);
+    expect(found.shippingAddress).toEqual({ firstName: "Sam", city: "Gotham" });
+  });
+
+  it("update() with a partial group value updates only the given subfields", async () => {
+    const created = await ordersApi.create(ctx, {
+      orderNumber: "ORD-4",
+      shippingAddress: { firstName: "Lee", city: "Star City" },
+    });
+    const updated = await ordersApi.update(ctx, created.id, {
+      shippingAddress: { firstName: "Lee", city: "Central City" },
+    });
+    expect(updated.shippingAddress).toEqual({
+      firstName: "Lee",
+      city: "Central City",
+    });
+  });
+
+  it("rejects a missing required nested field", async () => {
+    await expect(
+      ordersApi.create(ctx, {
+        orderNumber: "ORD-5",
+        // biome-ignore lint/suspicious/noExplicitAny: simulating a missing required nested field
+        shippingAddress: { city: "Coast City" } as any,
+      }),
+    ).rejects.toThrow(CadmusCmsError);
+  });
+});
+
+describe("CmsRegistry.apis late binding (cross-collection hook access)", () => {
+  const contactsCollection: CollectionConfig = {
+    slug: "contacts",
+    fields: {
+      id: { type: "number", autoIncrement: true },
+      email: { type: "text", required: true, unique: true },
+    },
+  };
+  const contactsTable = collectionToTable(contactsCollection);
+
+  const inquiriesCollection: CollectionConfig = {
+    slug: "inquiries",
+    fields: {
+      id: { type: "number", autoIncrement: true },
+      email: { type: "text", required: true },
+    },
+  };
+  const inquiriesTable = collectionToTable(inquiriesCollection);
+
+  beforeEach(async () => {
+    await db.run(sql`
+      CREATE TABLE IF NOT EXISTS contacts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL UNIQUE
+      )
+    `);
+    await db.run(sql`
+      CREATE TABLE IF NOT EXISTS inquiries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL
+      )
+    `);
+  });
+
+  afterEach(async () => {
+    await db.run(sql`DROP TABLE IF EXISTS contacts`);
+    await db.run(sql`DROP TABLE IF EXISTS inquiries`);
+  });
+
+  it("getRegisteredApi throws a clear error when the registry has no apis populated yet", () => {
+    const registry: CmsRegistry = {
+      tables: { contacts: contactsTable },
+      configs: { contacts: contactsCollection },
+    };
+    expect(() => getRegisteredApi(registry, "contacts")).toThrow(
+      CadmusCmsError,
+    );
+  });
+
+  it("a hook built against the registry reference sees the contacts API once it's populated, even though the hook was constructed before that population", async () => {
+    // This is the late-binding contract: the registry object is built and
+    // handed to the hook factory *before* any LocalApi exists, populated
+    // only after every createLocalApi call returns. The hook closes over
+    // the registry reference, not its (at-that-point-empty) contents.
+    const registry: CmsRegistry = {
+      tables: { contacts: contactsTable, inquiries: inquiriesTable },
+      configs: { contacts: contactsCollection, inquiries: inquiriesCollection },
+      apis: {},
+    };
+
+    // A stand-in for a plugin's hook factory (e.g. createContactUpsertHook) —
+    // built against `registry` before `registry.apis` is populated below.
+    const upsertContactOnInquiry = async ({
+      doc,
+    }: {
+      doc: Record<string, unknown>;
+    }) => {
+      const contactsApi = getRegisteredApi<undefined>(registry, "contacts");
+      await contactsApi.create(undefined, { email: doc.email as string });
+    };
+
+    const inquiriesApi = createLocalApi(db, inquiriesTable, {
+      ...inquiriesCollection,
+      hooks: { afterChange: [upsertContactOnInquiry] },
+    });
+    const contactsApi = createLocalApi(db, contactsTable, contactsCollection);
+
+    // Populated *after* both LocalApis exist — the hook above was already
+    // built, but reads `registry.apis` lazily inside its function body.
+    registry.apis = { contacts: contactsApi, inquiries: inquiriesApi };
+
+    await inquiriesApi.create(ctx, { email: "lead@example.com" });
+
+    const contacts = await contactsApi.find(ctx);
+    expect(contacts).toHaveLength(1);
+    expect(contacts[0]?.email).toBe("lead@example.com");
   });
 });

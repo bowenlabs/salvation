@@ -183,3 +183,50 @@ describe("defineCmsConfig plugins", () => {
     expect(defineCmsConfig(config)).toBe(config);
   });
 });
+
+describe("group and json field validation", () => {
+  it("accepts a valid group field", () => {
+    const config: CollectionConfig = {
+      slug: "orders",
+      fields: {
+        shippingAddress: {
+          type: "group",
+          fields: { city: { type: "text" } },
+        },
+      },
+    };
+    expect(defineCollection(config)).toBe(config);
+  });
+
+  it("accepts a valid json field", () => {
+    const config: CollectionConfig = {
+      slug: "orders",
+      fields: { metadata: { type: "json" } },
+    };
+    expect(defineCollection(config)).toBe(config);
+  });
+
+  it("throws CadmusCmsError when a group field has no nested fields", () => {
+    expect(() =>
+      defineCollection({
+        slug: "orders",
+        fields: { shippingAddress: { type: "group", fields: {} } },
+      }),
+    ).toThrow(CadmusCmsError);
+  });
+
+  it("throws CadmusCmsError when a group field's nested field has an unrecognized type", () => {
+    expect(() =>
+      defineCollection({
+        slug: "orders",
+        fields: {
+          shippingAddress: {
+            type: "group",
+            // biome-ignore lint/suspicious/noExplicitAny: simulating a config from an untyped source
+            fields: { city: { type: "not-a-real-type" } as any },
+          },
+        },
+      }),
+    ).toThrow(CadmusCmsError);
+  });
+});

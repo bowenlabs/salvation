@@ -1,0 +1,17 @@
+{
+  "name": "cadmea-example-smb-template",
+  "main": "src/server.ts",
+  "compatibility_date": "2026-06-01",
+  // Create with: wrangler d1 create smb-template-db
+  "d1_databases": [
+    { "binding": "DB", "database_name": "smb-template-db", "database_id": "<your-d1-database-id>" },
+  ],
+  // Create with: wrangler kv namespace create smb-template-kv
+  "kv_namespaces": [{ "binding": "KV", "id": "<your-kv-namespace-id>" }],
+  "vars": {
+    "SQUARE_LOCATION_ID": "<your-square-sandbox-location-id>",
+    "SQUARE_WEBHOOK_URL": "https://<your-worker>.workers.dev/webhook",
+  },
+  // Set with: wrangler secret put SQUARE_ACCESS_TOKEN
+  //           wrangler secret put SQUARE_WEBHOOK_SECRET
+}

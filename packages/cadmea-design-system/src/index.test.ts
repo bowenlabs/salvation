@@ -70,6 +70,15 @@ describe("buildTokenStyle", () => {
     expect(css).toContain("--text-base:");
   });
 
+  it("always emits the --color-backdrop constant, regardless of settings", () => {
+    expect(buildTokenStyle({})).toContain(
+      "--color-backdrop: rgb(0 0 0 / 0.5);",
+    );
+    expect(buildTokenStyle({ theme: "noir", brandColor: "#2563eb" })).toContain(
+      "--color-backdrop: rgb(0 0 0 / 0.5);",
+    );
+  });
+
   it("scopes brand-color overrides to the theme selector", () => {
     const css = buildTokenStyle({ theme: "noir", brandColor: "#2563eb" });
     expect(css).toContain('[data-theme="theme-noir"] {');

@@ -169,4 +169,38 @@ describe("generateSchemaSource", () => {
     expect(source).toContain('posts_id: integer("posts_id").notNull()');
     expect(source).toContain('tags_id: integer("tags_id").notNull()');
   });
+
+  it("flattens a group field into prefixed column source lines", () => {
+    const source = generateSchemaSource({
+      collections: [
+        {
+          slug: "orders",
+          fields: {
+            shippingAddress: {
+              type: "group",
+              fields: { city: { type: "text", required: true } },
+            },
+          },
+        },
+      ],
+    });
+    expect(source).toContain(
+      'shippingAddress_city: text("shipping_address_city").notNull()',
+    );
+    expect(source).not.toContain("shippingAddress:");
+  });
+
+  it("emits a json field as a JSON-mode text column, same as richText/array", () => {
+    const source = generateSchemaSource({
+      collections: [
+        {
+          slug: "orders",
+          fields: { metadata: { type: "json" } },
+        },
+      ],
+    });
+    expect(source).toContain(
+      'metadata: text("metadata", { mode: "json" }).$type<JsonValue>()',
+    );
+  });
 });

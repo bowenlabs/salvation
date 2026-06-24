@@ -1,0 +1,48 @@
+---
+// Fetches the product from the backend API Worker (src/server.ts, a
+// separate deployment — see astro.config.mjs's module comment) via the
+// standardized REST client (@thebes/cadmus/hono's createCmsApiClient) —
+// exactly the "external caller, can't reach a LocalApi in-process" case
+// that client exists for, since this Astro page runs in a different
+// Worker than the one running the CMS.
+import { createCmsApiClient } from "@thebes/cadmus/hono";
+import { ShopIsland } from "../../components/ShopIsland.js";
+
+const { slug } = Astro.params;
+const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL ?? "http://localhost:8787";
+const client = createCmsApiClient(apiBaseUrl);
+
+const products = (await client.find("products")) as Array<{
+  id: number;
+  name: string;
+  description?: string;
+  variants: Array<{
+    sku: string;
+    catalogRef: string;
+    priceCents: number;
+    currency: string;
+  }>;
+}>;
+const product = products.find((p) => String(p.id) === slug) ?? products[0];
+
+if (!product) {
+  return Astro.redirect("/404");
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{product.name}</title>
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.2/src/regular/style.css" />
+  </head>
+  <body class="p-8">
+    <ShopIsland
+      client:load
+      product={product}
+      squareApplicationId={import.meta.env.PUBLIC_SQUARE_APPLICATION_ID}
+      squareLocationId={import.meta.env.PUBLIC_SQUARE_LOCATION_ID}
+      checkoutEndpoint={`${apiBaseUrl}/checkout`}
+    />
+  </body>
+</html>

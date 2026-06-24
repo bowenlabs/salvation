@@ -42,20 +42,31 @@ thebes/
 │   ├── cadmus/                    @thebes/cadmus — the framework
 │   ├── cadmea/                    @thebes/cadmea — Cadmea's admin-UI components
 │   ├── cadmea-design-system/      @thebes/cadmea-design-system — design-token engine (standalone lib)
+│   ├── cadmea-access-helpers/     @thebes/cadmea-access-helpers — access-control predicates (standalone lib)
 │   ├── cadmea-plugin-seo/         @thebes/cadmea-plugin-seo — SEO plugin (CMS axis)
+│   ├── cadmea-plugin-redirects/   @thebes/cadmea-plugin-redirects — redirects plugin (CMS axis)
+│   ├── cadmea-plugin-crm/         @thebes/cadmea-plugin-crm — contacts/activities CRM plugin (CMS axis)
+│   ├── cadmea-plugin-ecommerce/   @thebes/cadmea-plugin-ecommerce — provider-agnostic ecommerce core (CMS axis)
+│   ├── cadmea-plugin-ecommerce-square/  Square's PaymentProvider implementation
+│   ├── cadmea-plugin-ecommerce-stripe/  Stripe's PaymentProvider implementation
+│   ├── cadmea-ecommerce-ui/       @thebes/cadmea-ecommerce-ui — storefront SolidJS components (standalone lib)
 │   └── cadmus-cloudflare-images/  @thebes/cadmus-cloudflare-images — image adapter (framework axis)
 ├── app/
 │   ├── workers/site/   docs + marketing for Cadmus and Cadmea, example deployment
 │   └── workers/cadmea/ Cadmea — the reference CMS admin
 └── examples/
-    └── minimal/        the smallest possible Cadmus app (with-auth, with-d1 planned)
+    ├── minimal/             the smallest possible Cadmus app
+    └── cadmea-smb-template/ worked multi-provider (Square + Stripe) ecommerce example
 ```
 
 Extensions come on two axes — **adapters** (`@thebes/cadmus-*`, swappable
 implementations like image services) and **plugins** (`@thebes/cadmea-plugin-*`,
 Payload-style `config => config` transforms). Shared building blocks that are
-neither (like the design-token engine) ship as plain **libraries**. See
-**[EXTENDING.md](./EXTENDING.md)**.
+neither (like the design-token engine, access-control helpers, or the
+storefront UI components) ship as plain **libraries**. A plugin may also
+define its own swappable provider interface for plugin-internal needs — see
+`@thebes/cadmea-plugin-ecommerce`'s `PaymentProvider` (Square/Stripe) — a
+third pattern, not a new top-level axis. See **[EXTENDING.md](./EXTENDING.md)**.
 
 ### The bigger picture
 
@@ -133,15 +144,18 @@ on [issue #30](https://github.com/bowenlabs/project-thebes/issues/30) (the
 VoidZero Void/Vite+/Rolldown migration). See CLAUDE.md and CADMEA.md for the
 full reasoning.
 
-Also planned: **`@thebes/cadmus/astro`**, an official peer-integration
-layer (same "peer, not a dependency" treatment `cadmus/hono` already gets)
-making Astro the officially recommended frontend for Cadmus — the headline
-answer to "what do I build the UI with" for the React-alternative pitch.
-Tracked in
-[issue #32](https://github.com/bowenlabs/project-thebes/issues/32), also
-blocked on #30 for the same reason as Spartoi: building a new build-tool
-entry point now, right as the bundler underneath it changes, risks the
-exact rework #30 exists to avoid.
+**`@thebes/cadmus/astro`** — the official peer-integration layer (same
+"peer, not a dependency" treatment `cadmus/hono` already gets) making Astro
+the officially recommended frontend for Cadmus — shipped 2026-06-24
+([issue #32](https://github.com/bowenlabs/project-thebes/issues/32)).
+
+**Section 3** added the first real ecommerce extension — provider-agnostic
+core collections plus Square and Stripe `PaymentProvider` implementations
+(`@thebes/cadmea-plugin-ecommerce`, `-square`, `-stripe`), a storefront
+SolidJS component library (`@thebes/cadmea-ecommerce-ui`), and two more
+generalized plugins (`@thebes/cadmea-plugin-redirects`,
+`@thebes/cadmea-plugin-crm`). See `examples/cadmea-smb-template` for all of
+it wired together.
 
 ---
 

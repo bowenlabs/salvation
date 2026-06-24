@@ -130,10 +130,56 @@ thebes/
 │   │                              color/spacing/type/font helpers, shared by
 │   │                              both Workers. Extracted from app/core/lib.
 │   │
+│   ├── cadmea-access-helpers/   ← @thebes/cadmea-access-helpers — composable
+│   │                              access-control predicates (requireRole,
+│   │                              checkRole, isAdmin, publicAccess,
+│   │                              authenticatedOnly) for collection `access`
+│   │                              blocks. A library (Section 3), not a
+│   │                              plugin/adapter — see EXTENDING.md.
+│   │
 │   ├── cadmea-plugin-seo/       ← @thebes/cadmea-plugin-seo — SEO plugin
 │   │                              (Cadmea axis: plugin(config) => config;
 │   │                              injects meta/OG fields + a metaTitle hook,
 │   │                              ships renderSeoTags() for the public site)
+│   │
+│   ├── cadmea-plugin-redirects/ ← @thebes/cadmea-plugin-redirects — adds a
+│   │                              `redirects` collection + lookupRedirect()
+│   │                              helper for the public site (Section 3)
+│   │
+│   ├── cadmea-plugin-crm/       ← @thebes/cadmea-plugin-crm — adds
+│   │                              `contacts`/`activities` collections +
+│   │                              createContactUpsertHook(), wireable onto
+│   │                              any consumer-defined lead-capture
+│   │                              collection (Section 3)
+│   │
+│   ├── cadmea-plugin-ecommerce/ ← @thebes/cadmea-plugin-ecommerce — the
+│   │                              provider-agnostic ecommerce core (Section
+│   │                              3): products/orders/customers/payments/
+│   │                              webhook_events collections, the
+│   │                              plugin-defined PaymentProvider interface
+│   │                              (see EXTENDING.md), createCheckoutHandler/
+│   │                              createWebhookHandler Hono handlers
+│   │
+│   ├── cadmea-plugin-ecommerce-square/ ← @thebes/cadmea-plugin-ecommerce-square
+│   │                              — Square's PaymentProvider implementation,
+│   │                              raw fetch() + crypto.subtle, no Square
+│   │                              Node SDK; `/client` subpath ships
+│   │                              createSquareCardField (Web Payments SDK
+│   │                              tokenization helper)
+│   │
+│   ├── cadmea-plugin-ecommerce-stripe/ ← @thebes/cadmea-plugin-ecommerce-stripe
+│   │                              — Stripe's PaymentProvider implementation,
+│   │                              same raw-fetch()-only constraint; `/client`
+│   │                              subpath ships createStripeCardField
+│   │
+│   ├── cadmea-ecommerce-ui/     ← @thebes/cadmea-ecommerce-ui — storefront
+│   │                              SolidJS components (ProductDetail,
+│   │                              CartProvider/CartDrawer, CheckoutForm) for
+│   │                              @thebes/cadmea-plugin-ecommerce. A library,
+│   │                              SolidJS by extension-author discretion
+│   │                              (see DECISIONS.md's "Component framework
+│   │                              tiering" entry) — not the public site's
+│   │                              own Alpine.js sprinkle-on tier
 │   │
 │   └── cadmus-cloudflare-images/ ← @thebes/cadmus-cloudflare-images — image
 │                                  adapter (Cadmus axis: an alternate
@@ -161,8 +207,11 @@ thebes/
 │
 ├── examples/                    ← standalone Cadmus usage examples
 │   ├── minimal/                 ← smallest possible working Cadmus app (hello world)
-│   ├── with-auth/
-│   └── with-d1/
+│   └── cadmea-smb-template/     ← Section 3 worked example: crmPlugin +
+│                                  redirectsPlugin + ecommercePlugin combined
+│                                  on one CmsConfig, a Square-wired backend
+│                                  Worker, and a SolidJS-island storefront
+│                                  frontend (@thebes/cadmea-ecommerce-ui)
 │
 ├── biome.json                   ← covers all packages + app
 ├── pnpm-workspace.yaml          ← packages/*, app/workers/*, examples/*
@@ -208,6 +257,10 @@ framework/CMS boundary as above. Full guide: **`EXTENDING.md`**.
   before validation. Injects fields/collections/hooks. Reference:
   `@thebes/cadmea-plugin-seo`. **Consumers must read the resolved config
   (post-plugin), never the raw definition** — see `app/cadmea.config.ts`.
+  Section 3 added three more: `@thebes/cadmea-plugin-redirects`,
+  `@thebes/cadmea-plugin-crm` (its `createContactUpsertHook` is wireable
+  onto any consumer-defined lead-capture collection, not hardcoded to one),
+  and `@thebes/cadmea-plugin-ecommerce` (provider-agnostic — see below).
 
 Collection `hooks` and `access` are both enforced by `createLocalApi` — a
 rejected `access` check throws `CadmusAccessDeniedError`. The public REST API
@@ -215,13 +268,27 @@ rejected `access` check throws `CadmusAccessDeniedError`. The public REST API
 `app/workers/cadmea/app/server.ts` via `app/core/lib/cms-api.ts`'s
 `mountPublicCmsApi` — every collection's own `access` rules are what gate
 each request; see `packages/cadmus/src/cms/README.md` for the full Local
-API/access/REST API reference. Community extensions on either axis live
-under `@cadmus-community/*`.
+API/access/REST API reference. `@thebes/cadmus/hono` also ships
+`createCmsApiClient`, the client-side counterpart to `mountCmsRoutes` for
+callers outside the Worker process running the CMS (e.g. a separate
+public-site Worker). Community extensions on either axis live under
+`@cadmus-community/*`.
+
+**A third pattern, distinct from both axes — plugin-defined provider
+interfaces.** `@thebes/cadmea-plugin-ecommerce`'s `PaymentProvider` is
+defined by the plugin itself, not by Cadmus core, because it needs
+commerce-domain concepts (cart line items, normalized webhook events) that
+have no business in framework-layer Cadmus. `@thebes/cadmea-plugin-ecommerce-square`
+and `@thebes/cadmea-plugin-ecommerce-stripe` implement it via raw `fetch()`
++ `crypto.subtle` only — no Square/Stripe Node SDK, ever. See EXTENDING.md's
+"Plugin-defined provider interfaces" section before reaching for this
+pattern elsewhere; it's not a license to invent a third top-level axis.
 
 Shared code that is **neither** axis (no CMS config, no Cadmus interface) ships
 as a plain library, not an extension — e.g. `@thebes/cadmea-design-system`,
-the framework-agnostic design-token engine extracted from `app/core/lib`. Don't
-force a library onto an axis.
+the framework-agnostic design-token engine extracted from `app/core/lib`, and
+Section 3's `@thebes/cadmea-access-helpers` and `@thebes/cadmea-ecommerce-ui`.
+Don't force a library onto an axis.
 
 ---
 
@@ -260,6 +327,8 @@ force a library onto an axis.
 | Security scanning | **Snyk** (CI) |
 | Testing | **Vitest** + **@cloudflare/vitest-pool-workers** — real Workers runtime |
 | TanStack DB | **Section 2+** — reactive client data layer for CMS admin (beta) |
+| Payments / ecommerce | **@thebes/cadmea-plugin-ecommerce** (Section 3) — provider-agnostic core; **@thebes/cadmea-plugin-ecommerce-square** / **-stripe** implement its plugin-defined `PaymentProvider` interface via raw `fetch()` + `crypto.subtle` only. No Square/Stripe Node SDK, ever — see EXTENDING.md |
+| Storefront UI components | **@thebes/cadmea-ecommerce-ui** (Section 3) — SolidJS, by extension-author discretion (DECISIONS.md's "Component framework tiering" entry), not the public site's own Alpine.js sprinkle-on tier |
 
 ---
 

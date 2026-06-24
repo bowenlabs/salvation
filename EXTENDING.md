@@ -128,6 +128,56 @@ service), ship two packages — one per axis — rather than blurring the bounda
 
 ---
 
+## Plugin-defined provider interfaces
+
+A third pattern, distinct from both axes above: a **plugin may define its
+own swappable interface for plugin-specific provider implementations**. This
+is plugin-internal extensibility, not a new top-level axis — don't reach for
+it unless a plugin genuinely needs multiple interchangeable backends for one
+piece of its own functionality.
+
+`@thebes/cadmea-plugin-ecommerce`'s `PaymentProvider` is the reference
+example: it needs to support Square and Stripe interchangeably, but
+`PaymentProvider` isn't a Cadmus adapter (Axis 1) — it isn't an interface
+*Cadmus core* defines, and it never could be, since it's built from
+commerce-domain concepts (normalized order/payment events, cart line items)
+that have no business in framework-layer Cadmus. The Cadmus adapter
+precedent (`ImageService`) is deliberately generic infrastructure, usable by
+any Cloudflare app regardless of CMS; `PaymentProvider` fails that bar the
+same way a hypothetical Cadmea-only access-control library would.
+
+So the plugin defines the interface itself, and ships sibling packages
+implementing it — `@thebes/cadmea-plugin-ecommerce-square` and
+`@thebes/cadmea-plugin-ecommerce-stripe` — mirroring the adapter pattern's
+swappability discipline (one interface, N implementations, resolved in one
+place by whichever route/handler the consumer wires a provider into) without
+actually being one:
+
+```ts
+// defined by the plugin, not by @thebes/cadmus
+export interface PaymentProvider {
+  readonly name: "square" | "stripe";
+  checkout(request: CheckoutRequest): Promise<CheckoutResult>;
+  verifyWebhookSignature(args: { /* ... */ }): Promise<boolean>;
+  // ...
+}
+
+// each provider package implements it
+export function createSquarePaymentProvider(config): PaymentProvider { /* ... */ }
+export function createStripePaymentProvider(config): PaymentProvider { /* ... */ }
+```
+
+**How to tell this apart from a real Cadmus adapter:** ask the same
+question Axis 1's table implies — would a developer using a *different*
+framework than Cadmea, with no CMS at all, benefit from this interface as
+defined? If the interface only makes sense in terms of concepts the plugin
+itself introduced (cart line items, normalized webhook events, CMS
+collections it writes to), it's plugin-internal. If it's genuinely
+Cloudflare-binding-level infrastructure with no CMS opinion, it's a Cadmus
+adapter instead.
+
+---
+
 ## Not everything is an extension
 
 Some shared code is neither axis — it's a plain **library** with no opinion

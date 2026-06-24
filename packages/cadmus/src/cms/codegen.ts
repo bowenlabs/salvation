@@ -9,11 +9,12 @@ import {
   text,
 } from "drizzle-orm/sqlite-core";
 import { CadmusCmsError } from "../errors.js";
-import type {
-  CmsConfig,
-  CollectionConfig,
-  FieldConfig,
-  JsonValue,
+import {
+  type CmsConfig,
+  type CollectionConfig,
+  type FieldConfig,
+  flattenFields,
+  type JsonValue,
 } from "./types.js";
 
 function toSnakeCase(value: string): string {
@@ -46,10 +47,14 @@ function fieldToColumn(
       return column;
     }
     case "richText":
-    case "array": {
-      // TipTap JSON / array-group content — a single JSON column. The
-      // nested `fields` on an array config describe the JSON shape for
-      // introspection only; not enforced at write time in this step.
+    case "array":
+    case "json": {
+      // TipTap JSON / array-group content / freeform json blobs — all a
+      // single JSON column. The nested `fields` on an array config
+      // describe the JSON shape for introspection only; not enforced at
+      // write time in this step. `group` fields never reach here — they're
+      // expanded into their flattened equivalents by `flattenFields`
+      // before `collectionToTable` builds columns.
       // `.$type<JsonValue>()` overrides drizzle's inferred `unknown` —
       // see types.ts's JsonValue doc comment for why that matters.
       let column = text(columnName, { mode: "json" }).$type<JsonValue>();
@@ -127,7 +132,11 @@ function fieldToColumn(
 
 export function collectionToTable(config: CollectionConfig) {
   const columns: Record<string, SQLiteColumnBuilderBase> = {};
-  for (const [key, field] of Object.entries(config.fields)) {
+  // `group` fields are expanded into `<key>_<subKey>` flattened columns
+  // here, before fieldToColumn ever sees them — see types.ts's
+  // `flattenFields` doc comment for why this is the one canonicalization
+  // step every consumer (codegen, schema-gen, Local API validation) shares.
+  for (const [key, field] of Object.entries(flattenFields(config.fields))) {
     // hasMany relationships have no column on this table — they're
     // represented by a join table (see relationshipJoinTables).
     if (field.type === "relationship" && field.hasMany) continue;

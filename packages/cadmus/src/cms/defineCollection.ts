@@ -14,7 +14,46 @@ const KNOWN_FIELD_TYPES: ReadonlySet<FieldConfig["type"]> = new Set([
   "relationship",
   "array",
   "upload",
+  "json",
+  "group",
 ]);
+
+// Validates one field's own shape (type known, relationship/array/group
+// invariants) without descending into a collection's broader rules
+// (search.fields etc, which only make sense at the top level). Recurses
+// into `group`'s nested fields so a group can't smuggle in an unrecognized
+// or malformed nested field — same checks, one level down.
+function validateField(slug: string, key: string, field: FieldConfig): void {
+  if (!KNOWN_FIELD_TYPES.has(field.type)) {
+    throw new CadmusCmsError(
+      `Collection "${slug}" field "${key}" has unrecognized type "${field.type}"`,
+    );
+  }
+
+  if (field.type === "relationship" && !field.relationTo) {
+    throw new CadmusCmsError(
+      `Collection "${slug}" field "${key}" is a relationship field and requires "relationTo"`,
+    );
+  }
+
+  if (field.type === "array" && Object.keys(field.fields ?? {}).length === 0) {
+    throw new CadmusCmsError(
+      `Collection "${slug}" field "${key}" is an array field and must define at least one nested field`,
+    );
+  }
+
+  if (field.type === "group") {
+    const nestedEntries = Object.entries(field.fields ?? {});
+    if (nestedEntries.length === 0) {
+      throw new CadmusCmsError(
+        `Collection "${slug}" field "${key}" is a group field and must define at least one nested field`,
+      );
+    }
+    for (const [nestedKey, nestedField] of nestedEntries) {
+      validateField(slug, `${key}.${nestedKey}`, nestedField);
+    }
+  }
+}
 
 function validateCollectionConfig(config: CollectionConfig): void {
   if (!config.slug || config.slug.trim().length === 0) {
@@ -29,26 +68,7 @@ function validateCollectionConfig(config: CollectionConfig): void {
   }
 
   for (const [key, field] of fieldEntries) {
-    if (!KNOWN_FIELD_TYPES.has(field.type)) {
-      throw new CadmusCmsError(
-        `Collection "${config.slug}" field "${key}" has unrecognized type "${field.type}"`,
-      );
-    }
-
-    if (field.type === "relationship" && !field.relationTo) {
-      throw new CadmusCmsError(
-        `Collection "${config.slug}" field "${key}" is a relationship field and requires "relationTo"`,
-      );
-    }
-
-    if (
-      field.type === "array" &&
-      Object.keys(field.fields ?? {}).length === 0
-    ) {
-      throw new CadmusCmsError(
-        `Collection "${config.slug}" field "${key}" is an array field and must define at least one nested field`,
-      );
-    }
+    validateField(config.slug, key, field);
   }
 
   const SEARCHABLE_FIELD_TYPES: ReadonlySet<FieldConfig["type"]> = new Set([

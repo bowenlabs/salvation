@@ -9,6 +9,146 @@
 
 ---
 
+## 2026-06-24 — Closed the `tsup` consistency gap for real: every remaining package moved to `vp pack`
+
+**Context:** the cadmea-design-system entry below this one already named the
+pattern — "ended up the odd one out once the other two packages moved,
+flagged as a follow-up rather than acted on immediately." Section 3 added
+six more packages (`cadmea-access-helpers`, `cadmea-plugin-redirects`,
+`cadmea-plugin-crm`, `cadmea-plugin-ecommerce`, `-square`, `-stripe`), all
+scaffolded on `tsup` by matching `cadmea-plugin-seo`'s and
+`cadmus-cloudflare-images`'s *then-current* convention — which itself was
+the actual remaining "odd one out," just not yet flagged. Asked directly:
+**should they all use `vp pack`?** Yes — completed the migration this
+entry's predecessor deferred, rather than let a second generation of
+packages match a convention already mid-deprecation.
+
+**What moved:** `cadmus-cloudflare-images`, `cadmea-plugin-seo` (the two
+pre-existing `tsup` holdouts), plus all six Section 3 packages —
+`cadmea-access-helpers`, `cadmea-plugin-redirects`, `cadmea-plugin-crm`,
+`cadmea-plugin-ecommerce`, `cadmea-plugin-ecommerce-square`,
+`cadmea-plugin-ecommerce-stripe`. Every one: `tsup.config.ts` →
+`vite.config.ts`'s `pack` block, `external: [...]` → `deps.neverBundle:
+[...]`, `tsup`/`tsup --watch` → `vp pack`/`vp pack --watch`, `tsup` dropped
+from `devDependencies` in favor of `vite-plus` — direct ports, not
+redesigns, same as every prior entry in this migration. The two packages
+with a `/client` subpath (`ecommerce-square`, `ecommerce-stripe`) use a
+multi-key `entry` map in one `pack` object (`{ index: ..., client: ... }`),
+the same shape `packages/cadmus`'s own `vite.config.ts` already uses for
+its subpath exports — not the array-of-configs shape `cadmea`'s dom/ssr
+split needs, since neither subpath here has a Solid-codegen variant to
+split on.
+
+**Verified, not assumed:** built and ran every migrated package's own
+Vitest suite (all passing — 401 tests across the 13 affected + downstream
+packages), and typechecked `examples/cadmea-smb-template` (a real
+consumer of five of the six Section 3 packages) against the new output —
+clean.
+
+**Known friction:** could not delete any of the now-dead `tsup.config.ts`
+files (filesystem write denied in this environment) — same friction the
+cadmea-design-system entry below already hit. Emptied each to a one-line
+comment rather than left with stale content; harmless dead weight since
+`vp pack` doesn't read them, but should be removed by hand.
+
+---
+
+## 2026-06-24 — Spike: issue #20, `wasm-vips` as a free, self-hosted `ImageService` adapter
+
+**Context:** [Issue #20](https://github.com/bowenlabs/project-thebes/issues/20)
+asked whether `wasm-vips` (libvips compiled to WebAssembly) can do real
+server-side image resizing *inside the Worker itself*, as a free,
+self-hosted alternative to the paid Cloudflare Images extension —
+explicitly an investigation, not a green light to implement. Same
+methodology as the 2026-06-23 NativeScript spike and the 2026-06-23
+Void/Vite+ spike below: check the actual current numbers, not an assumption
+or an old reference.
+
+**1. Workers CPU-time/memory limits vs. real vips operations.** Current
+published limits (developers.cloudflare.com/workers/platform/limits, fetched
+2026-06-24): **128 MB memory per isolate, including the JS heap and every
+WebAssembly allocation** — the WASM binary itself, plus every buffer vips
+allocates while decoding/resizing, all share that one ceiling. CPU time is
+10 ms on Workers Free (a non-starter) and defaults to 30 s on Workers Paid,
+configurable up to 5 minutes — generous for a single resize (libvips is
+fast; CPU time is very unlikely to be the binding constraint here, unlike
+memory).
+
+**2. Worker script-size limits.** Current limits: **3 MB compressed on
+Free, 10 MB compressed on Paid**. `wasm-vips`'s own compiled binary is
+~4.3 MB uncompressed / **~1.41 MB gzip-compressed** (measured against
+`wasm-vips`'s own build output). That leaves ~8.5 MB of headroom on Paid for
+the rest of the Worker's code (Hono, Cadmus primitives, the rest of Cadmea)
+— comfortably fits. On Free it's tighter (~1.6 MB left) but not impossible
+for a minimal Worker.
+
+This directly contradicts the closed, "wontfix" issue on the `wasm-vips`
+repo itself
+([kleisauke/wasm-vips#2](https://github.com/kleisauke/wasm-vips/issues/2)),
+which concluded the binary "exceeds [the size limit] by a substantial
+margin" — that issue was evidently referencing an old, since-relaxed
+Workers limit (it cites "1MB after gzip," a figure that predates Cloudflare's
+move to the current 3 MB/10 MB tiers). Worth noting as a reminder that a
+third-party issue thread can go stale the same way an internal assumption
+can — the fix is the same either way: check the current docs, don't trust
+a remembered number.
+
+**3. libvips license (LGPL-2.1-or-later) vs. this repo's MIT licensing.**
+libvips itself is LGPL-2.1-or-later; this repo is MIT end to end. LGPL's
+relinking obligation is most straightforward under dynamic linking (the
+library stays a separate, swappable artifact) and gets more involved under
+static linking (the consuming app must ship in a form that still permits
+relinking against a modified library). A WASM module loaded at runtime via
+`instantiate()` is structurally closer to the dynamic-linking case than
+static — it's a discrete binary artifact, not inlined into the JS source —
+but no authoritative FSF guidance specific to WebAssembly turned up in this
+search; the question is genuinely under-specified industry-wide, not just
+under-researched here. **Practical compliance path, not a legal opinion:**
+ship the unmodified `wasm-vips` npm package's own binary (already published
+under its own license with its own available source/build instructions, so
+a user retains the ability to swap in a different build), include its
+license text and attribution alongside this repo's own, and never recompile
+or modify the WASM binary ourselves. LGPL's obligations attach to
+*redistributing the LGPL component itself* in a relinkable form, not to
+relicensing the MIT code that merely calls into it — using an unmodified
+LGPL dependency from an MIT project via npm is an extremely well-trodden
+pattern, not a novel risk. Get real legal review before shipping this
+commercially at scale; this paragraph is engineering due diligence, not a
+substitute for that review.
+
+**4. Upload-time vs. render-time resizing.** Render-time, cached via
+`@thebes/cadmus/cache` (the Cache API primitive this repo already has), is
+the better fit: it avoids precomputing a fixed size set that might not
+match what's actually requested (upload-time's failure mode), it's the same
+shape `next/image` itself uses (the explicit comparison issue #20 draws),
+and the first-request resize cost is the only one ever paid per size/source
+combination — every subsequent request for that exact size is a cache hit,
+not a re-run of vips. The 128 MB memory ceiling is the thing to benchmark
+before committing to this path for real: a single request's decode+resize
+working set has to fit *alongside* the ~4.3 MB WASM binary already resident,
+for whatever the largest image an operator's media library actually
+contains turns out to be.
+
+**Conclusion:** Both real blockers this spike was meant to surface (Workers'
+actual current size/memory ceilings) are answerable with current numbers,
+and neither one rules `wasm-vips` out the way the stale upstream issue
+suggested — bundle size fits with real headroom on Paid, and CPU time is
+not the binding constraint. Memory is the one genuinely open empirical
+question: this spike establishes the ceiling (128 MB total) and the
+direction (render-time + Cache API) but doesn't itself benchmark a real
+decode+resize against it — that benchmark is the next concrete step before
+writing a real `ImageService` implementation, not implied by anything
+above. The license question has a workable practical path but is the one
+item here that's genuinely advice-not-verdict; flag it for real legal
+review before this ships as more than an experiment.
+
+**Revisit if:** the eventual memory benchmark shows real operator image
+sizes blow the 128 MB ceiling when combined with the resident WASM binary —
+at that point, upload-time pre-generation (accepting its own tradeoffs)
+becomes the fallback, not render-time.
+
+---
+
 ## 2026-06-24 — Migrated `packages/cadmus`/`packages/cadmea` packaging from `tsdown.config.ts` to `vp pack` (follow-up to the correction entry below)
 
 **Context:** the correction entry below confirmed `vp pack` correctly

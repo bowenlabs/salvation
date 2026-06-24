@@ -2,7 +2,12 @@
 // Cadmus is MIT licensed. See LICENSE in the repo root.
 
 import { CadmusCmsError } from "../errors.js";
-import type { CmsConfig, CollectionConfig, FieldConfig } from "./types.js";
+import {
+  type CmsConfig,
+  type CollectionConfig,
+  type FieldConfig,
+  flattenFields,
+} from "./types.js";
 
 function toSnakeCase(value: string): string {
   return value.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
@@ -37,11 +42,13 @@ function fieldToColumnSource(
       return source;
     }
     case "richText":
-    case "array": {
+    case "array":
+    case "json": {
       usedBuilders.add("text");
       // `.$type<JsonValue>()` mirrors codegen.ts's fieldToColumn — see
       // types.ts's JsonValue doc comment for why drizzle's inferred
-      // `unknown` needs overriding here.
+      // `unknown` needs overriding here. `group` fields never reach here —
+      // see flattenFields below.
       let source = `text(${quote(columnName)}, { mode: "json" }).$type<JsonValue>()`;
       if (field.required) source += ".notNull()";
       if (field.defaultValue !== undefined) {
@@ -103,7 +110,7 @@ function collectionToTableSource(
   config: CollectionConfig,
   usedBuilders: Set<string>,
 ): string {
-  const fieldLines = Object.entries(config.fields)
+  const fieldLines = Object.entries(flattenFields(config.fields))
     // hasMany relationships have no column on this table — emitted as a
     // separate join table instead (see relationshipJoinTableSource).
     .filter(([, field]) => !(field.type === "relationship" && field.hasMany))

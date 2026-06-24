@@ -17,6 +17,7 @@
 	},
 	"dependencies": {
 		"@astrojs/cloudflare": "^13.7.0",
+		"@thebes/cadmea-access-helpers": "workspace:*",
 		"@thebes/cadmea-design-system": "workspace:*",
 		"@thebes/cadmea-plugin-seo": "workspace:*",
 		"@thebes/cadmus": "workspace:*",

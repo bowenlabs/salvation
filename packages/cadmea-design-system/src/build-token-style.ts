@@ -43,7 +43,16 @@ export function buildTokenStyle(settings: TokenStyleInput): string {
 
   const spacing = resolveSpacingTokens(settings.spacingPreset);
   const type = resolveTypeTokens(settings.typeTokens);
-  parts.push(`:root {\n${buildSpacingTokenStyles(spacing, type)}\n}`);
+  // --color-backdrop: a fixed system constant, not a settings-derived
+  // override (no settings field drives it — unlike every other color in
+  // this file). A modal/drawer scrim stays dark regardless of the active
+  // theme by design convention, so it's unconditional rather than scoped
+  // to the theme selector. Formalizes a value (`rgb(0 0 0 / 0.5)`, same as
+  // Tailwind's own `black/50`) two consumers (SearchPalette, CartDrawer)
+  // previously each hardcoded separately.
+  parts.push(
+    `:root {\n${buildSpacingTokenStyles(spacing, type)}\n  --color-backdrop: rgb(0 0 0 / 0.5);\n}`,
+  );
 
   const overrides: string[] = [];
 

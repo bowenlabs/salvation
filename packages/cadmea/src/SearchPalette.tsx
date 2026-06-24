@@ -123,7 +123,7 @@ export function SearchPalette(props: SearchPaletteProps): JSX.Element {
     <Show when={open()}>
       <div
         aria-hidden="true"
-        class="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-[15vh]"
+        class="fixed inset-0 z-50 flex items-start justify-center bg-[var(--color-backdrop)] px-4 pt-[15vh]"
         onClick={close}
       >
         <div

@@ -325,3 +325,46 @@ describe("extractSearchText", () => {
     expect(extractSearchText(config, {})).toEqual([""]);
   });
 });
+
+describe("group and json field types", () => {
+  const ordersCollection: CollectionConfig = {
+    slug: "orders",
+    fields: {
+      id: { type: "number", autoIncrement: true },
+      orderNumber: { type: "text", required: true, unique: true },
+      shippingAddress: {
+        type: "group",
+        fields: {
+          firstName: { type: "text", required: true },
+          city: { type: "text" },
+        },
+      },
+      metadata: { type: "json" },
+    },
+  };
+
+  it("flattens a group field into prefixed, snake_cased columns", () => {
+    const table = collectionToTable(ordersCollection);
+    const columns = getTableColumns(table);
+    expect(Object.keys(columns).sort()).toEqual(
+      [
+        "id",
+        "orderNumber",
+        "shippingAddress_firstName",
+        "shippingAddress_city",
+        "metadata",
+      ].sort(),
+    );
+    expect(columns.shippingAddress_firstName.name).toBe(
+      "shipping_address_first_name",
+    );
+    expect(columns.shippingAddress_firstName.notNull).toBe(true);
+    expect(columns.shippingAddress_city.notNull).toBe(false);
+  });
+
+  it("gives a json field a JSON-mode text column, same as richText/array", () => {
+    const table = collectionToTable(ordersCollection);
+    const columns = getTableColumns(table);
+    expect(columns.metadata.dataType).toBe("json");
+  });
+});

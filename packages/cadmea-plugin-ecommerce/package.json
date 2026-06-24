@@ -1,0 +1,54 @@
+{
+  "name": "@thebes/cadmea-plugin-ecommerce",
+  "version": "0.1.0",
+  "description": "Provider-agnostic ecommerce core for Cadmea — products/orders/customers/payments collections, the PaymentProvider interface, and checkout/webhook Hono handlers",
+  "author": "BowenLabs <hello@bowenlabs.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bowenlabs/project-thebes",
+    "directory": "packages/cadmea-plugin-ecommerce"
+  },
+  "keywords": [
+    "cadmea",
+    "cadmus",
+    "cms",
+    "ecommerce",
+    "plugin",
+    "cloudflare"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@thebes/cadmus": "workspace:*",
+    "hono": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "hono": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@thebes/cadmus": "workspace:*",
+    "hono": "latest",
+    "typescript": "latest",
+    "vite-plus": "latest",
+    "vitest": "latest"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
+}

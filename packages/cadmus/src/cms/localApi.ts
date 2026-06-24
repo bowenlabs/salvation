@@ -17,10 +17,13 @@ import type {
 } from "drizzle-orm/sqlite-core";
 import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
 import { collectionSearchTableName, extractSearchText } from "./codegen.js";
-import type {
-  CollectionAccess,
-  CollectionConfig,
-  RelationshipDepth,
+import {
+  type CollectionAccess,
+  type CollectionConfig,
+  flattenDoc,
+  flattenFields,
+  nestDoc,
+  type RelationshipDepth,
 } from "./types.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: matches drizzle-orm's own SQLiteTableWithColumns default generic usage
@@ -89,11 +92,15 @@ export interface LocalApi<TTable extends AnyTable, TContext = unknown> {
   deleteByID(context: TContext, id: number): Promise<InferSelectModel<TTable>>;
 }
 
+// `input` here is always already-flattened (group fields expanded to
+// `<key>_<subKey>`) — both callers in create()/update() flatten via
+// flattenDoc before reaching these, so flattening config.fields too means
+// every key in input lines up with a key in this flattened field map.
 function validateRequiredFields(
   config: CollectionConfig,
   input: Record<string, unknown>,
 ): void {
-  for (const [key, field] of Object.entries(config.fields)) {
+  for (const [key, field] of Object.entries(flattenFields(config.fields))) {
     const hasDefault = field.defaultValue !== undefined;
     if (field.required && !hasDefault && input[key] === undefined) {
       throw new CadmusCmsError(
@@ -107,8 +114,9 @@ function rejectUnknownFields(
   config: CollectionConfig,
   input: Record<string, unknown>,
 ): void {
+  const flatFields = flattenFields(config.fields);
   for (const key of Object.keys(input)) {
-    if (!(key in config.fields)) {
+    if (!(key in flatFields)) {
       throw new CadmusCmsError(
         `Unknown field "${key}" for collection "${config.slug}"`,
       );
@@ -142,10 +150,67 @@ function notFound(config: CollectionConfig, id: number): never {
  * registry is just the raw ingredients — a table and a config per
  * collection slug — built once by the app (e.g. from `cadmeaConfig.collections`)
  * and passed to every `createLocalApi` call that has relationship fields.
+ *
+ * `apis` is a second, optional registry on the same object, for a
+ * different problem: a *hook* (not `createLocalApi` itself) on one
+ * collection that needs to write to *another* collection's Local API —
+ * e.g. a CRM upsert hook on a lead-capture collection that creates/updates
+ * `contacts`/`activities` rows. `tables`/`configs` can't serve this, since
+ * a hook needs a real `LocalApi` (with its own access/hooks/search wiring
+ * already applied), not raw ingredients to rebuild one from.
+ *
+ * The chicken-and-egg problem this solves: building collection A's
+ * `LocalApi` might need to reference collection B's `LocalApi` (for a
+ * hook), but collection B's `LocalApi` doesn't exist yet at the point A's
+ * is constructed — and vice versa if B also has a hook referencing A.
+ * The fix is **late binding**: build one `CmsRegistry` object, pass the
+ * *same reference* into every `createLocalApi` call (so every collection's
+ * hooks close over the same mutable object), construct every `LocalApi`,
+ * then fill in `registry.apis` afterwards:
+ *
+ * ```ts
+ * const registry: CmsRegistry = { tables, configs, apis: {} };
+ * const contactsApi = createLocalApi(db, contactsTable, contactsCollection, registry);
+ * const inquiriesApi = createLocalApi(db, inquiriesTable, inquiriesCollection, registry);
+ * // populate *after* every createLocalApi call returns — any hook that
+ * // reads registry.apis lazily (inside its returned function body, not
+ * // at hook-factory-call time) sees the fully-populated map, since hooks
+ * // only ever run once real requests start landing.
+ * Object.assign(registry.apis!, { contacts: contactsApi, inquiries: inquiriesApi });
+ * ```
+ *
+ * See `getRegisteredApi` for the accessor a hook factory should use to
+ * read from this map, rather than indexing `registry.apis` directly.
  */
 export interface CmsRegistry {
   tables: Record<string, AnyTable>;
   configs: Record<string, CollectionConfig>;
+  // biome-ignore lint/suspicious/noExplicitAny: collections in the same registry can have different TContext shapes — same `any` escape hatch hono/cms.ts's CmsRoutesOptions already uses for the same reason
+  apis?: Record<string, LocalApi<AnyTable, any>>;
+}
+
+/**
+ * Reads collection `slug`'s `LocalApi` out of `registry.apis` — the
+ * accessor hook factories should use (see `CmsRegistry`'s doc comment for
+ * the late-binding pattern this assumes) instead of indexing
+ * `registry.apis` directly, so every caller gets the same clear error if
+ * the registry wasn't built/populated correctly. `TContext` is a type-only
+ * parameter (the registry itself is stored with `never` to stay variance-
+ * safe across collections with different context shapes) — callers assert
+ * the context type they expect, the same way `resolveRelationships`'s own
+ * registry lookups do.
+ */
+export function getRegisteredApi<TContext>(
+  registry: CmsRegistry | undefined,
+  slug: string,
+): LocalApi<AnyTable, TContext> {
+  const api = registry?.apis?.[slug];
+  if (!api) {
+    throw new CadmusCmsError(
+      `No LocalApi registered for collection "${slug}" — pass a CmsRegistry whose "apis" map has been populated with every collection a hook needs to reach (see CmsRegistry's doc comment for the late-binding build order)`,
+    );
+  }
+  return api;
 }
 
 /**
@@ -370,6 +435,18 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
   registry?: CmsRegistry,
 ): LocalApi<TTable, TContext> {
   const idColumn = table.id;
+  // Group fields are the only reason a document's shape (nested) ever
+  // differs from its row's shape (flat columns) — skip the flatten/nest
+  // round-trip entirely for the common case of a collection with none, so
+  // every existing collection (none of which have group fields yet) pays
+  // zero cost for this.
+  const hasGroupFields = Object.values(config.fields).some(
+    (field) => field.type === "group",
+  );
+  const toFlatDoc = (doc: Record<string, unknown>) =>
+    hasGroupFields ? flattenDoc(config.fields, doc) : doc;
+  const toNestedDoc = (row: Record<string, unknown>) =>
+    hasGroupFields ? (nestDoc(config.fields, row) as AnyRecord) : row;
 
   return {
     async find(context, options) {
@@ -394,13 +471,16 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
       if (options?.limit !== undefined) query = query.limit(options.limit);
       if (options?.offset !== undefined) query = query.offset(options.offset);
       const rows = await query;
+      const nestedRows = rows.map((row) =>
+        toNestedDoc(row as Record<string, unknown>),
+      );
       const afterHooks = hasReadHooks(config)
         ? await Promise.all(
-            rows.map((row) =>
+            nestedRows.map((row) =>
               runReadHooks(config, row as Record<string, unknown>),
             ),
           )
-        : rows;
+        : nestedRows;
       const resolved =
         options?.depth === 1
           ? await resolveRelationships(
@@ -436,9 +516,10 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
       }
       const [row] = await db.select().from(table).where(eq(idColumn, id));
       if (!row) notFound(config, id);
+      const nestedRow = toNestedDoc(row as Record<string, unknown>);
       const afterHooks = hasReadHooks(config)
-        ? await runReadHooks(config, row as Record<string, unknown>)
-        : row;
+        ? await runReadHooks(config, nestedRow as Record<string, unknown>)
+        : nestedRow;
       const resolved =
         options?.depth === 1
           ? (
@@ -470,33 +551,39 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
         ORDER BY rank
         LIMIT ${limit}
       `);
-      return rows as InferSelectModel<TTable>[];
+      return rows.map((row) =>
+        toNestedDoc(row as Record<string, unknown>),
+      ) as InferSelectModel<TTable>[];
     },
 
     async create(context, input) {
       await checkAccess(config, "create", context);
       // beforeChange runs before validation so a hook may supply or default
-      // a required field (e.g. the SEO plugin defaulting metaTitle).
+      // a required field (e.g. the SEO plugin defaulting metaTitle). Hooks
+      // always see/return the nested document shape — flattening for the
+      // DB write happens after, never inside a hook.
       const data = await runBeforeChange(
         config,
         input as Record<string, unknown>,
       );
-      validateRequiredFields(config, data);
-      rejectUnknownFields(config, data);
-      let doc: InferSelectModel<TTable> | undefined;
+      const flatData = toFlatDoc(data);
+      validateRequiredFields(config, flatData);
+      rejectUnknownFields(config, flatData);
+      let row: InferSelectModel<TTable> | undefined;
       try {
-        const [row] = await db
+        const [inserted] = await db
           .insert(table)
           // biome-ignore lint/suspicious/noExplicitAny: TTable is an abstract generic here, so drizzle's column-mapped insert types can't narrow against it — InferInsertModel<TTable> already gives callers the real, concrete typing.
-          .values(data as any)
+          .values(flatData as any)
           .returning();
-        doc = row as InferSelectModel<TTable>;
+        row = inserted as InferSelectModel<TTable>;
       } catch (error) {
         wrapWriteError(config, error);
       }
       // wrapWriteError returns `never`, so reaching here means the insert
-      // succeeded and `doc` is set. afterChange runs outside the try so its
+      // succeeded and `row` is set. afterChange runs outside the try so its
       // side-effect errors aren't mis-reported as write failures.
+      const doc = toNestedDoc(row as AnyRecord);
       await syncSearchIndex(db, config, doc as AnyRecord);
       await runAfterChange(config, doc as Record<string, unknown>, "create");
       return doc as InferSelectModel<TTable>;
@@ -508,20 +595,22 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
         config,
         input as Record<string, unknown>,
       );
-      rejectUnknownFields(config, data);
-      let doc: InferSelectModel<TTable> | undefined;
+      const flatData = toFlatDoc(data);
+      rejectUnknownFields(config, flatData);
+      let row: InferSelectModel<TTable> | undefined;
       try {
-        const [row] = await db
+        const [updated] = await db
           .update(table)
           // biome-ignore lint/suspicious/noExplicitAny: see create() above
-          .set(data as any)
+          .set(flatData as any)
           .where(eq(idColumn, id))
           .returning();
-        if (!row) notFound(config, id);
-        doc = row as InferSelectModel<TTable>;
+        if (!updated) notFound(config, id);
+        row = updated as InferSelectModel<TTable>;
       } catch (error) {
         wrapWriteError(config, error);
       }
+      const doc = toNestedDoc(row as AnyRecord);
       await syncSearchIndex(db, config, doc as AnyRecord);
       await runAfterChange(config, doc as Record<string, unknown>, "update");
       return doc as InferSelectModel<TTable>;
@@ -530,8 +619,12 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
     async deleteByID(context, id) {
       await checkAccess(config, "delete", context);
       await runBeforeDelete(config, id);
-      const [row] = await db.delete(table).where(eq(idColumn, id)).returning();
-      if (!row) notFound(config, id);
+      const [rawRow] = await db
+        .delete(table)
+        .where(eq(idColumn, id))
+        .returning();
+      if (!rawRow) notFound(config, id);
+      const row = toNestedDoc(rawRow as Record<string, unknown>);
       await removeFromSearchIndex(db, config, id);
       await runAfterDelete(config, id);
       return row as InferSelectModel<TTable>;

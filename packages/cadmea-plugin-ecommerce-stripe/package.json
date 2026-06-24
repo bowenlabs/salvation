@@ -1,0 +1,54 @@
+{
+  "name": "@thebes/cadmea-plugin-ecommerce-stripe",
+  "version": "0.1.0",
+  "description": "Stripe PaymentProvider for @thebes/cadmea-plugin-ecommerce — raw fetch() + crypto.subtle, no Stripe Node SDK",
+  "author": "BowenLabs <hello@bowenlabs.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bowenlabs/project-thebes",
+    "directory": "packages/cadmea-plugin-ecommerce-stripe"
+  },
+  "keywords": [
+    "cadmea",
+    "cadmus",
+    "cms",
+    "ecommerce",
+    "stripe",
+    "payments",
+    "cloudflare"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    }
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@thebes/cadmea-plugin-ecommerce": "workspace:*",
+    "@thebes/cadmus": "workspace:*"
+  },
+  "devDependencies": {
+    "@thebes/cadmea-plugin-ecommerce": "workspace:*",
+    "@thebes/cadmus": "workspace:*",
+    "typescript": "latest",
+    "vite-plus": "latest",
+    "vitest": "latest"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
+}

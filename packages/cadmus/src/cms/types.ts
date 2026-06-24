@@ -122,6 +122,34 @@ export interface UploadFieldConfig extends BaseFieldConfig {
   defaultValue?: string;
 }
 
+/**
+ * A freeform JSON-blob column — the `json` field type from Section 3 (issue
+ * #20-adjacent field-type gap, see DECISIONS.md). Storage-identical to
+ * `richText`/`array` (one `.$type<JsonValue>()` text column, see
+ * codegen.ts's `fieldToColumn`) but with no TipTap/array-item connotation —
+ * use this for genuinely unstructured data (webhook audit payloads, CRM
+ * activity metadata), not page-builder content.
+ */
+export interface JsonFieldConfig extends BaseFieldConfig {
+  type: "json";
+  defaultValue?: JsonValue;
+}
+
+/**
+ * A fixed-shape, queryable sub-object — the `group` field type from Section
+ * 3. Unlike `array` (JSON-blob storage, variable length), `group` flattens
+ * to real prefixed columns at the Drizzle level (`<key>_<subKey>`, see
+ * codegen.ts's `collectionToTable` and `flattenFields` below) so SQL-level
+ * querying/sorting on a subfield (e.g. `shippingAddress.city`) still works.
+ * `required`/`unique`/`defaultValue` on the group itself are meaningless —
+ * set them on the individual nested `fields` instead; codegen ignores them
+ * at the group level.
+ */
+export interface GroupFieldConfig extends BaseFieldConfig {
+  type: "group";
+  fields: Record<string, FieldConfig>;
+}
+
 export type FieldConfig =
   | TextFieldConfig
   | SelectFieldConfig
@@ -131,7 +159,101 @@ export type FieldConfig =
   | CheckboxFieldConfig
   | RelationshipFieldConfig
   | ArrayFieldConfig
-  | UploadFieldConfig;
+  | UploadFieldConfig
+  | JsonFieldConfig
+  | GroupFieldConfig;
+
+/**
+ * Expands every `group` field in `fields` into its flattened equivalents
+ * (`<key>_<subKey>`, recursively — a group nested inside a group flattens
+ * all the way down), and passes every other field through unchanged. This
+ * is the single canonicalization step codegen, schema-gen, and the Local
+ * API's field-shape validation (`validateRequiredFields`/
+ * `rejectUnknownFields`) all run before touching `group` fields, so none of
+ * them need their own group-aware branch — see localApi.ts's `flattenDoc`/
+ * `nestDoc` for the matching document-level transform.
+ *
+ * Known limitation: a flattened key can collide if two different group
+ * nestings produce the same combined name (e.g. a group `a_b` containing
+ * field `c` collides with group `a` containing field `b_c`) — not guarded
+ * against, since no current collection nests groups deeply enough to hit
+ * it.
+ */
+export function flattenFields(
+  fields: Record<string, FieldConfig>,
+): Record<string, FieldConfig> {
+  const result: Record<string, FieldConfig> = {};
+  for (const [key, field] of Object.entries(fields)) {
+    if (field.type === "group") {
+      for (const [subKey, subField] of Object.entries(
+        flattenFields(field.fields),
+      )) {
+        result[`${key}_${subKey}`] = subField;
+      }
+    } else {
+      result[key] = field;
+    }
+  }
+  return result;
+}
+
+/**
+ * The document-level counterpart to `flattenFields` — turns a `group`
+ * field's nested object value (`{ shippingAddress: { city: "..." } }`) into
+ * its flattened equivalent (`{ shippingAddress_city: "..." }`) for writing
+ * to the DB, recursively. Fields not present in `doc` are simply omitted
+ * from the result (lets `update()`'s partial inputs flatten correctly —
+ * an absent group means every one of its flattened keys is absent too, not
+ * `undefined`-valued). See `nestDoc` for the inverse, used on read.
+ */
+export function flattenDoc(
+  fields: Record<string, FieldConfig>,
+  doc: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, field] of Object.entries(fields)) {
+    if (field.type === "group") {
+      if (!(key in doc)) continue;
+      const nested = (doc[key] ?? {}) as Record<string, unknown>;
+      for (const [subKey, subValue] of Object.entries(
+        flattenDoc(field.fields, nested),
+      )) {
+        result[`${key}_${subKey}`] = subValue;
+      }
+    } else if (key in doc) {
+      result[key] = doc[key];
+    }
+  }
+  return result;
+}
+
+/**
+ * The inverse of `flattenDoc` — re-nests a flat DB row's `<key>_<subKey>`
+ * columns back into `{ key: { subKey: ... } }` for everything the Local
+ * API returns to a caller, so a `group` field's document shape always
+ * matches its config shape regardless of how it's actually stored.
+ */
+export function nestDoc(
+  fields: Record<string, FieldConfig>,
+  flatRow: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, field] of Object.entries(fields)) {
+    if (field.type === "group") {
+      const prefix = `${key}_`;
+      const nestedFlat: Record<string, unknown> = {};
+      for (const [flatKey, value] of Object.entries(flatRow)) {
+        if (flatKey.startsWith(prefix)) {
+          nestedFlat[flatKey.slice(prefix.length)] = value;
+        }
+      }
+      result[key] = nestDoc(field.fields, nestedFlat);
+    } else if (key in flatRow) {
+      result[key] = flatRow[key];
+    }
+  }
+  return result;
+}
 
 /**
  * Per-operation access check, modeled on Payload's own `access` shape.

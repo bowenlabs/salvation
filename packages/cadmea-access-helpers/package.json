@@ -1,0 +1,46 @@
+{
+  "name": "@thebes/cadmea-access-helpers",
+  "version": "0.1.0",
+  "description": "Composable access-control predicates for Cadmea collection access blocks",
+  "author": "BowenLabs <hello@bowenlabs.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bowenlabs/project-thebes",
+    "directory": "packages/cadmea-access-helpers"
+  },
+  "keywords": [
+    "cadmea",
+    "cadmus",
+    "cms",
+    "access-control",
+    "cloudflare"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@thebes/cadmus": "workspace:*"
+  },
+  "devDependencies": {
+    "@thebes/cadmus": "workspace:*",
+    "typescript": "latest",
+    "vite-plus": "latest",
+    "vitest": "latest"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
+}

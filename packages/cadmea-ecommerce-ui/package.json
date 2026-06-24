@@ -1,0 +1,59 @@
+{
+  "name": "@thebes/cadmea-ecommerce-ui",
+  "version": "0.1.0",
+  "description": "Storefront SolidJS components for @thebes/cadmea-plugin-ecommerce — ProductDetail, cart, and checkout",
+  "author": "BowenLabs <hello@bowenlabs.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bowenlabs/project-thebes",
+    "directory": "packages/cadmea-ecommerce-ui"
+  },
+  "keywords": [
+    "cadmea",
+    "cadmus",
+    "ecommerce",
+    "solidjs",
+    "cloudflare"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@thebes/cadmus": "workspace:*",
+    "solid-js": ">=1.9.0"
+  },
+  "devDependencies": {
+    "@thebes/cadmus": "workspace:*",
+    "@solidjs/testing-library": "latest",
+    "@testing-library/dom": "latest",
+    "@testing-library/jest-dom": "latest",
+    "@rolldown/plugin-babel": "^0.2.3",
+    "babel-preset-solid": "^1.9.12",
+    "@babel/core": "^7.28.0",
+    "jsdom": "latest",
+    "solid-js": "^1.9.13",
+    "typescript": "latest",
+    "vite-plugin-solid": "latest",
+    "vite-plus": "latest",
+    "vitest": "latest"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
+}

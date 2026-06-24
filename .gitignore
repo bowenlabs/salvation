@@ -43,3 +43,13 @@ test-results/
 
 # Internal docs — never in public repo
 IP_AND_LICENSING.md
+
+# Dead packaging configs — every package builds via `vp pack`
+# (vite.config.ts's `pack` block) as of DECISIONS.md's 2026-06-24
+# consistency-gap entries. tsup/tsdown configs are leftovers from before
+# each package's migration (some couldn't be deleted outright in the
+# environment that did the migration — see that entry's "Known friction"
+# note) and are never read by anything. Ignored so none get re-tracked or
+# mistaken for live config.
+**/tsup.config.ts
+**/tsdown.config.ts

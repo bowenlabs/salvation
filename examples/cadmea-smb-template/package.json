@@ -1,0 +1,32 @@
+{
+  "name": "cadmea-example-smb-template",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Worked multi-provider (Square + Stripe) ecommerce example combining @thebes/cadmea-plugin-crm, @thebes/cadmea-plugin-redirects, and @thebes/cadmea-plugin-ecommerce",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "deploy": "astro build && wrangler deploy"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^13.7.0",
+    "@astrojs/solid-js": "latest",
+    "@thebes/cadmea-access-helpers": "workspace:*",
+    "@thebes/cadmea-ecommerce-ui": "workspace:*",
+    "@thebes/cadmea-plugin-crm": "workspace:*",
+    "@thebes/cadmea-plugin-ecommerce": "workspace:*",
+    "@thebes/cadmea-plugin-ecommerce-square": "workspace:*",
+    "@thebes/cadmea-plugin-ecommerce-stripe": "workspace:*",
+    "@thebes/cadmea-plugin-redirects": "workspace:*",
+    "@thebes/cadmus": "workspace:*",
+    "astro": "^5.0.0",
+    "hono": "latest",
+    "solid-js": "^1.9.13"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "typescript": "latest",
+    "wrangler": "latest"
+  }
+}

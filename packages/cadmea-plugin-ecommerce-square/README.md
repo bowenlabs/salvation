@@ -1,0 +1,68 @@
+# @thebes/cadmea-plugin-ecommerce-square
+
+Square's [`PaymentProvider`](https://www.npmjs.com/package/@thebes/cadmea-plugin-ecommerce)
+implementation for [Cadmea](https://github.com/bowenlabs/project-thebes)'s
+ecommerce extension — raw `fetch()` against Square's REST API +
+`crypto.subtle` for webhook signature verification. **No Square Node SDK,
+ever** — it's Node-targeted and never runs in a V8 isolate.
+
+```bash
+pnpm add @thebes/cadmea-plugin-ecommerce-square @thebes/cadmea-plugin-ecommerce
+```
+
+## Server-side
+
+```ts
+import { createSquarePaymentProvider } from "@thebes/cadmea-plugin-ecommerce-square";
+
+const provider = createSquarePaymentProvider({
+  accessToken: env.SQUARE_ACCESS_TOKEN,
+  locationId: env.SQUARE_LOCATION_ID, // or string[] for multi-location
+  environment: "sandbox", // or "production"
+});
+```
+
+Pass `provider` to `@thebes/cadmea-plugin-ecommerce`'s `createCheckoutHandler`/
+`createWebhookHandler`. Webhook signature verification follows Square's
+documented algorithm exactly: `HMAC-SHA256(notificationUrl + rawBody,
+signatureKey)`, base64-encoded, checked against the
+`x-square-hmacsha256-signature` header — fails closed (returns `false`,
+never throws) if no `notificationUrl` is configured, since Square's scheme
+genuinely needs one.
+
+**Not implemented in this first cut:** `catalogSync` and `subscriptions` —
+Square's loyalty/recurring-order model doesn't map cleanly onto either
+optional `PaymentProvider` capability without further design. Use
+`@thebes/cadmea-plugin-ecommerce-stripe` if you need native subscriptions.
+
+## Client-side tokenization
+
+A separate `/client` subpath — card data must never reach the Worker, so
+tokenization happens entirely in the browser via Square's Web Payments SDK
+(loaded dynamically, no bundler config needed). This is **not a SolidJS
+component** — it's a thin, framework-agnostic helper, the same precedent
+this codebase already set for Phosphor icons and TipTap (no official Solid
+binding exists for Square's SDK either, so the vendor's own
+framework-agnostic build is used directly):
+
+```ts
+import { createSquareCardField } from "@thebes/cadmea-plugin-ecommerce-square/client";
+
+const card = await createSquareCardField(containerEl, {
+  applicationId: PUBLIC_SQUARE_APPLICATION_ID,
+  locationId: PUBLIC_SQUARE_LOCATION_ID,
+  environment: "sandbox",
+});
+
+// on checkout submit:
+const paymentSourceToken = await card.tokenize();
+```
+
+`@thebes/cadmea-plugin-ecommerce-stripe/client`'s `createStripeCardField`
+shares the exact same `{ tokenize(), destroy() }` shape — swapping
+providers means swapping which helper you call, not rewriting your
+checkout UI.
+
+## License
+
+MIT © BowenLabs

@@ -25,8 +25,8 @@
     }
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "vp pack",
+    "dev": "vp pack --watch",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -35,8 +35,8 @@
   },
   "devDependencies": {
     "@thebes/cadmus": "workspace:*",
-    "tsup": "latest",
     "typescript": "latest",
+    "vite-plus": "latest",
     "vitest": "latest"
   },
   "files": [

@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@thebes/cadmea": "workspace:*",
+    "@thebes/cadmea-access-helpers": "workspace:*",
     "@thebes/cadmea-design-system": "workspace:*",
     "@thebes/cadmea-plugin-seo": "workspace:*",
     "@thebes/cadmus": "workspace:*",

@@ -1,3 +1,4 @@
+import { requireRole } from "@thebes/cadmea-access-helpers";
 import { seoPlugin } from "@thebes/cadmea-plugin-seo";
 import { defineCmsConfig } from "@thebes/cadmus/cms";
 import type { Role, Session } from "./core/lib/session.js";
@@ -8,27 +9,26 @@ import type { Role, Session } from "./core/lib/session.js";
 // publicly readable, so `read` never even inspects this). `internal` marks
 // the trusted Service Binding RPC (app/workers/cadmea/app/service.ts,
 // reachable only Worker-to-Worker, never from the internet) so it can
-// perform writes without a real admin session.
+// perform writes without a real admin session. Matches
+// @thebes/cadmea-access-helpers' RoleAccessContext shape exactly — that
+// package's `requireRole` is the generalized version of what used to be
+// hand-rolled here (Phase 6 / issue #26's original `requireRole`).
 export interface PagesAccessContext {
   session: Session | null;
   internal?: boolean;
 }
 
-// First place `role` becomes load-bearing (Phase 6 / issue #26) — the
-// internal Service Binding RPC always passes, real sessions are checked
-// against `allowed`. Viewers get read-only; editors can draft/edit but
-// not delete or publish; owner can do everything.
-function requireRole(...allowed: Role[]) {
-  return ({ session, internal }: PagesAccessContext) =>
-    internal === true || (session !== null && allowed.includes(session.role));
-}
-
-const requireEditorOrAbove = requireRole("owner", "editor");
+// Viewers get read-only; editors can draft/edit but not delete or publish;
+// owner can do everything.
+const requireEditorOrAbove = requireRole<Role, PagesAccessContext>(
+  "owner",
+  "editor",
+);
 
 // Publishing is a separate privilege from editing a draft (Payload's own
 // model) — owner-only, same as delete. Kept as its own access key so this
 // stays a one-line change if the split ever needs to move.
-const requirePublishPermission = requireRole("owner");
+const requirePublishPermission = requireRole<Role, PagesAccessContext>("owner");
 
 // The base `pages` definition. NOTE: consumers must not import this — they
 // import the resolved `pagesCollection` below, which is this definition
@@ -47,7 +47,7 @@ const pagesBase = {
     read: () => true,
     create: requireEditorOrAbove,
     update: requireEditorOrAbove,
-    delete: requireRole("owner"),
+    delete: requireRole<Role, PagesAccessContext>("owner"),
     publish: requirePublishPermission,
   },
   // Real draft/published separation with version history — see

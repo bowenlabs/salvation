@@ -128,3 +128,21 @@ export class CadmusAccessDeniedError extends CadmusCmsError {
     this.name = "CadmusAccessDeniedError";
   }
 }
+
+/**
+ * Thrown by @thebes/cadmus/hono's `createCmsApiClient` when a request
+ * against a `mountCmsRoutes` surface returns a non-2xx response. Carries
+ * the HTTP status and parsed body so callers can branch on `status`
+ * (e.g. 403 → access denied, 404 → not found) instead of re-parsing
+ * `{ error: string }` response bodies by hand.
+ */
+export class CadmusApiError extends CadmusError {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly body: unknown,
+  ) {
+    super(message, "API_ERROR");
+    this.name = "CadmusApiError";
+  }
+}

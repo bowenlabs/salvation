@@ -1,0 +1,47 @@
+{
+  "name": "@thebes/cadmea-plugin-redirects",
+  "version": "0.1.0",
+  "description": "Redirects plugin for Cadmea — injects a redirects collection and a public-site lookup helper",
+  "author": "BowenLabs <hello@bowenlabs.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bowenlabs/project-thebes",
+    "directory": "packages/cadmea-plugin-redirects"
+  },
+  "keywords": [
+    "cadmea",
+    "cadmus",
+    "cms",
+    "redirects",
+    "plugin",
+    "cloudflare"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@thebes/cadmus": "workspace:*"
+  },
+  "devDependencies": {
+    "@thebes/cadmus": "workspace:*",
+    "typescript": "latest",
+    "vite-plus": "latest",
+    "vitest": "latest"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
+}
