@@ -25,6 +25,14 @@ export default function PanelShell(props: PanelShellProps): JSX.Element {
 
   return (
     <div class="lg:flex lg:min-h-screen">
+      {/* Keyboard users would otherwise tab through the whole nav (plus
+          search/logout) before reaching page content, on every route. */}
+      <a
+        href="#page-content"
+        class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-base-100 focus:px-4 focus:py-2 focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
       <PanelNav
         siteName={props.siteName}
         logoutUrl={props.logoutUrl}
@@ -44,7 +52,9 @@ export default function PanelShell(props: PanelShellProps): JSX.Element {
           publicSiteUrl={props.publicSiteUrl}
           onOpenSidebar={() => setSidebarOpen(true)}
         />
-        <main class="page-wrap flex-1 px-4 py-6">{props.children}</main>
+        <main id="page-content" class="page-wrap flex-1 px-4 py-6">
+          {props.children}
+        </main>
       </div>
 
       {/* Cmd+K (Ctrl+K) search palette — issue #29. Fans out across every

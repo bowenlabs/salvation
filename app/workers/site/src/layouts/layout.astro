@@ -107,6 +107,16 @@ const renderedLogo = settings?.logoUrl
 			import { mountPreviewTokenListener } from "../scripts/preview-token-listener";
 			mountPreviewTokenListener();
 		</script>
+		{/* Keyboard/screen-reader users would otherwise tab through the
+			entire nav (and SiteNav's own links) before reaching content on
+			every single page load. sr-only until focused, per the standard
+			skip-link pattern. */}
+		<a
+			href="#main"
+			class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-base-100 focus:px-4 focus:py-2 focus:shadow-lg"
+		>
+			Skip to main content
+		</a>
 		{showChrome && (
 			<SiteNav
 				siteName={settings?.siteName ?? "Thebes"}
@@ -115,7 +125,7 @@ const renderedLogo = settings?.logoUrl
 				activePath={Astro.url.pathname}
 			/>
 		)}
-		<main>
+		<main id="main">
 			<slot />
 		</main>
 		{showChrome && (
