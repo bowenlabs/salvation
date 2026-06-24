@@ -92,7 +92,14 @@ app.get("/admin/manifest.webmanifest", async (c) => {
   const settings = await getSiteSettings(c.env.DB);
   const siteName = settings?.siteName?.trim() || "Cadmea";
   const icons = settings?.logoUrl
-    ? [{ src: settings.logoUrl, sizes: "any", type: "image/png", purpose: "any" }]
+    ? [
+        {
+          src: settings.logoUrl,
+          sizes: "any",
+          type: "image/png",
+          purpose: "any",
+        },
+      ]
     : [
         { src: "/logo192.png", sizes: "192x192", type: "image/png" },
         { src: "/logo512.png", sizes: "512x512", type: "image/png" },
