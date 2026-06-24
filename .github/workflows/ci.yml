@@ -127,6 +127,31 @@ jobs:
       - run: pnpm build:packages
       - run: pnpm test:int
 
+  test-extensions:
+    name: Test extension packages (design-system, plugins, adapters)
+    runs-on: ubuntu-latest
+    needs: build-cadmus
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      # Each of these packages has its own dedicated Vitest suite that was
+      # previously never run as a CI job — only exercised indirectly via
+      # test-int (e.g. app/cadmea.config.ts pulling in cadmea-plugin-seo).
+      # Some have genuine *runtime* (not type-only) cross-package imports
+      # — cadmea-plugin-crm's getRegisteredApi and cadmea-plugin-ecommerce's
+      # checkRateLimit both come from @thebes/cadmus at runtime — so dist/
+      # has to exist before these test files can even import successfully.
+      # build:packages builds all of them, deliberately, same reason
+      # build-site's own comment gives: a partial enumeration here would
+      # just reintroduce the bug this job's own PR fixed.
+      - run: pnpm build:packages
+      - run: pnpm test:extensions
+
   test-e2e:
     name: E2e + accessibility (Playwright + axe-core)
     runs-on: ubuntu-latest
