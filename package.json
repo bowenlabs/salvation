@@ -13,6 +13,7 @@
     "dev:site": "cd app/workers/site && wrangler dev --port 3000 --persist-to ../../../.wrangler/state",
     "dev:cadmea": "cd app/workers/cadmea && wrangler dev --port 3001 --persist-to ../../../.wrangler/state",
     "dev": "concurrently \"pnpm dev:site\" \"pnpm dev:cadmea\"",
+    "setup": "tsx app/scripts/setup-dev-vars.ts",
     "build:cadmus": "cd packages/cadmus && pnpm build",
     "build:cadmea-pkg": "cd packages/cadmea && pnpm build",
     "build:design-system": "cd packages/cadmea-design-system && pnpm build",

@@ -727,6 +727,7 @@ Same D1 `database_id`, same KV `id`, same R2 `bucket_name`.
 
 ```bash
 # From repo root
+pnpm setup            # writes both Workers' .dev.vars for local dev — see below
 pnpm dev:site         # wrangler dev in app/workers/site/ — :3000
 pnpm dev:cadmea        # wrangler dev in app/workers/cadmea/ — :3001
 pnpm dev              # both Workers via concurrently
@@ -753,6 +754,16 @@ pnpm test:cadmus      # Vitest + @cloudflare/vitest-pool-workers on packages/cad
 pnpm test:int         # Cadmea integration tests
 pnpm test:e2e         # Playwright + axe
 ```
+
+`pnpm setup` is contributor-facing local-dev convenience only — it writes
+`SESSION_SECRET`/`ADMIN_EMAIL`/`MEDIA_URL`/`CADMEA_URL`/`SERVER_URL` into
+both Workers' `.dev.vars` so `wrangler dev`'s emulated D1/KV/R2
+(`--persist-to`) work without a real Cloudflare account. It does **not**
+create real D1/KV/R2 resources, configure a custom domain, or do anything
+else an operator deploying their own site needs — this repo isn't that
+operator's fork target (see README.md's "bigger picture" section; that's
+the separate `bowenlabs-template` repo). Idempotent and non-destructive:
+skips any `.dev.vars` file that already exists rather than overwriting it.
 
 ---
 
