@@ -1,6 +1,6 @@
 {
   "name": "@thebes/cadmea-plugin-redirects",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Redirects plugin for Cadmea — injects a redirects collection and a public-site lookup helper",
   "author": "BowenLabs <hello@bowenlabs.io>",
   "license": "MIT",

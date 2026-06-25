@@ -1,6 +1,6 @@
 {
   "name": "@thebes/cadmea-plugin-ecommerce",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Provider-agnostic ecommerce core for Cadmea — products/orders/customers/payments collections, the PaymentProvider interface, and checkout/webhook Hono handlers",
   "author": "BowenLabs <hello@bowenlabs.io>",
   "license": "MIT",

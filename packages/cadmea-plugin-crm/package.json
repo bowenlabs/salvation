@@ -1,6 +1,6 @@
 {
   "name": "@thebes/cadmea-plugin-crm",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "CRM plugin for Cadmea — contacts/activities collections plus a generic upsert-on-submit hook for any lead-capture collection",
   "author": "BowenLabs <hello@bowenlabs.io>",
   "license": "MIT",
