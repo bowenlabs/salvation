@@ -1,0 +1,52 @@
+---
+title: "@thebes/cadmea-design-system"
+description: The design-token engine behind Cadmea — DaisyUI theme presets, an OKLCH brand-color ramp, spacing/type tokens, and font pairings.
+---
+
+The design-token engine behind [Cadmea](/docs/cadmea/): turn a plain settings object into the CSS
+token cascade — DaisyUI v5 theme presets, an OKLCH brand-color ramp, spacing/type tokens, and
+font pairings.
+
+**Standalone library** — not a Cadmea plugin and not a Cadmus adapter (see
+[EXTENDING.md](https://github.com/bowenlabs/project-thebes/blob/main/EXTENDING.md)). Pure
+functions, **zero dependencies**, no platform APIs, so the same code renders the cascade
+server-side (SSR `<style>`, no FOUC) and client-side (the Panel's live preview).
+
+```bash
+pnpm add @thebes/cadmea-design-system
+```
+
+## Core API
+
+```ts
+import { buildTokenStyle } from "@thebes/cadmea-design-system";
+
+const css = buildTokenStyle({
+  theme: "citadel",
+  brandColor: "#2563eb",
+  spacingPreset: "balanced",
+  fontPairing: "modern",
+});
+// → a :root {…} block (spacing/type tokens) + a
+//   [data-theme="theme-citadel"] {…} block (brand ramp, structural slots, fonts)
+```
+
+`buildTokenStyle(settings)` is the single implementation of the cascade, called from the Astro
+site layout, Cadmea's `BrandColorProvider`, and the preview script — so the override logic lives
+exactly once.
+
+Also exported: `generateColorScale` / `pickContentColor` (OKLCH ramp + WCAG content color),
+`contrastRatio` / `passesAA` (WCAG 2.1), `resolveSpacingTokens` / `resolveTypeTokens` /
+`buildSpacingTokenStyles`, `getFontConfig` / `buildOverrideFontUrl` / `buildAllFontsUrl`, and the
+`SPACING_PRESETS` / `THEME_PRESET_LIST` / `TYPE_DEFAULTS` registries with their types.
+
+## Notes
+
+- `data-theme="theme-{name}"` names the active **theme preset** — never dark/light mode (that's
+  a separate `.dark` class).
+- The theme CSS files (`public/themes/theme-*.css`) are static assets shipped by the consuming
+  app, not by this package.
+
+## License
+
+MIT © BowenLabs

@@ -1,0 +1,68 @@
+---
+title: "@thebes/cadmea-plugin-ecommerce-stripe"
+description: Stripe's PaymentProvider implementation for Cadmea's ecommerce extension.
+---
+
+Stripe's [`PaymentProvider`](/docs/extensions/cadmea-plugin-ecommerce/) implementation for
+[Cadmea](/docs/cadmea/)'s ecommerce extension — raw `fetch()` against Stripe's REST API +
+`crypto.subtle` for webhook signature verification. **No Stripe Node SDK, ever** — it relies on
+`node:crypto`/`node:http` internally and never runs in a V8 isolate.
+
+```bash
+pnpm add @thebes/cadmea-plugin-ecommerce-stripe @thebes/cadmea-plugin-ecommerce
+```
+
+## Server-side
+
+```ts
+import { createStripePaymentProvider } from "@thebes/cadmea-plugin-ecommerce-stripe";
+
+const provider = createStripePaymentProvider({
+  secretKey: env.STRIPE_SECRET_KEY,
+});
+```
+
+Pass `provider` to `@thebes/cadmea-plugin-ecommerce`'s `createCheckoutHandler`/
+`createWebhookHandler`. Webhook signature verification follows Stripe's documented scheme:
+`Stripe-Signature: t=<timestamp>,v1=<signature>`, message `${timestamp}.${rawBody}`,
+`HMAC-SHA256` hex — with a staleness check on the timestamp (`webhookToleranceSeconds`, default
+`300`, matching Stripe's own recommended tolerance) before the signature is even compared.
+
+### Real interface friction vs. Square — by design, not a bug
+
+`PaymentProvider` was deliberately pressure-tested against a second real provider after Square.
+The asymmetries this package absorbs:
+
+- Stripe's API takes `application/x-www-form-urlencoded` bodies, not JSON.
+- Stripe's idempotency key is an `Idempotency-Key` HTTP **header**, not a body field the way
+  Square's `idempotency_key` is.
+- Stripe has no object analogous to Square's separate Order — a `PaymentIntent` is both "the
+  order" and "the payment" in one call. This provider sets `providerOrderRef` and
+  `providerPaymentRef` to the same PaymentIntent id rather than inventing a fake second id.
+- Stripe has no native inventory/catalog concept matching Square's Catalog+Inventory APIs —
+  `checkCatalogPrices` reads `Price` objects (`unit_amount`/`currency`) and always returns
+  `availableQuantity: undefined`.
+- Stripe's native Subscriptions API **is** implemented here (unlike the Square provider, which
+  omits the optional `subscriptions` capability) — it's a much better fit than Square's
+  loyalty/recurring-order model.
+
+## Client-side tokenization
+
+A separate `/client` subpath, the same shape as
+[`@thebes/cadmea-plugin-ecommerce-square/client`](/docs/extensions/cadmea-plugin-ecommerce-square/)'s
+`createSquareCardField` — card data never reaches the Worker:
+
+```ts
+import { createStripeCardField } from "@thebes/cadmea-plugin-ecommerce-stripe/client";
+
+const card = await createStripeCardField(containerEl, {
+  publishableKey: PUBLIC_STRIPE_PUBLISHABLE_KEY,
+});
+
+// on checkout submit:
+const paymentSourceToken = await card.tokenize();
+```
+
+## License
+
+MIT © BowenLabs

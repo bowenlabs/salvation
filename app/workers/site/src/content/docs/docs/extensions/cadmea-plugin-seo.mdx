@@ -1,0 +1,66 @@
+---
+title: "@thebes/cadmea-plugin-seo"
+description: SEO plugin for Cadmea — meta/OG fields on your collections, rendered as <head> tags.
+---
+
+SEO plugin for [Cadmea](/docs/cadmea/). It adds meta/OG fields to your collections and renders
+the matching `<head>` tags on the public site — the V8-native equivalent of
+`@payloadcms/plugin-seo`.
+
+This is a **Cadmea plugin** — a `plugin(config) => config` transform on the `@thebes/cadmus/cms`
+config. `@thebes/cadmus` is a types-only peer; nothing here ships at runtime except your own
+field data.
+
+```bash
+pnpm add @thebes/cadmea-plugin-seo
+```
+
+## Add it to your config
+
+```ts
+import { defineCmsConfig } from "@thebes/cadmus/cms";
+import { seoPlugin } from "@thebes/cadmea-plugin-seo";
+
+export const cmsConfig = defineCmsConfig({
+  collections: [pagesCollection],
+  plugins: [seoPlugin({ collections: ["pages"] })],
+});
+```
+
+For each named collection the plugin:
+
+- injects `metaTitle` (text), `metaDescription` (text), and `ogImage` (upload) fields — so they
+  flow to the DB schema, the admin form, and the Local API automatically;
+- registers a `beforeChange` hook that defaults `metaTitle` from the document's `title` when the
+  editor leaves it blank.
+
+Collection slugs that aren't in the config are ignored, so config and plugin versions can drift
+without breaking. After adding the plugin, run `pnpm db:generate && pnpm db:migrate` to add the
+new columns.
+
+## Render the tags
+
+`renderSeoTags(doc, defaults)` returns HTML-escaped `<head>` markup, falling back to site-wide
+defaults (typically from `site_settings`). It is safe to inject via Astro's `set:html` because
+every value is escaped.
+
+```astro
+---
+import { renderSeoTags } from "@thebes/cadmea-plugin-seo";
+const tags = renderSeoTags(page, {
+  siteName: settings?.siteName,
+  metaDescription: settings?.metaDescription,
+  defaultOgImageUrl: settings?.defaultOgImageUrl,
+});
+---
+<head>
+  {tags ? <Fragment set:html={tags} /> : <title>{page.title}</title>}
+</head>
+```
+
+Title resolution is `metaTitle → title → siteName`; description and OG image fall back to the
+site defaults. Returns `""` when there is nothing to render.
+
+## License
+
+MIT © BowenLabs

@@ -1,0 +1,76 @@
+---
+title: "@thebes/cadmea-plugin-crm"
+description: CRM plugin for Cadmea — contacts/activities collections plus a generic upsert-on-submit hook.
+---
+
+CRM plugin for [Cadmea](/docs/cadmea/). Adds `contacts`/`activities` collections plus a generic
+upsert-on-submit hook factory — generalized from a pattern three sibling Next.js + Payload
+projects each hand-rolled independently (a Contacts collection + an Activities audit log + an
+upsert-by-email hook on a lead-capture collection).
+
+This is a **Cadmea plugin** — a `plugin(config) => config` transform on the `@thebes/cadmus/cms`
+config. `@thebes/cadmus` is a types-only peer; nothing here ships at runtime except your own
+contact data.
+
+```bash
+pnpm add @thebes/cadmea-plugin-crm
+```
+
+## Add it to your config
+
+```ts
+import { defineCmsConfig } from "@thebes/cadmus/cms";
+import { createContactUpsertHook, crmPlugin } from "@thebes/cadmea-plugin-crm";
+
+// Your own lead-capture collection — any name, any shape, as long as it
+// has an email-bearing field. The plugin doesn't hardcode "inquiries" or
+// "contact_messages"; you wire the hook onto whatever you define.
+const inquiriesCollection = {
+  slug: "inquiries",
+  fields: {
+    email: { type: "text", required: true },
+    message: { type: "text" },
+  },
+  hooks: {
+    afterChange: [
+      createContactUpsertHook({
+        registry,
+        emailField: "email",
+        // Hooks don't receive the original request's session — only
+        // { doc, operation } — so this is the trusted, fixed context used
+        // for the contacts/activities writes the hook makes. Your
+        // contacts/activities collections' own `access` config is what
+        // actually decides whether this value is accepted.
+        context: { internal: true },
+      }),
+    ],
+  },
+};
+
+export const cmsConfig = defineCmsConfig({
+  collections: [inquiriesCollection],
+  plugins: [crmPlugin()],
+});
+```
+
+On every *new* document with a non-empty `emailField` value, the hook upserts a matching
+`contacts` row by email and logs an `activities` row against it — `operation === "update"` never
+re-triggers it.
+
+## The late-binding registry
+
+`createContactUpsertHook` reaches `contacts`/`activities`' `LocalApi`s via `@thebes/cadmus/cms`'s
+`CmsRegistry.apis` — built and passed to every `createLocalApi` call, populated only *after*
+every one of those calls returns. See `CmsRegistry`'s own doc comment for the full build order;
+get this wrong and the hook throws a clear "no LocalApi registered" error rather than failing
+silently.
+
+## Naming things generically on purpose
+
+`contacts.lifecycleStage` and `activities.type` are plain `text` fields, not `select` enums — a
+fixed vocabulary here would bake one project's lifecycle model into a generic library. Layer your
+own constrained `select` field via a second plugin, or edit the resolved config, if you want one.
+
+## License
+
+MIT © BowenLabs

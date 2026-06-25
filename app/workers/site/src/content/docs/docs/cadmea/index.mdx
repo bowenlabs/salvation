@@ -1,0 +1,113 @@
+---
+title: Cadmea
+description: Generic SolidJS admin-UI components for @thebes/cadmus/cms collections.
+---
+
+import { Aside, Badge } from "@astrojs/starlight/components";
+
+<Badge text="0.x — active development" variant="caution" /> APIs will change. Not
+production-ready. Star [bowenlabs/project-thebes](https://github.com/bowenlabs/project-thebes)
+to follow along.
+
+## What is this?
+
+Cadmus's `cms` subpath (collection config, schema codegen, the Local API, admin-introspection
+metadata) is the engine — framework-agnostic, no UI of its own. `@thebes/cadmea` is the other
+half: the actual SolidJS components that render a generic admin UI from that metadata, the same
+way Payload splits `payload` core from `@payloadcms/next`/`@payloadcms/ui`.
+
+Thebes's own reference CMS (`app/workers/cadmea` in the monorepo) consumes this package rather
+than owning the components directly.
+
+## Install
+
+```bash
+pnpm add @thebes/cadmea @thebes/cadmus solid-js
+```
+
+Built with [Vite+'s `vp pack`](https://viteplus.dev/guide/pack) (Rolldown-based, wraps
+[`tsdown`](https://tsdown.dev) internally) plus
+[`@rolldown/plugin-babel`](https://github.com/rolldown/plugins) running Solid's JSX through
+`babel-preset-solid` directly, to produce real fine-grained-reactive output — not the generic
+`createElement`-style transform plain Rolldown/esbuild would otherwise produce by default. Ships
+separate `browser`/`worker`/`node`/`deno` export conditions, matching how `solid-js` itself
+ships, so the right build (client-hydration vs. SSR) resolves automatically wherever you consume
+it — including from outside the Thebes monorepo.
+
+## Components
+
+```typescript
+import { CollectionList, CollectionEdit } from "@thebes/cadmea";
+```
+
+**`CollectionList`** — generic table view. Renders one column per field (excluding `id` and
+`richText` fields, which aren't supported as plain table cells yet), with optional row-click
+navigation.
+
+**`CollectionEdit`** — generic create/edit form. Renders one input per field (excluding `id`),
+with `text`/`select`/`number` editable inputs and `date` fields shown read-only. Fields without a
+supported renderer (`richText`/`relationship`/`array`/`upload`/`checkbox`) are silently skipped
+rather than crashing — contributions welcome.
+
+Both take a `CollectionConfig` (from `@thebes/cadmus/cms`) as their `config` prop.
+
+## TanStack Start mounting helper
+
+```typescript
+import {
+  createCollectionListPage,
+  createCollectionCreatePage,
+  createCollectionEditPage,
+} from "@thebes/cadmea/tanstack-start";
+```
+
+The equivalent of Payload's `@payloadcms/next` catch-all route pattern — factory functions that
+wire `CollectionList`/`CollectionEdit` together with `@tanstack/solid-query` (fetching, mutating,
+cache invalidation) and return a ready-to-use route `component`. TanStack Router's file-based
+routing still needs a real file per route (there's no runtime catch-all the way Next.js's
+`[[...segments]]` works), but each route file shrinks from ~40 hand-wired lines to ~15:
+
+```tsx
+// src/routes/admin/pages/index.tsx
+import { createCollectionListPage } from "@thebes/cadmea/tanstack-start";
+import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { pagesCollection } from "../../../../cadmea.config.js";
+import { getPages } from "../../server-functions/pages";
+
+export const Route = createFileRoute("/admin/pages/")({ component: PagesPage });
+
+function PagesPage() {
+  const navigate = useNavigate();
+  const Page = createCollectionListPage({
+    collection: pagesCollection,
+    label: "Pages",
+    queryKey: ["pages"],
+    queryFn: () => getPages(),
+    newHref: "/admin/pages/new",
+    onRowClick: (row) =>
+      navigate({ to: "/admin/pages/$pageId", params: { pageId: String(row.id) } }),
+  });
+  return <Page />;
+}
+```
+
+Navigation (`onRowClick`, `onCreated`, `onDeleted`) stays in the route file rather than this
+package calling `useNavigate()` itself — TanStack Router's route-typing is generated per-app, so
+a generic package can't produce a correctly-typed `navigate()` call for routes it doesn't know
+about. See
+[`app/workers/cadmea/src/routes/admin/pages/`](https://github.com/bowenlabs/project-thebes/tree/main/app/workers/cadmea/src/routes/admin/pages)
+in the Thebes repo for all three factories in real use (list, create, edit+delete).
+
+<Aside type="note" title="What this isn't (yet)">
+No code-generation CLI that writes these route files for you from a collection config — you
+still create one thin file per collection per view. Worth revisiting once enough collections
+exist to justify that investment.
+</Aside>
+
+## Licensing
+
+MIT — [LICENSE](https://github.com/bowenlabs/project-thebes/blob/main/packages/cadmea/LICENSE)
+
+## Maintained by
+
+[BowenLabs](https://bowenlabs.com)

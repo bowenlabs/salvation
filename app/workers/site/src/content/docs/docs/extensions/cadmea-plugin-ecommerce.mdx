@@ -1,0 +1,106 @@
+---
+title: "@thebes/cadmea-plugin-ecommerce"
+description: Provider-agnostic ecommerce core for Cadmea — collections, the PaymentProvider interface, and checkout/webhook handlers.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Provider-agnostic ecommerce core for [Cadmea](/docs/cadmea/). Ships the
+`products`/`orders`/`customers`/`payments`/`webhook_events` collections (plus an opt-in
+`subscriptions` collection), the `PaymentProvider` interface real provider implementations
+conform to, and `createCheckoutHandler`/`createWebhookHandler` Hono route factories.
+
+This is a **Cadmea plugin** — a `plugin(config) => config` transform on the `@thebes/cadmus/cms`
+config. `@thebes/cadmus` and `hono` are peer dependencies; nothing here ships at runtime except
+your own order data.
+
+You'll also need a `PaymentProvider` implementation —
+[`@thebes/cadmea-plugin-ecommerce-square`](/docs/extensions/cadmea-plugin-ecommerce-square/)
+and/or
+[`@thebes/cadmea-plugin-ecommerce-stripe`](/docs/extensions/cadmea-plugin-ecommerce-stripe/).
+
+```bash
+pnpm add @thebes/cadmea-plugin-ecommerce
+```
+
+## Add it to your config
+
+```ts
+import { defineCmsConfig } from "@thebes/cadmus/cms";
+import { ecommercePlugin } from "@thebes/cadmea-plugin-ecommerce";
+
+export const cmsConfig = defineCmsConfig({
+  collections: [pagesCollection],
+  plugins: [ecommercePlugin()],
+});
+```
+
+Pass `{ includeSubscriptions: true }` to add the `subscriptions` collection — off by default,
+since Square and Stripe model recurring billing differently enough
+(`PaymentProvider.subscriptions` is itself optional) that it isn't assumed needed by every store.
+Slugs for every collection are configurable (`productsSlug`, `ordersSlug`, etc.) — see the
+plugin's own type signature.
+
+## Mount checkout + webhook routes
+
+Neither is part of `mountCmsRoutes`'s generic CMS REST surface — mount them as plain Hono routes
+alongside it:
+
+```ts
+import { createCheckoutHandler, createWebhookHandler } from "@thebes/cadmea-plugin-ecommerce";
+import { createSquarePaymentProvider } from "@thebes/cadmea-plugin-ecommerce-square";
+
+const provider = createSquarePaymentProvider({ accessToken, locationId });
+
+app.post(
+  "/checkout",
+  createCheckoutHandler({
+    provider,
+    orders: ordersApi,
+    payments: paymentsApi,
+    resolveContext: async (c) => ({ session: null, internal: true }),
+    rateLimit: { kv: c.env.KV, limit: 10, windowSeconds: 60 },
+  }),
+);
+
+app.post(
+  "/webhook",
+  createWebhookHandler({
+    provider,
+    webhookEvents: webhookEventsApi,
+    orders: ordersApi,
+    payments: paymentsApi,
+    secret: env.SQUARE_WEBHOOK_SECRET,
+    notificationUrl: env.SQUARE_WEBHOOK_URL,
+    context: { session: null, internal: true },
+  }),
+);
+```
+
+`createCheckoutHandler` re-verifies every line item's price/availability against the live
+provider catalog before charging — a client-submitted price is never trusted. A DB-write failure
+*after* a successful charge degrades to a `200`-with-warning response, never a false "payment
+failed."
+
+`createWebhookHandler` verifies the raw-body signature before parsing, dedups via the
+`webhook_events` collection's unique `eventId` constraint, then dispatches by normalized event
+kind — each dispatch handler isolated so one bug can't prevent the `200` response the provider
+needs to stop retrying.
+
+## `PaymentProvider` — a plugin-defined interface, not a Cadmus adapter
+
+`PaymentProvider` mirrors the Cadmus adapter pattern's swappability (one interface, N
+implementations) but is defined by this plugin, not by Cadmus core — it needs commerce-domain
+concepts (cart line items, normalized webhook events) that have no business in framework-layer
+Cadmus. See [EXTENDING.md](https://github.com/bowenlabs/project-thebes/blob/main/EXTENDING.md)'s
+"Plugin-defined provider interfaces" section.
+
+<Aside type="caution">
+Both shipped implementations talk to their provider's REST API via raw `fetch()` +
+`crypto.subtle` only — **no Square/Stripe Node SDK, ever** (this is a V8-isolate constraint, not
+a style preference).
+</Aside>
+
+## License
+
+MIT © BowenLabs

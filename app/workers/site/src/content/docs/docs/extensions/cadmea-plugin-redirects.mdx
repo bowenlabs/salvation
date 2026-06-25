@@ -1,0 +1,54 @@
+---
+title: "@thebes/cadmea-plugin-redirects"
+description: Redirects plugin for Cadmea — a redirects collection plus a public-site lookup helper.
+---
+
+Redirects plugin for [Cadmea](/docs/cadmea/). Adds a `redirects` collection and a public-site
+lookup helper — the V8-native equivalent of Payload's own redirects plugin.
+
+This is a **Cadmea plugin** — a `plugin(config) => config` transform on the `@thebes/cadmus/cms`
+config. `@thebes/cadmus` is a types-only peer; nothing here ships at runtime except your own
+redirect data.
+
+```bash
+pnpm add @thebes/cadmea-plugin-redirects
+```
+
+## Add it to your config
+
+```ts
+import { defineCmsConfig } from "@thebes/cadmus/cms";
+import { redirectsPlugin } from "@thebes/cadmea-plugin-redirects";
+
+export const cmsConfig = defineCmsConfig({
+  collections: [pagesCollection],
+  plugins: [redirectsPlugin()],
+});
+```
+
+This adds a `redirects` collection (`from`, `to`, `statusCode` — one of `301`/`302`/`307`/`308`,
+default `301`) — a no-op if a collection with that slug already exists, so re-applying the
+plugin or hand-defining your own `redirects` collection doesn't collide with `defineCmsConfig`'s
+duplicate-slug validation. Pass `{ collectionSlug: "url_redirects" }` to rename it.
+
+## Look up a redirect
+
+`lookupRedirect(api, context, path)` is a plain helper — call it from the public-site Worker
+per-request (e.g. Astro middleware), before falling through to normal routing:
+
+```ts
+import { lookupRedirect } from "@thebes/cadmea-plugin-redirects";
+
+const redirect = await lookupRedirect(redirectsApi, context, requestPath);
+if (redirect) {
+  return Astro.redirect(redirect.to, Number(redirect.statusCode));
+}
+```
+
+It filters in-memory after a plain `find()` rather than a `where`-filtered query — fine for an
+operator-curated redirects list expected to stay small; revisit with an indexed lookup if that
+assumption stops holding.
+
+## License
+
+MIT © BowenLabs

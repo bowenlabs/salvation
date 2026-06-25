@@ -1,0 +1,58 @@
+---
+title: "@thebes/cadmea-access-helpers"
+description: Composable access-control predicates for Cadmea collection access blocks.
+---
+
+Composable access-control predicates for [Cadmea](/docs/cadmea/) collection `access` blocks —
+`requireRole`, `checkRole`, `isAdmin`, `publicAccess`, `authenticatedOnly`.
+
+This is **neither a Cadmus adapter nor a Cadmea plugin** — a plain library (see
+[EXTENDING.md](https://github.com/bowenlabs/project-thebes/blob/main/EXTENDING.md)). It doesn't
+take a CMS config and doesn't implement a Cadmus interface; it's just the composable predicates
+every collection's `access` block ends up hand-rolling otherwise. `@thebes/cadmus` is a
+types-only peer; nothing here ships at runtime except your own access logic.
+
+```bash
+pnpm add @thebes/cadmea-access-helpers
+```
+
+## Usage
+
+```ts
+import { requireRole } from "@thebes/cadmea-access-helpers";
+
+type Role = "owner" | "editor" | "viewer";
+interface AccessContext {
+  session: { role: Role } | null;
+  internal?: boolean; // trusted Service Binding RPC, bypasses the role check
+}
+
+const requireEditorOrAbove = requireRole<Role, AccessContext>("owner", "editor");
+
+defineCollection({
+  slug: "pages",
+  access: {
+    read: () => true,
+    create: requireEditorOrAbove,
+    update: requireEditorOrAbove,
+    delete: requireRole<Role, AccessContext>("owner"),
+  },
+  // ...
+});
+```
+
+`isAdmin(role)` is sugar over `requireRole(role)` for the common single-role admin case.
+`publicAccess` always allows. `authenticatedOnly()` allows any non-null session regardless of
+role (still honoring the `internal` carve-out).
+
+## A real narrowing, not a fake row filter
+
+Cadmus's `AccessFn` returns a boolean, not a Payload-style `Where` filter — there's no
+`isDocumentOwner`-as-row-filter equivalent here. Per-row ownership scoping happens by the caller
+passing a `where` expression into `find()`/`count()` directly, not inside an access function.
+Don't expect these helpers to filter rows for you; they only answer "can this context perform
+this operation at all."
+
+## License
+
+MIT © BowenLabs

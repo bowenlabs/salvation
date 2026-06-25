@@ -17,6 +17,8 @@
 	},
 	"dependencies": {
 		"@astrojs/cloudflare": "^13.7.0",
+		"@astrojs/markdown-satteri": "^0.3.0",
+		"@astrojs/starlight": "^0.40.0",
 		"@thebes/cadmea-access-helpers": "workspace:*",
 		"@thebes/cadmea-design-system": "workspace:*",
 		"@thebes/cadmea-plugin-seo": "workspace:*",

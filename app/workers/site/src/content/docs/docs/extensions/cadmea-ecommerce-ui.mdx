@@ -1,0 +1,88 @@
+---
+title: "@thebes/cadmea-ecommerce-ui"
+description: Storefront SolidJS components for @thebes/cadmea-plugin-ecommerce — ProductDetail, CartProvider, CartDrawer, CheckoutForm.
+---
+
+Storefront SolidJS components for
+[`@thebes/cadmea-plugin-ecommerce`](/docs/extensions/cadmea-plugin-ecommerce/) —
+`ProductDetail`, `CartProvider`/`useCart`, `CartDrawer`, `CheckoutForm`.
+
+This is a plain **library** — no CMS-config opinion, no Cadmus interface, the same "neither
+axis" categorization
+[EXTENDING.md](https://github.com/bowenlabs/project-thebes/blob/main/EXTENDING.md) gives
+`@thebes/cadmea-design-system`.
+
+```bash
+pnpm add @thebes/cadmea-ecommerce-ui solid-js
+```
+
+## Why SolidJS here, when the public site's own tier is Alpine.js
+
+`DECISIONS.md`'s "Component framework tiering" entry reserves SolidJS for `core/`+the Panel and
+Alpine.js for the public site's own sprinkle-on interactivity — but that same entry explicitly
+carves out framework discretion for operator/community **extensions**, since they sit outside
+the `core`/`custom` boundary. This package is exactly that kind of extension. SolidJS
+specifically (not Alpine, not a third framework): cart/checkout has real multi-step state, async
+tokenize callbacks, and field-level validation — more than Alpine's `x-data`/`x-show` model
+comfortably expresses — and Solid is already a runtime the Panel depends on, so an operator
+using this on a page doesn't pay for a *second* component-framework runtime.
+
+Mounting these as Astro islands needs `@astrojs/solid-js` added to your project — not implied by
+anything else in the stack.
+
+## One island, one `<CartProvider>`
+
+Astro hydrates each `client:*` directive as its own isolated component root — `CartProvider`'s
+context is **not** shared across separate islands. Compose everything that needs to share cart
+state into one component, and mount that as a single island:
+
+```tsx
+// ShopIsland.tsx
+import { CartDrawer, CartProvider, CheckoutForm, ProductDetail } from "@thebes/cadmea-ecommerce-ui";
+import { createSquareCardField } from "@thebes/cadmea-plugin-ecommerce-square/client";
+
+export function ShopIsland(props: { product: Product }) {
+  return (
+    <CartProvider>
+      <ProductDetail product={props.product} />
+      <CartDrawer
+        checkoutSlot={() => (
+          <CheckoutForm
+            tokenize={/* wire to createSquareCardField/createStripeCardField — see below */}
+            mountCardField={(el) => createSquareCardField(el, { applicationId, locationId })}
+          />
+        )}
+      />
+    </CartProvider>
+  );
+}
+```
+
+```astro
+---
+import { ShopIsland } from "../components/ShopIsland";
+---
+<ShopIsland client:load product={product} />
+```
+
+## Provider-agnostic checkout
+
+`CheckoutForm` takes a `tokenize: () => Promise<string>` prop rather than knowing about
+Square/Stripe itself — wire in whichever provider's `/client` helper
+(`createSquareCardField`/`createStripeCardField`, both sharing the exact same
+`{ tokenize(), destroy() }` shape) you're using. Swapping providers means swapping that one prop,
+not rewriting this component.
+
+## Cart state
+
+`CartProvider`/`useCart` is `localStorage`-backed, `createSignal`-based reactive state — no DB
+sync needed until checkout, the same pattern found independently in two of the three Next.js +
+Payload projects this component's design was generalized from.
+
+See `examples/cadmea-smb-template` in the
+[main repo](https://github.com/bowenlabs/project-thebes) for all of this wired together end to
+end, including the backend checkout/webhook Worker.
+
+## License
+
+MIT © BowenLabs
