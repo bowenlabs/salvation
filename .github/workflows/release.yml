@@ -45,5 +45,15 @@ jobs:
           publish: pnpm release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # changesets/action writes its own .npmrc from a literal
+          # process.env.NPM_TOKEN — not NODE_AUTH_TOKEN (that's the
+          # actions/setup-node convention, kept below for its own .npmrc
+          # step). Without NPM_TOKEN set explicitly, the action sees no
+          # token, assumes none is configured, and silently falls back to
+          # OIDC trusted publishing — which can't bootstrap a package's
+          # first-ever publish (no existing npm listing to attach a
+          # trusted-publisher mapping to), and fails with
+          # ERR_PNPM_OTP_NON_INTERACTIVE for every package.
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
