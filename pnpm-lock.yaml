@@ -317,7 +317,7 @@ importers:
         specifier: latest
         version: 6.9.1
       '@thebes/cadmus':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cadmus
       babel-preset-solid:
         specifier: ^1.9.12
@@ -344,7 +344,7 @@ importers:
   packages/cadmea-access-helpers:
     devDependencies:
       '@thebes/cadmus':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cadmus
       typescript:
         specifier: latest
@@ -386,7 +386,7 @@ importers:
         specifier: latest
         version: 6.9.1
       '@thebes/cadmus':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cadmus
       babel-preset-solid:
         specifier: ^1.9.12
@@ -413,7 +413,7 @@ importers:
   packages/cadmea-plugin-crm:
     devDependencies:
       '@thebes/cadmus':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cadmus
       typescript:
         specifier: latest
@@ -428,7 +428,7 @@ importers:
   packages/cadmea-plugin-ecommerce:
     devDependencies:
       '@thebes/cadmus':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cadmus
       hono:
         specifier: latest
@@ -446,10 +446,10 @@ importers:
   packages/cadmea-plugin-ecommerce-square:
     devDependencies:
       '@thebes/cadmea-plugin-ecommerce':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cadmea-plugin-ecommerce
       '@thebes/cadmus':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cadmus
       typescript:
         specifier: latest
@@ -464,10 +464,10 @@ importers:
   packages/cadmea-plugin-ecommerce-stripe:
     devDependencies:
       '@thebes/cadmea-plugin-ecommerce':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cadmea-plugin-ecommerce
       '@thebes/cadmus':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cadmus
       typescript:
         specifier: latest
@@ -482,7 +482,7 @@ importers:
   packages/cadmea-plugin-redirects:
     devDependencies:
       '@thebes/cadmus':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cadmus
       typescript:
         specifier: latest
@@ -497,7 +497,7 @@ importers:
   packages/cadmea-plugin-seo:
     devDependencies:
       '@thebes/cadmus':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cadmus
       typescript:
         specifier: latest
@@ -546,7 +546,7 @@ importers:
         specifier: latest
         version: 4.20260623.1
       '@thebes/cadmus':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cadmus
       typescript:
         specifier: latest

@@ -9,6 +9,10 @@
     "url": "https://github.com/bowenlabs/project-thebes",
     "directory": "packages/cadmea-design-system"
   },
+  "homepage": "https://github.com/bowenlabs/project-thebes/tree/main/packages/cadmea-design-system#readme",
+  "bugs": {
+    "url": "https://github.com/bowenlabs/project-thebes/issues"
+  },
   "keywords": [
     "cadmea",
     "design-system",
