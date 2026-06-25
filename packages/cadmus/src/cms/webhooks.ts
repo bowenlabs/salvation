@@ -60,6 +60,43 @@ export function createWebhookHook(
   };
 }
 
+// Defense-in-depth, not the primary control: `global_fetch_strictly_public`
+// (set in both Workers' wrangler.jsonc) already blocks `fetch()` to
+// private/reserved IP literals at the platform level, and `WEBHOOK_URL` is
+// operator-supplied config, not attacker input. This catches the case that
+// guard doesn't: a hostname that *resolves* to a private address (or a
+// non-HTTP(S) scheme) rather than being one literally, plus a clear error
+// instead of a platform-level network failure when a deploy is
+// misconfigured.
+const BLOCKED_HOSTNAME_PATTERNS = [
+  /^localhost$/i,
+  /^127\./,
+  /^0\.0\.0\.0$/,
+  /^169\.254\./, // link-local, including the cloud-metadata address
+  /^10\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^192\.168\./,
+  /^\[?::1\]?$/,
+  /^\[?fc/i,
+  /^\[?fd/i,
+  /^\[?fe80/i,
+];
+
+function isAllowedWebhookUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return false;
+  }
+  return !BLOCKED_HOSTNAME_PATTERNS.some((pattern) =>
+    pattern.test(parsed.hostname),
+  );
+}
+
 async function hmacSha256Hex(payload: string, secret: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
@@ -87,6 +124,12 @@ async function hmacSha256Hex(payload: string, secret: string): Promise<string> {
 export async function deliverWebhookMessage(
   message: WebhookMessage,
 ): Promise<void> {
+  if (!isAllowedWebhookUrl(message.url)) {
+    throw new CadmusQueueError(
+      `Webhook URL "${message.url}" is not allowed (must be http(s) and not target a private/reserved/loopback address)`,
+    );
+  }
+
   const body = JSON.stringify({
     event: message.event,
     doc: message.doc,
