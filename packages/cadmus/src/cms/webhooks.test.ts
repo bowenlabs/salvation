@@ -132,4 +132,36 @@ describe("deliverWebhookMessage", () => {
 
     fetchSpy.mockRestore();
   });
+
+  it.each([
+    "http://localhost/hook",
+    "http://127.0.0.1/hook",
+    "http://169.254.169.254/latest/meta-data/", // cloud metadata endpoint
+    "http://10.0.0.5/hook",
+    "http://172.16.0.5/hook",
+    "http://192.168.1.5/hook",
+    "http://[::1]/hook",
+    "ftp://example.com/hook",
+    "not-a-url",
+  ])("rejects %s without calling fetch", async (url) => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    await expect(
+      deliverWebhookMessage({ ...baseMessage, url }),
+    ).rejects.toBeInstanceOf(CadmusQueueError);
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    fetchSpy.mockRestore();
+  });
+
+  it("still allows a normal https URL through", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 200 }));
+
+    await deliverWebhookMessage(baseMessage);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    fetchSpy.mockRestore();
+  });
 });
