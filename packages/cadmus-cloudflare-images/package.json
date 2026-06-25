@@ -9,6 +9,10 @@
     "url": "https://github.com/bowenlabs/project-thebes",
     "directory": "packages/cadmus-cloudflare-images"
   },
+  "homepage": "https://github.com/bowenlabs/project-thebes/tree/main/packages/cadmus-cloudflare-images#readme",
+  "bugs": {
+    "url": "https://github.com/bowenlabs/project-thebes/issues"
+  },
   "keywords": [
     "cadmus",
     "cloudflare",
@@ -31,10 +35,10 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@thebes/cadmus": "workspace:*"
+    "@thebes/cadmus": "workspace:^"
   },
   "devDependencies": {
-    "@thebes/cadmus": "workspace:*",
+    "@thebes/cadmus": "workspace:^",
     "@cloudflare/workers-types": "latest",
     "typescript": "latest",
     "vite-plus": "latest",

@@ -9,6 +9,10 @@
     "url": "https://github.com/bowenlabs/project-thebes",
     "directory": "packages/cadmea-plugin-ecommerce-square"
   },
+  "homepage": "https://github.com/bowenlabs/project-thebes/tree/main/packages/cadmea-plugin-ecommerce-square#readme",
+  "bugs": {
+    "url": "https://github.com/bowenlabs/project-thebes/issues"
+  },
   "keywords": [
     "cadmea",
     "cadmus",
@@ -36,12 +40,12 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@thebes/cadmea-plugin-ecommerce": "workspace:*",
-    "@thebes/cadmus": "workspace:*"
+    "@thebes/cadmea-plugin-ecommerce": "workspace:^",
+    "@thebes/cadmus": "workspace:^"
   },
   "devDependencies": {
-    "@thebes/cadmea-plugin-ecommerce": "workspace:*",
-    "@thebes/cadmus": "workspace:*",
+    "@thebes/cadmea-plugin-ecommerce": "workspace:^",
+    "@thebes/cadmus": "workspace:^",
     "typescript": "latest",
     "vite-plus": "latest",
     "vitest": "latest"

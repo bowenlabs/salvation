@@ -9,6 +9,10 @@
     "url": "https://github.com/bowenlabs/project-thebes",
     "directory": "packages/cadmea-access-helpers"
   },
+  "homepage": "https://github.com/bowenlabs/project-thebes/tree/main/packages/cadmea-access-helpers#readme",
+  "bugs": {
+    "url": "https://github.com/bowenlabs/project-thebes/issues"
+  },
   "keywords": [
     "cadmea",
     "cadmus",
@@ -30,10 +34,10 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@thebes/cadmus": "workspace:*"
+    "@thebes/cadmus": "workspace:^"
   },
   "devDependencies": {
-    "@thebes/cadmus": "workspace:*",
+    "@thebes/cadmus": "workspace:^",
     "typescript": "latest",
     "vite-plus": "latest",
     "vitest": "latest"

@@ -9,6 +9,10 @@
     "url": "https://github.com/bowenlabs/project-thebes",
     "directory": "packages/cadmea"
   },
+  "homepage": "https://github.com/bowenlabs/project-thebes/tree/main/packages/cadmea#readme",
+  "bugs": {
+    "url": "https://github.com/bowenlabs/project-thebes/issues"
+  },
   "keywords": [
     "cloudflare",
     "cms",
@@ -24,7 +28,7 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@thebes/cadmus": "workspace:*",
+    "@thebes/cadmus": "workspace:^",
     "@tanstack/solid-query": ">=5.0.0",
     "@tanstack/solid-router": ">=1.0.0",
     "solid-js": ">=1.9.0"
@@ -34,7 +38,7 @@
     "@tiptap/starter-kit": "^3.27.1"
   },
   "devDependencies": {
-    "@thebes/cadmus": "workspace:*",
+    "@thebes/cadmus": "workspace:^",
     "@solidjs/testing-library": "latest",
     "@tanstack/solid-query": "^5.101.0",
     "@tanstack/solid-router": "latest",

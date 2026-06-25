@@ -1,0 +1,49 @@
+name: Release
+
+# Automated npm publishing via Changesets. On every push to main:
+#   1. If unreleased changesets exist, the action opens (or updates) a
+#      "Version Packages" PR that bumps versions and writes CHANGELOGs.
+#   2. When that PR is merged, this same workflow runs again — now with no
+#      pending changesets — and the action publishes the bumped packages
+#      to npm via `pnpm release` (which builds dist/ first, then runs
+#      `changeset publish`).
+#
+# Requires an `NPM_TOKEN` repo secret (an npm automation token with publish
+# rights to the @thebes scope). Scoped-package public access comes from
+# `.changeset/config.json`'s `"access": "public"`. Provenance is attested
+# via the `id-token` permission below.
+
+on:
+  push:
+    branches: [main]
+
+# Never let two releases run at once — a second push while a publish is in
+# flight would race the version bump / git tags.
+concurrency: release-${{ github.ref }}
+
+jobs:
+  release:
+    name: Version or publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the Version Packages PR, commit, and tag
+      pull-requests: write # open/update the Version Packages PR
+      id-token: write # npm provenance attestation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+      - run: pnpm install --frozen-lockfile
+      - name: Create Version PR or publish to npm
+        uses: changesets/action@v1
+        with:
+          version: pnpm version-packages
+          publish: pnpm release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'

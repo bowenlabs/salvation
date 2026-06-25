@@ -9,6 +9,10 @@
     "url": "https://github.com/bowenlabs/project-thebes",
     "directory": "packages/cadmus"
   },
+  "homepage": "https://github.com/bowenlabs/project-thebes/tree/main/packages/cadmus#readme",
+  "bugs": {
+    "url": "https://github.com/bowenlabs/project-thebes/issues"
+  },
   "keywords": [
     "cloudflare",
     "cloudflare-workers",
