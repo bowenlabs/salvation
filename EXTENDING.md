@@ -192,3 +192,29 @@ would be a category error. It's just a library.
 
 Rule of thumb: if it doesn't take the CMS config and doesn't implement a Cadmus
 interface, it's a library, not an extension.
+
+---
+
+## Every shipped package, by axis
+
+`@thebes/cadmus` and `@thebes/cadmea` themselves aren't extensions — see the
+root [README.md](./README.md) for those. Everything else this monorepo
+publishes:
+
+**Axis 1 — Cadmus adapters**
+- [`@thebes/cadmus-cloudflare-images`](./packages/cadmus-cloudflare-images/README.md) — `ImageService` via Cloudflare Images
+
+**Axis 2 — Cadmea plugins**
+- [`@thebes/cadmea-plugin-seo`](./packages/cadmea-plugin-seo/README.md) — meta/OG fields + tags
+- [`@thebes/cadmea-plugin-redirects`](./packages/cadmea-plugin-redirects/README.md) — a `redirects` collection + lookup helper
+- [`@thebes/cadmea-plugin-crm`](./packages/cadmea-plugin-crm/README.md) — `contacts`/`activities` collections + upsert hook
+- [`@thebes/cadmea-plugin-ecommerce`](./packages/cadmea-plugin-ecommerce/README.md) — provider-agnostic commerce core
+
+**Plugin-defined `PaymentProvider` implementations** (see above — not Axis 1)
+- [`@thebes/cadmea-plugin-ecommerce-square`](./packages/cadmea-plugin-ecommerce-square/README.md)
+- [`@thebes/cadmea-plugin-ecommerce-stripe`](./packages/cadmea-plugin-ecommerce-stripe/README.md)
+
+**Libraries** (neither axis)
+- [`@thebes/cadmea-design-system`](./packages/cadmea-design-system/README.md) — design-token engine
+- [`@thebes/cadmea-access-helpers`](./packages/cadmea-access-helpers/README.md) — composable `access` predicates
+- [`@thebes/cadmea-ecommerce-ui`](./packages/cadmea-ecommerce-ui/README.md) — storefront SolidJS components

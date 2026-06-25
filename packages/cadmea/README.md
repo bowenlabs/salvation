@@ -124,7 +124,7 @@ investment. See this repo's `DECISIONS.md`.
 
 ## Licensing
 
-MIT. See [LICENSE](../../LICENSE) for full terms.
+MIT. See [LICENSE](./LICENSE) for full terms.
 
 ---
 
