@@ -1,6 +1,6 @@
 {
   "name": "@thebes/cadmea-access-helpers",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Composable access-control predicates for Cadmea collection access blocks",
   "author": "BowenLabs <hello@bowenlabs.io>",
   "license": "MIT",

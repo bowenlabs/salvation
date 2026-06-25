@@ -1,6 +1,6 @@
 {
   "name": "@thebes/cadmea-plugin-ecommerce-square",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Square PaymentProvider for @thebes/cadmea-plugin-ecommerce — raw fetch() + crypto.subtle, no Square Node SDK",
   "author": "BowenLabs <hello@bowenlabs.io>",
   "license": "MIT",
