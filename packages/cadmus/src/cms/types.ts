@@ -1,12 +1,24 @@
 // Copyright (c) 2026 BowenLabs. All rights reserved.
 // Cadmus is MIT licensed. See LICENSE in the repo root.
 
+import type { ValidationBuilder } from "./validation.js";
+
 export interface BaseFieldConfig {
   /** column name override; defaults to the config key */
   name?: string;
   required?: boolean;
   unique?: boolean;
   defaultValue?: unknown;
+  /**
+   * Chainable validation rules (issue #16), Sanity's `defineField`
+   * `validation` analogue: `validation: (rule) => rule.required().min(2)`.
+   * Evaluated server-side by createLocalApi on every create/update (and by
+   * the studio for client-side feedback). Independent of the `required`/
+   * `unique` flags above — those still drive the DB schema; these drive
+   * value-level checks with clear, per-field error messages. See
+   * {@link ValidationBuilder} and `validation.ts`.
+   */
+  validation?: ValidationBuilder;
 }
 
 export interface TextFieldConfig extends BaseFieldConfig {

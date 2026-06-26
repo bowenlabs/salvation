@@ -5,7 +5,11 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import type { ClientErrorStatusCode } from "hono/utils/http-status";
 import type { LocalApi } from "../cms/index.js";
-import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
+import {
+  CadmusAccessDeniedError,
+  CadmusCmsError,
+  CadmusValidationError,
+} from "../errors.js";
 
 export interface CmsRoutesOptions<TContext> {
   // biome-ignore lint/suspicious/noExplicitAny: see above
@@ -31,6 +35,10 @@ export interface CmsRoutesOptions<TContext> {
 // ripple across every existing primitive error).
 function statusForError(error: CadmusCmsError): ClientErrorStatusCode {
   if (error instanceof CadmusAccessDeniedError) return 403;
+  // Field-validation failures are an unprocessable entity, not a malformed
+  // request — 422 so clients can distinguish "your input broke a rule" from
+  // a generic 400 and read the structured `violations` off the body.
+  if (error instanceof CadmusValidationError) return 422;
   if (error.message.includes("document found with id")) return 404;
   if (error.message.includes("Unique constraint violated")) return 409;
   return 400;
@@ -60,6 +68,14 @@ export function mountCmsRoutes<TContext>(
   const router = new Hono();
 
   router.onError((error, c) => {
+    if (error instanceof CadmusValidationError) {
+      // Surface per-field violations so a studio client can map them back to
+      // form fields rather than re-parsing the summary message.
+      return c.json(
+        { error: error.message, violations: error.violations },
+        statusForError(error),
+      );
+    }
     if (error instanceof CadmusCmsError) {
       return c.json({ error: error.message }, statusForError(error));
     }

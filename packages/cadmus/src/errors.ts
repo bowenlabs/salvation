@@ -130,6 +130,39 @@ export class CadmusAccessDeniedError extends CadmusCmsError {
 }
 
 /**
+ * One failed field-validation rule (issue #16). `path` is the field's key
+ * (flattened, e.g. `shippingAddress_city` for a group subfield). `severity`
+ * lets a rule warn without blocking the write — only `"error"` violations
+ * cause createLocalApi to throw; `"warning"` ones are carried through for
+ * the studio to surface non-blockingly.
+ */
+export interface ValidationViolation {
+  path: string;
+  message: string;
+  severity: "error" | "warning";
+}
+
+/**
+ * Thrown by createLocalApi when a collection's field-validation rules
+ * (Sanity-style chainable `Rule` API — see cms/validation.ts) reject a
+ * create/update. Carries the structured `violations` so the studio can
+ * surface per-field messages, and `mountCmsRoutes` can map it to HTTP 422
+ * by `instanceof` rather than message matching. A subclass of
+ * CadmusCmsError, so existing `instanceof CadmusCmsError` handling still
+ * catches it. Only `"error"`-severity violations are ever thrown.
+ */
+export class CadmusValidationError extends CadmusCmsError {
+  constructor(
+    message: string,
+    public readonly violations: ValidationViolation[],
+    cause?: unknown,
+  ) {
+    super(message, cause);
+    this.name = "CadmusValidationError";
+  }
+}
+
+/**
  * Thrown by @thebes/cadmus/hono's `createCmsApiClient` when a request
  * against a `mountCmsRoutes` surface returns a non-2xx response. Carries
  * the HTTP status and parsed body so callers can branch on `status`

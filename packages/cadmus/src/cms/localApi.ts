@@ -25,6 +25,7 @@ import {
   nestDoc,
   type RelationshipDepth,
 } from "./types.js";
+import { assertValid } from "./validation.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: matches drizzle-orm's own SQLiteTableWithColumns default generic usage
 type AnyTable = SQLiteTableWithColumns<any>;
@@ -569,6 +570,18 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
       const flatData = toFlatDoc(data);
       validateRequiredFields(config, flatData);
       rejectUnknownFields(config, flatData);
+      // Chainable field rules (#16) — required-flag and unknown-field checks
+      // above stay; this adds value-level rules (min/max/regex/unique/
+      // reference/custom) and throws CadmusValidationError with per-field
+      // violations. Runs after beforeChange so a hook-supplied value is
+      // validated, and before the insert so unique/reference pre-check
+      // rather than relying on a raw DB constraint error.
+      await assertValid(config, data as Record<string, unknown>, {
+        operation: "create",
+        db,
+        table,
+        registry,
+      });
       let row: InferSelectModel<TTable> | undefined;
       try {
         const [inserted] = await db
@@ -597,6 +610,17 @@ export function createLocalApi<TTable extends AnyTable, TContext = unknown>(
       );
       const flatData = toFlatDoc(data);
       rejectUnknownFields(config, flatData);
+      // Validate only the fields this partial update actually carries — a
+      // partial update must not fail an absent field's rules (it isn't
+      // changing it). `unique` excludes this row by id.
+      await assertValid(config, data as Record<string, unknown>, {
+        operation: "update",
+        id,
+        onlyFields: new Set(Object.keys(flatData)),
+        db,
+        table,
+        registry,
+      });
       let row: InferSelectModel<TTable> | undefined;
       try {
         const [updated] = await db
@@ -745,6 +769,16 @@ export function createVersionedLocalApi<
       validateRequiredFields(config, data);
       rejectUnknownFields(config, data);
       const parentId = versionRecord.parentId as number;
+      // Publishing writes the whole version snapshot to the live row, so
+      // validate every field (not a partial). `unique` excludes the parent
+      // row by its own id.
+      await assertValid(config, data, {
+        operation: "update",
+        id: parentId,
+        db,
+        table,
+        registry,
+      });
       let doc: InferSelectModel<TTable> | undefined;
       try {
         const [row] = await db

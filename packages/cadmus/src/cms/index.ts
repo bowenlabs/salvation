@@ -12,4 +12,5 @@ export * from "./structure.js";
 // is required so they're reachable at runtime via @thebes/cadmus/cms, not
 // just `export type *` (correct while types.ts had only type declarations).
 export * from "./types.js";
+export * from "./validation.js";
 export * from "./webhooks.js";
