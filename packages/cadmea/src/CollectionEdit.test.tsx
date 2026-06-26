@@ -122,7 +122,7 @@ describe("CollectionEdit", () => {
     );
   });
 
-  it("renders relationship fields as a select populated from relationshipOptions, submitting the selected id", async () => {
+  it("renders a relationship field as a searchable combobox, submitting the chosen id", async () => {
     const config: CollectionConfig = {
       slug: "comments",
       fields: { authorId: { type: "relationship", relationTo: "users" } },
@@ -142,22 +142,47 @@ describe("CollectionEdit", () => {
         }}
       />
     ));
-    const select = screen.getByLabelText("Author id") as HTMLSelectElement;
-    expect(screen.getByText("Ada")).toBeInTheDocument();
-    fireEvent.change(select, { target: { value: "2" } });
+    const combobox = screen.getByLabelText("Author id") as HTMLInputElement;
+    expect(combobox).toHaveAttribute("role", "combobox");
+    // Filter to "Grace", then pick it from the listbox.
+    fireEvent.focus(combobox);
+    fireEvent.input(combobox, { target: { value: "gra" } });
+    expect(screen.queryByText("Ada")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Grace"));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await vi.waitFor(() => expect(submitted).toEqual({ authorId: 2 }));
   });
 
-  it("does not render a select for hasMany relationship fields", () => {
+  it("renders a hasMany relationship as a multi-select, adding and removing chips", async () => {
     const config: CollectionConfig = {
       slug: "posts",
       fields: {
         tagIds: { type: "relationship", relationTo: "tags", hasMany: true },
       },
     };
-    render(() => <CollectionEdit config={config} onSubmit={() => {}} />);
-    expect(screen.queryByLabelText("tagIds")).not.toBeInTheDocument();
+    let submitted: Record<string, unknown> | undefined;
+    render(() => (
+      <CollectionEdit
+        config={config}
+        relationshipOptions={{
+          tags: [
+            { id: 1, label: "React" },
+            { id: 2, label: "Solid" },
+          ],
+        }}
+        onSubmit={(values) => {
+          submitted = values;
+        }}
+      />
+    ));
+    const combobox = screen.getByLabelText("Tag ids") as HTMLInputElement;
+    fireEvent.focus(combobox);
+    fireEvent.click(screen.getByText("React"));
+    fireEvent.click(screen.getByText("Solid"));
+    // Both selected as chips; removing one leaves the other.
+    fireEvent.click(screen.getByRole("button", { name: "Remove React" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(submitted).toEqual({ tagIds: [2] }));
   });
 
   it("adds, fills, and removes array items, submitting the resulting array", async () => {

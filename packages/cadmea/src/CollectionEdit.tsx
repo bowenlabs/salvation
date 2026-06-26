@@ -138,11 +138,10 @@ export interface CollectionEditProps {
    */
   onUploadFile?: (file: File) => Promise<{ url: string }>;
   /**
-   * Options for `relationship` fields (hasMany:false only — see
-   * RelationshipFieldConfig's `hasMany` caveat), keyed by the field's
-   * `relationTo` collection slug. `CollectionEdit` can't query another
-   * collection itself, so the consuming route fetches the related rows
-   * and passes them in.
+   * Options for `relationship` fields (both single and `hasMany`), keyed by
+   * the field's `relationTo` collection slug. `CollectionEdit` can't query
+   * another collection itself, so the consuming route fetches the related
+   * rows and passes them in; the field renders them as a searchable combobox.
    */
   relationshipOptions?: Partial<Record<string, RelationshipOption[]>>;
   /**
@@ -417,9 +416,6 @@ function renderField(
   label: string,
 ): JSX.Element {
   if (field.type === "array") return renderArray(form, ctx, name, field, label);
-  // hasMany:true relationships are join-table-backed (no plain FK column to
-  // bind a single <select> to) — not supported by this generic form yet.
-  if (field.type === "relationship" && field.hasMany) return null;
 
   // Half-width fields span one grid column on >= md; everything else spans
   // the full two-column width.
@@ -558,7 +554,14 @@ function renderControl(
         <UploadControl name={name} field={field} fieldApi={fieldApi} ctx={ctx} />
       );
     case "relationship":
-      return renderRelationship(ctx, name, field, fieldApi);
+      return (
+        <RelationshipField
+          name={name}
+          field={field}
+          fieldApi={fieldApi}
+          options={ctx.relationshipOptions?.[field.relationTo] ?? []}
+        />
+      );
     case "richText":
       return (
         <Suspense
@@ -630,34 +633,158 @@ function UploadControl(props: {
   );
 }
 
-function renderRelationship(
-  ctx: RenderContext,
-  name: string,
-  field: FieldConfig & { type: "relationship" },
-  fieldApi: FieldAccessor,
-): JSX.Element {
-  const options = ctx.relationshipOptions?.[field.relationTo] ?? [];
-  const value = () => fieldApi().state.value;
+// Searchable relationship picker — a filter-as-you-type combobox (replacing
+// the old plain <select>) that supports both single (hasMany:false → value is
+// a number|null) and multi (hasMany:true → value is number[], rendered as
+// removable chips). Options for `relationTo` are supplied by the consuming
+// route via `relationshipOptions`; this component never queries the DB itself.
+function RelationshipField(props: {
+  name: string;
+  field: FieldConfig & { type: "relationship" };
+  fieldApi: FieldAccessor;
+  options: RelationshipOption[];
+}): JSX.Element {
+  const [query, setQuery] = createSignal("");
+  const [open, setOpen] = createSignal(false);
+  const [active, setActive] = createSignal(0);
+  const listId = `${props.name}-listbox`;
+
+  const isMulti = () => props.field.hasMany === true;
+  const value = () => props.fieldApi().state.value;
+  const selectedIds = (): number[] => {
+    const v = value();
+    if (isMulti()) return Array.isArray(v) ? (v as number[]) : [];
+    return v != null ? [v as number] : [];
+  };
+  const selectedOptions = () =>
+    props.options.filter((o) => selectedIds().includes(o.id));
+  const filtered = () => {
+    const q = query().toLowerCase();
+    return props.options.filter(
+      (o) =>
+        o.label.toLowerCase().includes(q) &&
+        (!isMulti() || !selectedIds().includes(o.id)),
+    );
+  };
+  const singleLabel = () => selectedOptions()[0]?.label ?? "";
+
+  function choose(option: RelationshipOption) {
+    if (isMulti()) {
+      props.fieldApi().handleChange([...selectedIds(), option.id]);
+      setQuery("");
+    } else {
+      props.fieldApi().handleChange(option.id);
+      setQuery("");
+      setOpen(false);
+    }
+    setActive(0);
+  }
+  function removeId(id: number) {
+    if (isMulti()) {
+      props.fieldApi().handleChange(selectedIds().filter((x) => x !== id));
+    } else {
+      props.fieldApi().handleChange(null);
+    }
+  }
+  function onKeyDown(e: KeyboardEvent) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setOpen(true);
+      setActive((a) => Math.min(a + 1, filtered().length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((a) => Math.max(a - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const option = filtered()[active()];
+      if (option) choose(option);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    } else if (e.key === "Backspace" && isMulti() && query() === "") {
+      const ids = selectedIds();
+      if (ids.length > 0) removeId(ids[ids.length - 1]);
+    }
+  }
 
   return (
-    <select
-      id={name}
-      class="select"
-      value={value() != null ? String(value()) : ""}
-      required={field.required}
-      disabled={field.admin?.readOnly}
-      onChange={(e) =>
-        fieldApi().handleChange(
-          e.currentTarget.value === "" ? null : Number(e.currentTarget.value),
-        )
-      }
-      onBlur={() => fieldApi().handleBlur()}
-    >
-      <option value="">—</option>
-      <For each={options}>
-        {(option) => <option value={option.id}>{option.label}</option>}
-      </For>
-    </select>
+    <div class="relative">
+      <Show when={isMulti() && selectedOptions().length > 0}>
+        <div class="mb-1 flex flex-wrap gap-1">
+          <For each={selectedOptions()}>
+            {(option) => (
+              <span class="badge badge-primary gap-1">
+                {option.label}
+                <button
+                  type="button"
+                  aria-label={`Remove ${option.label}`}
+                  class="cursor-pointer"
+                  onClick={() => removeId(option.id)}
+                >
+                  ×
+                </button>
+              </span>
+            )}
+          </For>
+        </div>
+      </Show>
+      <input
+        id={props.name}
+        type="text"
+        role="combobox"
+        aria-expanded={open()}
+        aria-controls={listId}
+        autocomplete="off"
+        class="input"
+        required={props.field.required && selectedIds().length === 0}
+        disabled={props.field.admin?.readOnly}
+        placeholder={props.field.admin?.placeholder ?? "Search…"}
+        value={open() || isMulti() ? query() : singleLabel()}
+        onInput={(e) => {
+          setQuery(e.currentTarget.value);
+          setOpen(true);
+          setActive(0);
+        }}
+        onFocus={() => setOpen(true)}
+        // Delay so a click on an option registers before the list unmounts.
+        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        onKeyDown={onKeyDown}
+      />
+      <Show when={!isMulti() && value() != null && !props.field.required}>
+        <button
+          type="button"
+          aria-label="Clear"
+          class="absolute top-2 right-2 cursor-pointer opacity-60"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => removeId(value() as number)}
+        >
+          ×
+        </button>
+      </Show>
+      <Show when={open() && filtered().length > 0}>
+        <ul
+          id={listId}
+          role="listbox"
+          class="menu bg-base-100 border-base-300 rounded-box absolute z-10 mt-1 max-h-56 w-full overflow-auto border p-1 shadow"
+        >
+          <For each={filtered()}>
+            {(option, i) => (
+              <li role="option" aria-selected={selectedIds().includes(option.id)}>
+                <button
+                  type="button"
+                  classList={{ "bg-base-200": i() === active() }}
+                  // preventDefault keeps focus on the input so onClick fires
+                  // before the input's blur closes the list.
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => choose(option)}
+                >
+                  {option.label}
+                </button>
+              </li>
+            )}
+          </For>
+        </ul>
+      </Show>
+    </div>
   );
 }
 
