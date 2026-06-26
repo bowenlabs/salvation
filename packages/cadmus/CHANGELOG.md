@@ -1,5 +1,17 @@
 # @thebes/cadmus
 
+## 0.3.0
+
+### Minor Changes
+
+- Adopt three Sanity-inspired CMS patterns (idea, not code) in `@thebes/cadmus/cms`:
+
+  - **Structure Builder (#12):** `CollectionAdminConfig` (`group`/`order`/`hidden`/`readOnly`/`singleton`/`label`/`icon`) plus a pure `buildStudioStructure()` helper, so a studio sidebar renders from an explicit, grouped structure instead of mapping the raw collection list.
+  - **Chainable field validation (#16):** an immutable `Rule` builder (`required`/`min`/`max`/`length`/`regex`/`email`/`slug`/`integer`/`positive`/`unique`/`reference`/`custom`, plus `.error()`/`.warning()`), evaluated by `validateDocument`/`assertValid` and enforced server-side in `createLocalApi` on create/update/publish. Adds `CadmusValidationError` (carrying per-field violations) and maps it to HTTP 422 in `mountCmsRoutes`. New `BaseFieldConfig.validation` and `defineField`.
+  - **Block renderer registry (#13):** framework-agnostic `createBlockRegistry` / `renderBlocksToString` (the Portable Text / `@portabletext` pattern) so rendering is a `type → renderer` lookup instead of a hand-rolled switch.
+
+  All additive — no breaking changes to existing config or APIs.
+
 ## 0.2.1
 
 ### Patch Changes
