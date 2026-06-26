@@ -8,6 +8,7 @@ import type { CollectionConfig } from "@thebes/cadmus/cms";
 import { createSignal, Show } from "solid-js";
 import { CollectionEdit, type CollectionEditProps } from "../CollectionEdit.js";
 import type { CollectionCapabilities } from "../capabilities.js";
+import { VisualEditingPane } from "../VisualEditingPane.js";
 
 export interface CollectionEditDraftOptions {
   /** Saves the live form values as a new draft version, returning its id. */
@@ -22,6 +23,21 @@ export interface CollectionEditDraftOptions {
   saveDraftLabel?: string;
   publishLabel?: string;
   previewLabel?: string;
+  /** Enable debounced autosave of drafts (see CollectionEdit's autosave). */
+  autosave?: boolean;
+}
+
+/**
+ * Side-by-side live preview: renders a {@link VisualEditingPane} next to the
+ * form (stacked on mobile, two-up on `lg`) and streams the form's in-progress
+ * values into it as the user types. The preview page must call
+ * `mountPreviewSync` to receive them.
+ */
+export interface CollectionEditPreviewOptions {
+  /** The `?edit=1` preview URL to embed. Reactive — re-read as the id/draft changes. */
+  url: () => string | undefined;
+  /** Restrict postMessage to this origin (defaults to the url's origin). */
+  allowedOrigin?: () => string | undefined;
 }
 
 export interface CollectionEditPageOptions {
@@ -64,6 +80,8 @@ export interface CollectionEditPageOptions {
    * `CollectionEdit` to gate Save via `canUpdate`. See issue #26.
    */
   capabilities?: () => CollectionCapabilities | undefined;
+  /** Side-by-side as-you-type live preview (issue #15/#28). */
+  preview?: CollectionEditPreviewOptions;
 }
 
 /**
@@ -79,6 +97,10 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
     const [error, setError] = createSignal<string>();
     const [dirty, setDirty] = createSignal(false);
     const [latestDraftId, setLatestDraftId] = createSignal<number>();
+    // Latest editable values, streamed into the live preview pane.
+    const [previewValues, setPreviewValues] = createSignal<
+      Record<string, unknown>
+    >({});
 
     // Blocks in-app navigation (including the mobile back-gesture, which
     // is just another history pop TanStack Router intercepts the same
@@ -153,7 +175,7 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
       onError: (e: Error) => setError(e.message),
     }));
 
-    return (
+    const EditorPane = () => (
       <div class="flex flex-col gap-4">
         <h1 class="text-xl font-semibold">
           {options.label ?? `Edit ${options.collection.slug}`}
@@ -169,6 +191,7 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
             onUploadFile={options.onUploadFile}
             fieldWidgets={options.fieldWidgets}
             onDirtyChange={setDirty}
+            onValuesChange={setPreviewValues}
             capabilities={options.capabilities?.()}
             draftActions={
               options.draftActions && {
@@ -185,6 +208,7 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
                 saveDraftLabel: options.draftActions.saveDraftLabel,
                 publishLabel: options.draftActions.publishLabel,
                 previewLabel: options.draftActions.previewLabel,
+                autosave: options.draftActions.autosave,
               }
             }
           />
@@ -199,6 +223,33 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
           </button>
         </Show>
       </div>
+    );
+
+    // No preview configured → just the editor. With preview → split-pane
+    // (stacked on mobile, two-up on lg), streaming live values to the iframe.
+    return (
+      <Show when={options.preview} fallback={<EditorPane />}>
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <EditorPane />
+          <Show when={options.preview?.url()}>
+            {(url) => (
+              <div class="lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
+                <VisualEditingPane
+                  src={url()}
+                  allowedOrigin={options.preview?.allowedOrigin?.()}
+                  previewValues={previewValues()}
+                  previewTarget={{
+                    collection: options.collection.slug,
+                    id: Number(row.data?.id),
+                  }}
+                  class="border-base-300 rounded-box h-full w-full border"
+                  title="Live preview"
+                />
+              </div>
+            )}
+          </Show>
+        </div>
+      </Show>
     );
   };
 }
