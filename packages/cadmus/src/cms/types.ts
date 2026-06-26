@@ -311,6 +311,58 @@ export interface CollectionHooks<TDoc = Record<string, unknown>> {
   afterDelete?: Array<(args: { id: number }) => void | Promise<void>>;
 }
 
+/**
+ * Studio-presentation hints for a collection, modeled on Sanity's Structure
+ * Builder (`sanity/structure`). Purely about how the admin sidebar/editor
+ * *presents* a collection — never affects the DB schema, the Local API, or
+ * access control. Consumed by {@link buildStudioStructure} (see
+ * `structure.ts`); a collection with no `admin` block falls back to sensible
+ * defaults (visible, editable, listed, grouped under the default group,
+ * label = capitalized slug). Plugin-injected collections can't carry an
+ * `admin` block in hand-written config, so `buildStudioStructure` also
+ * accepts per-slug overrides at the call site — see its `overrides` option.
+ */
+export interface CollectionAdminConfig {
+  /**
+   * Sidebar group heading this collection appears under (e.g. "Content",
+   * "Store"). Collections without a group fall into the builder's default
+   * group. Decoupling nav grouping from the raw collection list is the whole
+   * point of the Structure Builder.
+   */
+  group?: string;
+  /**
+   * Sort order within a group — lower sorts first. Ties (and the absence of
+   * an explicit order) break by the collection's position in the config
+   * array, so config order is the stable default.
+   */
+  order?: number;
+  /**
+   * Drop this collection from the sidebar entirely. For pure system/log
+   * tables a human never browses (e.g. `webhook_events`).
+   */
+  hidden?: boolean;
+  /**
+   * Mark as read-only in the studio — still navigable/viewable, but the UI
+   * suppresses create/edit/delete affordances. For machine-written tables a
+   * human should inspect but never edit (e.g. `payments`).
+   */
+  readOnly?: boolean;
+  /**
+   * Singleton: exactly one document. The sidebar links straight to its
+   * editor (`/admin/<slug>`) instead of a list-then-create flow — Sanity's
+   * singleton-document structure pattern. (Storage is unchanged; this only
+   * changes navigation.)
+   */
+  singleton?: boolean;
+  /** Display label override; defaults to a capitalized slug. */
+  label?: string;
+  /**
+   * Optional icon identifier passed through to the sidebar renderer (e.g. a
+   * Phosphor icon name). The builder treats it as an opaque string.
+   */
+  icon?: string;
+}
+
 export interface CollectionConfig {
   /** table name in D1; also the Local API's collection slug (later step) */
   slug: string;
@@ -356,6 +408,13 @@ export interface CollectionConfig {
   search?: {
     fields: readonly string[];
   };
+  /**
+   * Studio-presentation hints — grouping, ordering, hidden/read-only,
+   * singleton, label, icon. Consumed only by {@link buildStudioStructure}
+   * (the Structure Builder); never affects schema, Local API, or access.
+   * See {@link CollectionAdminConfig}.
+   */
+  admin?: CollectionAdminConfig;
 }
 
 /**
