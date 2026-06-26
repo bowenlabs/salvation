@@ -1,7 +1,7 @@
 {
   "name": "cadmea-example-smb-template",
   "private": true,
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "description": "Worked multi-provider (Square + Stripe) ecommerce example combining @thebes/cadmea-plugin-crm, @thebes/cadmea-plugin-redirects, and @thebes/cadmea-plugin-ecommerce",
   "scripts": {

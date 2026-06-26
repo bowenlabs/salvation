@@ -1,6 +1,6 @@
 {
   "name": "@thebes/cadmus",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "V8-first, Cloudflare-native full-stack framework primitives",
   "author": "BowenLabs <hello@bowenlabs.io>",
   "license": "MIT",
