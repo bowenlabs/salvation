@@ -1,5 +1,13 @@
 import type { CollectionConfig, FieldConfig } from "@thebes/cadmus/cms";
+import {
+  type ColumnDef,
+  createSolidTable,
+  flexRender,
+  getCoreRowModel,
+} from "@tanstack/solid-table";
 import { createSignal, For, Show } from "solid-js";
+
+type Row = Record<string, unknown>;
 
 // Field types that can be rendered as a plain table cell today.
 // `id` is intentionally excluded — it's never a useful list column.
@@ -20,14 +28,14 @@ function formatCellValue(value: unknown): string {
   return String(value);
 }
 
-function rowId(row: Record<string, unknown>): number | undefined {
+function rowId(row: Row): number | undefined {
   return typeof row.id === "number" ? row.id : undefined;
 }
 
 export interface CollectionListProps {
   config: CollectionConfig;
-  rows: Record<string, unknown>[];
-  onRowClick?: (row: Record<string, unknown>) => void;
+  rows: Row[];
+  onRowClick?: (row: Row) => void;
 
   /**
    * 1-based current page. Omit (along with `pageSize`) to render without
@@ -54,7 +62,31 @@ export interface CollectionListProps {
 }
 
 export function CollectionList(props: CollectionListProps) {
-  const columns = () => listableFields(props.config);
+  // Columns are derived once from the collection schema — the single source
+  // of truth feeding BOTH the desktop <table> and the mobile card list below
+  // (issue #25's mobile-first note). Sorting/pagination/selection stay
+  // controlled by the consuming route (server-driven), so the table is
+  // configured with just the core row model; its header/cell rendering is
+  // driven through flexRender so a future custom cell renderer (links,
+  // badges, thumbnails) is a per-column change, not a markup fork.
+  const columns = (): ColumnDef<Row>[] =>
+    listableFields(props.config).map(([key]) => ({
+      id: key,
+      accessorFn: (row) => row[key],
+      header: key,
+      cell: (info) => formatCellValue(info.getValue()),
+    }));
+
+  const table = createSolidTable<Row>({
+    get data() {
+      return props.rows;
+    },
+    get columns() {
+      return columns();
+    },
+    getCoreRowModel: getCoreRowModel(),
+  });
+
   const [selectMode, setSelectMode] = createSignal(false);
 
   function toggleSelected(id: number) {
@@ -64,7 +96,7 @@ export function CollectionList(props: CollectionListProps) {
     props.onSelectionChange?.(next);
   }
 
-  function handleRowActivate(row: Record<string, unknown>) {
+  function handleRowActivate(row: Row) {
     if (selectMode()) {
       const id = rowId(row);
       if (id !== undefined) toggleSelected(id);
@@ -100,8 +132,8 @@ export function CollectionList(props: CollectionListProps) {
                 )
               }
             >
-              <For each={columns()}>
-                {([key]) => <option value={key}>{key}</option>}
+              <For each={table.getAllColumns()}>
+                {(column) => <option value={column.id}>{column.id}</option>}
               </For>
             </select>
             <select
@@ -110,7 +142,7 @@ export function CollectionList(props: CollectionListProps) {
               value={props.sortDirection ?? "asc"}
               onChange={(e) =>
                 props.onSortChange?.(
-                  props.sortField ?? columns()[0]?.[0] ?? "",
+                  props.sortField ?? table.getAllColumns()[0]?.id ?? "",
                   e.currentTarget.value as "asc" | "desc",
                 )
               }
@@ -130,15 +162,28 @@ export function CollectionList(props: CollectionListProps) {
             layout below, not the other way around. */}
         <table class="table hidden md:table">
           <thead>
-            <tr>
-              <Show when={selectMode()}>
-                <th />
-              </Show>
-              <For each={columns()}>{([key]) => <th>{key}</th>}</For>
-            </tr>
+            <For each={table.getHeaderGroups()}>
+              {(headerGroup) => (
+                <tr>
+                  <Show when={selectMode()}>
+                    <th />
+                  </Show>
+                  <For each={headerGroup.headers}>
+                    {(header) => (
+                      <th>
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                      </th>
+                    )}
+                  </For>
+                </tr>
+              )}
+            </For>
           </thead>
           <tbody>
-            <For each={props.rows}>
+            <For each={table.getRowModel().rows}>
               {(row) => (
                 <tr
                   class={
@@ -146,7 +191,7 @@ export function CollectionList(props: CollectionListProps) {
                       ? "cursor-pointer hover"
                       : undefined
                   }
-                  onClick={() => handleRowActivate(row)}
+                  onClick={() => handleRowActivate(row.original)}
                 >
                   <Show when={selectMode()}>
                     <td>
@@ -155,19 +200,28 @@ export function CollectionList(props: CollectionListProps) {
                         class="checkbox checkbox-sm"
                         onClick={(e) => e.stopPropagation()}
                         checked={
-                          rowId(row) !== undefined &&
-                          (props.selectedIds?.has(rowId(row) as number) ??
+                          rowId(row.original) !== undefined &&
+                          (props.selectedIds?.has(
+                            rowId(row.original) as number,
+                          ) ??
                             false)
                         }
                         onChange={() => {
-                          const id = rowId(row);
+                          const id = rowId(row.original);
                           if (id !== undefined) toggleSelected(id);
                         }}
                       />
                     </td>
                   </Show>
-                  <For each={columns()}>
-                    {([key]) => <td>{formatCellValue(row[key])}</td>}
+                  <For each={row.getVisibleCells()}>
+                    {(cell) => (
+                      <td>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </td>
+                    )}
                   </For>
                 </tr>
               )}
@@ -176,20 +230,21 @@ export function CollectionList(props: CollectionListProps) {
         </table>
 
         {/* Stacked card list on mobile/tablet — tap-to-select via an
-            always-visible checkbox in select mode, never hover-revealed. */}
+            always-visible checkbox in select mode, never hover-revealed.
+            Same table model as the desktop view, rendered as key/value rows. */}
         <div class="flex flex-col gap-2 md:hidden">
-          <For each={props.rows}>
+          <For each={table.getRowModel().rows}>
             {(row) => (
               // biome-ignore lint/a11y/useSemanticElements: a native <button> can't contain interactive content (the select-mode checkbox below); role="button" + tabIndex/onKeyDown is the standard fallback.
               <div
                 class="card bg-base-200 cursor-pointer p-3"
                 role="button"
                 tabIndex={0}
-                onClick={() => handleRowActivate(row)}
+                onClick={() => handleRowActivate(row.original)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    handleRowActivate(row);
+                    handleRowActivate(row.original);
                   }
                 }}
               >
@@ -200,22 +255,26 @@ export function CollectionList(props: CollectionListProps) {
                       class="checkbox checkbox-sm mt-1"
                       onClick={(e) => e.stopPropagation()}
                       checked={
-                        rowId(row) !== undefined &&
-                        (props.selectedIds?.has(rowId(row) as number) ?? false)
+                        rowId(row.original) !== undefined &&
+                        (props.selectedIds?.has(rowId(row.original) as number) ??
+                          false)
                       }
                       onChange={() => {
-                        const id = rowId(row);
+                        const id = rowId(row.original);
                         if (id !== undefined) toggleSelected(id);
                       }}
                     />
                   </Show>
                   <div class="flex flex-1 flex-col gap-1">
-                    <For each={columns()}>
-                      {([key]) => (
+                    <For each={row.getVisibleCells()}>
+                      {(cell) => (
                         <div class="flex justify-between gap-2 text-sm">
-                          <span class="opacity-60">{key}</span>
+                          <span class="opacity-60">{cell.column.id}</span>
                           <span class="text-right">
-                            {formatCellValue(row[key])}
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
                           </span>
                         </div>
                       )}

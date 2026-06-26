@@ -25,8 +25,8 @@ describe("CollectionEdit", () => {
     render(() => (
       <CollectionEdit config={pagesCollection} onSubmit={() => {}} />
     ));
-    expect(screen.getByLabelText("title *")).toBeInTheDocument();
-    expect(screen.getByLabelText("status *")).toBeInTheDocument();
+    expect(screen.getByLabelText("Title *")).toBeInTheDocument();
+    expect(screen.getByLabelText("Status *")).toBeInTheDocument();
     expect(screen.queryByLabelText("id")).not.toBeInTheDocument();
   });
 
@@ -38,10 +38,10 @@ describe("CollectionEdit", () => {
         onSubmit={() => {}}
       />
     ));
-    expect(screen.getByLabelText("createdAt")).toHaveAttribute("readonly");
+    expect(screen.getByLabelText("Created at")).toHaveAttribute("readonly");
   });
 
-  it("submits edited values, excluding date fields", () => {
+  it("submits edited values, excluding date fields", async () => {
     let submitted: Record<string, unknown> | undefined;
     render(() => (
       <CollectionEdit
@@ -52,11 +52,11 @@ describe("CollectionEdit", () => {
         }}
       />
     ));
-    fireEvent.input(screen.getByLabelText("title *"), {
+    fireEvent.input(screen.getByLabelText("Title *"), {
       target: { value: "Home" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(submitted).toEqual({ title: "Home" });
+    await vi.waitFor(() => expect(submitted).toEqual({ title: "Home" }));
   });
 
   it("shows the error message when provided", () => {
@@ -70,7 +70,7 @@ describe("CollectionEdit", () => {
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
   });
 
-  it("renders and submits checkbox fields as booleans", () => {
+  it("renders and submits checkbox fields as booleans", async () => {
     const config: CollectionConfig = {
       slug: "people",
       fields: { isActive: { type: "checkbox" } },
@@ -84,11 +84,11 @@ describe("CollectionEdit", () => {
         }}
       />
     ));
-    const checkbox = screen.getByLabelText("isActive") as HTMLInputElement;
+    const checkbox = screen.getByLabelText("Is active") as HTMLInputElement;
     expect(checkbox.type).toBe("checkbox");
     fireEvent.click(checkbox);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(submitted).toEqual({ isActive: true });
+    await vi.waitFor(() => expect(submitted).toEqual({ isActive: true }));
   });
 
   it("uploads a file via onUploadFile and submits the resolved URL", async () => {
@@ -109,18 +109,20 @@ describe("CollectionEdit", () => {
         }}
       />
     ));
-    const input = screen.getByLabelText("fileUrl *") as HTMLInputElement;
+    const input = screen.getByLabelText("File url *") as HTMLInputElement;
     await fireEvent.change(input, { target: { files: [file] } });
     expect(
       await screen.findByText("https://media.example.com/photo.png"),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(submitted).toEqual({
-      fileUrl: "https://media.example.com/photo.png",
-    });
+    await vi.waitFor(() =>
+      expect(submitted).toEqual({
+        fileUrl: "https://media.example.com/photo.png",
+      }),
+    );
   });
 
-  it("renders relationship fields as a select populated from relationshipOptions, submitting the selected id", () => {
+  it("renders relationship fields as a select populated from relationshipOptions, submitting the selected id", async () => {
     const config: CollectionConfig = {
       slug: "comments",
       fields: { authorId: { type: "relationship", relationTo: "users" } },
@@ -140,11 +142,11 @@ describe("CollectionEdit", () => {
         }}
       />
     ));
-    const select = screen.getByLabelText("authorId") as HTMLSelectElement;
+    const select = screen.getByLabelText("Author id") as HTMLSelectElement;
     expect(screen.getByText("Ada")).toBeInTheDocument();
     fireEvent.change(select, { target: { value: "2" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(submitted).toEqual({ authorId: 2 });
+    await vi.waitFor(() => expect(submitted).toEqual({ authorId: 2 }));
   });
 
   it("does not render a select for hasMany relationship fields", () => {
@@ -158,7 +160,7 @@ describe("CollectionEdit", () => {
     expect(screen.queryByLabelText("tagIds")).not.toBeInTheDocument();
   });
 
-  it("adds, fills, and removes array items, submitting the resulting array", () => {
+  it("adds, fills, and removes array items, submitting the resulting array", async () => {
     const config: CollectionConfig = {
       slug: "forms",
       fields: {
@@ -177,15 +179,15 @@ describe("CollectionEdit", () => {
         }}
       />
     ));
-    fireEvent.click(screen.getByRole("button", { name: "Add links" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add links" }));
-    const labelInputs = screen.getAllByLabelText("label *");
+    fireEvent.click(screen.getByRole("button", { name: "Add Links" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Links" }));
+    const labelInputs = screen.getAllByLabelText("Label *");
     expect(labelInputs).toHaveLength(2);
     fireEvent.input(labelInputs[0], { target: { value: "First" } });
     fireEvent.input(labelInputs[1], { target: { value: "Second" } });
     fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[1]);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(submitted).toEqual({ links: [{ label: "First" }] });
+    await vi.waitFor(() => expect(submitted).toEqual({ links: [{ label: "First" }] }));
   });
 
   it("disables Save and shows a spinner while saving", () => {
@@ -227,11 +229,11 @@ describe("CollectionEdit", () => {
       />
     ));
     expect(dirtyStates).toEqual([false]);
-    fireEvent.input(screen.getByLabelText("title *"), {
+    fireEvent.input(screen.getByLabelText("Title *"), {
       target: { value: "Changed" },
     });
     expect(dirtyStates).toEqual([false, true]);
-    fireEvent.input(screen.getByLabelText("title *"), {
+    fireEvent.input(screen.getByLabelText("Title *"), {
       target: { value: "Home" },
     });
     expect(dirtyStates).toEqual([false, true, false]);
@@ -276,7 +278,7 @@ describe("CollectionEdit", () => {
       screen.queryByRole("button", { name: "Save" }),
     ).not.toBeInTheDocument();
 
-    fireEvent.input(screen.getByLabelText("title *"), {
+    fireEvent.input(screen.getByLabelText("Title *"), {
       target: { value: "Updated" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
@@ -368,5 +370,117 @@ describe("CollectionEdit", () => {
     await vi.waitFor(() => {
       expect(document.getElementById("body")).toBeInTheDocument();
     });
+  });
+});
+
+describe("CollectionEdit — admin field metadata (A)", () => {
+  it("humanizes the field key when no admin.label is set", () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: { metaDescription: { type: "text" } },
+    };
+    render(() => <CollectionEdit config={config} onSubmit={() => {}} />);
+    expect(screen.getByLabelText("Meta description")).toBeInTheDocument();
+  });
+
+  it("uses admin.label over the humanized key", () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: { metaDescription: { type: "text", admin: { label: "SEO blurb" } } },
+    };
+    render(() => <CollectionEdit config={config} onSubmit={() => {}} />);
+    expect(screen.getByLabelText("SEO blurb")).toBeInTheDocument();
+  });
+
+  it("renders admin.description as help text", () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: {
+        title: { type: "text", admin: { description: "Shown in the browser tab" } },
+      },
+    };
+    render(() => <CollectionEdit config={config} onSubmit={() => {}} />);
+    expect(screen.getByText("Shown in the browser tab")).toBeInTheDocument();
+  });
+
+  it("groups fields into a titled fieldset by admin.group", () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: {
+        title: { type: "text" },
+        metaTitle: { type: "text", admin: { group: "SEO" } },
+      },
+    };
+    render(() => <CollectionEdit config={config} onSubmit={() => {}} />);
+    const legend = screen.getByText("SEO");
+    expect(legend.tagName).toBe("LEGEND");
+  });
+
+  it("renders a half-width field as a single grid column on md+", () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: { title: { type: "text", admin: { width: "half" } } },
+    };
+    render(() => <CollectionEdit config={config} onSubmit={() => {}} />);
+    const control = screen.getByLabelText("Title").closest(".form-control");
+    expect(control?.className).toContain("md:col-span-1");
+  });
+
+  it("renders an admin.readOnly text field as read-only", () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: { slug: { type: "text", admin: { readOnly: true } } },
+    };
+    render(() => <CollectionEdit config={config} onSubmit={() => {}} />);
+    expect(screen.getByLabelText("Slug")).toHaveAttribute("readonly");
+  });
+
+  it("hides a field whose admin.condition is false, and shows it when true", () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: {
+        kind: { type: "select", options: ["plain", "promo"] },
+        promoCode: {
+          type: "text",
+          admin: {
+            condition: (values) => values.kind === "promo",
+          },
+        },
+      },
+    };
+    render(() => <CollectionEdit config={config} onSubmit={() => {}} />);
+    expect(screen.queryByLabelText("Promo code")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Kind"), {
+      target: { value: "promo" },
+    });
+    expect(screen.getByLabelText("Promo code")).toBeInTheDocument();
+  });
+
+  it("surfaces a ValidationBuilder error inline and blocks submit", async () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: {
+        title: { type: "text", validation: (r) => r.required().min(2) },
+      },
+    };
+    let submitted: Record<string, unknown> | undefined;
+    render(() => (
+      <CollectionEdit
+        config={config}
+        onSubmit={(v) => {
+          submitted = v;
+        }}
+      />
+    ));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText(/not be empty/i)).toBeInTheDocument();
+    expect(submitted).toBeUndefined();
+
+    // Filling a valid value clears the error and lets the submit through.
+    fireEvent.input(screen.getByLabelText("Title"), {
+      target: { value: "Home" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(submitted).toEqual({ title: "Home" }));
   });
 });

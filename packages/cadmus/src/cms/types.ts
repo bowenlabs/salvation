@@ -3,12 +3,43 @@
 
 import type { ValidationBuilder } from "./validation.js";
 
+/**
+ * Editor-only presentation hints for a single field (issue #16 follow-on) —
+ * the field-level counterpart to {@link CollectionAdminConfig}. Purely about
+ * how the studio renders the field; absent → sensible defaults (a humanized
+ * key for the label, no help text, full width, always shown, editable). None
+ * of this touches the DB schema or the Local API.
+ */
+export interface FieldAdminConfig {
+  /** Human-friendly label; defaults to a humanized field key (`metaDescription` → "Meta description"). */
+  label?: string;
+  /** Help text rendered beneath the label. */
+  description?: string;
+  /** Placeholder for text-like inputs. */
+  placeholder?: string;
+  /** Groups the field into a titled fieldset in the editor, in first-seen order. */
+  group?: string;
+  /** Editor column width on >= md screens. Defaults to "full". */
+  width?: "full" | "half";
+  /**
+   * Show the field only when this predicate — given the whole in-progress
+   * form value — returns true (Payload's `admin.condition`). A function, so
+   * it's evaluated by the studio directly from the imported config, not from
+   * a serialized meta payload.
+   */
+  condition?: (values: Record<string, unknown>) => boolean;
+  /** Render the field read-only in the editor. */
+  readOnly?: boolean;
+}
+
 export interface BaseFieldConfig {
   /** column name override; defaults to the config key */
   name?: string;
   required?: boolean;
   unique?: boolean;
   defaultValue?: unknown;
+  /** Editor-only presentation hints — see {@link FieldAdminConfig}. */
+  admin?: FieldAdminConfig;
   /**
    * Chainable validation rules (issue #16), Sanity's `defineField`
    * `validation` analogue: `validation: (rule) => rule.required().min(2)`.

@@ -28,27 +28,29 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@thebes/cadmus": "workspace:^",
     "@tanstack/solid-query": ">=5.0.0",
     "@tanstack/solid-router": ">=1.0.0",
+    "@thebes/cadmus": "workspace:^",
     "solid-js": ">=1.9.0"
   },
   "dependencies": {
+    "@tanstack/solid-form": "^1.33.0",
+    "@tanstack/solid-table": "^8.21.3",
     "@tiptap/core": "^3.27.1",
     "@tiptap/starter-kit": "^3.27.1"
   },
   "devDependencies": {
-    "@thebes/cadmus": "workspace:^",
+    "@babel/core": "^7.28.0",
+    "@rolldown/plugin-babel": "^0.2.3",
     "@solidjs/testing-library": "latest",
     "@tanstack/solid-query": "^5.101.0",
     "@tanstack/solid-router": "latest",
     "@testing-library/dom": "latest",
     "@testing-library/jest-dom": "latest",
+    "@thebes/cadmus": "workspace:^",
+    "babel-preset-solid": "^1.9.12",
     "jsdom": "latest",
     "solid-js": "^1.9.13",
-    "@babel/core": "^7.28.0",
-    "@rolldown/plugin-babel": "^0.2.3",
-    "babel-preset-solid": "^1.9.12",
     "typescript": "latest",
     "vite-plugin-solid": "latest",
     "vite-plus": "latest",

@@ -80,7 +80,7 @@ describe("createCollectionEditPage", () => {
     );
     renderPage(Page);
     await waitFor(() =>
-      expect(screen.getByLabelText("title *")).toBeInTheDocument(),
+      expect(screen.getByLabelText("Title *")).toBeInTheDocument(),
     );
     expect(
       screen.queryByRole("button", { name: "Delete pages" }),
@@ -93,7 +93,7 @@ describe("createCollectionEditPage", () => {
     );
     renderPage(Page);
     await waitFor(() =>
-      expect(screen.getByLabelText("title *")).toBeInTheDocument(),
+      expect(screen.getByLabelText("Title *")).toBeInTheDocument(),
     );
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
