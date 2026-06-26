@@ -674,3 +674,20 @@ describe("CollectionEdit — autosave (D)", () => {
     }
   });
 });
+
+describe("CollectionEdit — live preview (D)", () => {
+  it("emits editable values on change via onValuesChange", () => {
+    const seen: Record<string, unknown>[] = [];
+    render(() => (
+      <CollectionEdit
+        config={pagesCollection}
+        onSubmit={() => {}}
+        onValuesChange={(v) => seen.push(v)}
+      />
+    ));
+    fireEvent.input(screen.getByLabelText("Title *"), {
+      target: { value: "Hi" },
+    });
+    expect(seen.at(-1)).toEqual({ title: "Hi" });
+  });
+});

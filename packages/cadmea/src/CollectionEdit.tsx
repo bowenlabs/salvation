@@ -163,6 +163,12 @@ export interface CollectionEditProps {
    */
   onDirtyChange?: (dirty: boolean) => void;
   /**
+   * Fired with the current editable values on every change — wire this to a
+   * side-by-side live preview (e.g. `VisualEditingPane`'s `previewValues`).
+   * Fires on mount with the initial values too.
+   */
+  onValuesChange?: (values: Record<string, unknown>) => void;
+  /**
    * Per-field custom editor widgets (issue #17), keyed by field name. When a
    * field has a widget here, it's rendered instead of the generic input for
    * that field's type — e.g. `{ heroImage: ImageHotspotField }`. The widget
@@ -238,6 +244,9 @@ export function CollectionEdit(props: CollectionEditProps) {
 
   // Current values for the imperative draft action + conditional fields.
   const formValues = form.useStore((s) => s.values as Record<string, unknown>);
+
+  // Emit editable values on every change for side-by-side live preview.
+  createEffect(() => props.onValuesChange?.(editablePayload(formValues())));
 
   // date fields are read-only — never include them in a submitted/draft payload
   function editablePayload(

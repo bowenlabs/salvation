@@ -63,6 +63,85 @@ export interface VisualEditingMessage {
   ref: EditRef;
 }
 
+// ---------------------------------------------------------------------------
+// Live preview (studio → preview): the reverse channel of click-to-edit. The
+// studio posts the in-progress form values into the preview iframe so tagged
+// text regions update as the client types. Structural edits (adding blocks)
+// aren't reflected — those need a full re-render — but text edits feel live.
+// ---------------------------------------------------------------------------
+
+/** `postMessage` type carrying in-progress field values into the preview. */
+export const PREVIEW_VALUES_MESSAGE = "cadmus:preview-values";
+
+export interface PreviewValuesMessage {
+  type: typeof PREVIEW_VALUES_MESSAGE;
+  /** Which document the values belong to — must match the preview's. */
+  collection: string;
+  id: number;
+  /** Field key → current value (only string values patch text regions). */
+  values: Record<string, unknown>;
+}
+
+/**
+ * Patch tagged regions' text from in-progress field values. For each string
+ * value, updates every `[data-cadmus-edit="collection:id:field"]` element's
+ * `textContent`. Pure (takes the root to search), so it's unit-testable
+ * without a live preview window.
+ */
+export function applyPreviewValues(
+  root: ParentNode,
+  target: { collection: string; id: number },
+  values: Record<string, unknown>,
+): void {
+  for (const [field, value] of Object.entries(values)) {
+    if (typeof value !== "string") continue;
+    const attr = encodeEditRef({
+      collection: target.collection,
+      id: target.id,
+      field,
+    });
+    for (const el of root.querySelectorAll(`[${EDIT_ATTR}="${attr}"]`)) {
+      el.textContent = value;
+    }
+  }
+}
+
+export interface PreviewSyncOptions {
+  /** The document this preview renders — messages for others are ignored. */
+  collection: string;
+  id: number;
+  /** Where to search for tagged regions. Default `document`. */
+  root?: ParentNode;
+  /** Only accept messages from this origin (the studio). Default: any. */
+  allowedOrigin?: string;
+}
+
+/**
+ * Mount the live-preview receiver on a preview page (browser-only). Listens
+ * for {@link PreviewValuesMessage} from the studio window and patches tagged
+ * text regions via {@link applyPreviewValues}. Returns a cleanup function.
+ */
+export function mountPreviewSync(options: PreviewSyncOptions): () => void {
+  const root = options.root ?? document;
+  const handler = (event: MessageEvent) => {
+    if (options.allowedOrigin && event.origin !== options.allowedOrigin) return;
+    const data = event.data as Partial<PreviewValuesMessage> | null;
+    if (data?.type !== PREVIEW_VALUES_MESSAGE) return;
+    if (data.collection !== options.collection || data.id !== options.id) {
+      return;
+    }
+    if (data.values) {
+      applyPreviewValues(
+        root,
+        { collection: options.collection, id: options.id },
+        data.values,
+      );
+    }
+  };
+  window.addEventListener("message", handler);
+  return () => window.removeEventListener("message", handler);
+}
+
 export interface VisualEditingOptions {
   /** Called with the decoded ref when an editable region is clicked. */
   onSelect?: (ref: EditRef, element: Element) => void;
