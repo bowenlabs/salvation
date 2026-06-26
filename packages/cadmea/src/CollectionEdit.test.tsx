@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@solidjs/testing-library";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@solidjs/testing-library";
 import type { CollectionConfig } from "@thebes/cadmus/cms";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CollectionEdit } from "./CollectionEdit.js";
@@ -689,5 +695,56 @@ describe("CollectionEdit — live preview (D)", () => {
       target: { value: "Hi" },
     });
     expect(seen.at(-1)).toEqual({ title: "Hi" });
+  });
+});
+
+describe("CollectionEdit — publish confirmation (E)", () => {
+  const versioned: CollectionConfig = {
+    slug: "pages",
+    fields: { title: { type: "text", required: true } },
+    versions: { drafts: true },
+  };
+
+  it("confirms before publishing when confirmPublish is set", () => {
+    let published = false;
+    render(() => (
+      <CollectionEdit
+        config={versioned}
+        onSubmit={() => {}}
+        draftActions={{
+          onSaveDraft: () => {},
+          onPublish: () => {
+            published = true;
+          },
+          canPublish: true,
+          confirmPublish: true,
+        }}
+      />
+    ));
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    expect(published).toBe(false); // dialog first
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
+    expect(published).toBe(true);
+  });
+
+  it("publishes immediately without confirmPublish", () => {
+    let published = false;
+    render(() => (
+      <CollectionEdit
+        config={versioned}
+        onSubmit={() => {}}
+        draftActions={{
+          onSaveDraft: () => {},
+          onPublish: () => {
+            published = true;
+          },
+          canPublish: true,
+        }}
+      />
+    ));
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    expect(published).toBe(true);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

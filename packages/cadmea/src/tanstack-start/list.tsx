@@ -131,6 +131,23 @@ export function createCollectionListPage<TRow extends Record<string, unknown>>(
           <CollectionList
             config={options.collection}
             rows={result.data?.rows ?? []}
+            emptyState={
+              <div class="border-base-300 rounded-box flex flex-col items-center gap-3 border border-dashed py-12 text-center">
+                <p class="text-base-content/70 m-0">
+                  No {options.label ?? options.collection.slug} yet.
+                </p>
+                <Show
+                  when={
+                    options.newHref &&
+                    options.capabilities?.()?.canCreate !== false
+                  }
+                >
+                  <Link to={options.newHref} class="btn btn-primary btn-sm">
+                    {options.newLabel ?? `New ${options.collection.slug}`}
+                  </Link>
+                </Show>
+              </div>
+            }
             onRowClick={
               options.onRowClick as
                 | ((row: Record<string, unknown>) => void)
