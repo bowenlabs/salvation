@@ -17,11 +17,13 @@ import type {
 } from "drizzle-orm/sqlite-core";
 import { CadmusAccessDeniedError, CadmusCmsError } from "../errors.js";
 import { collectionSearchTableName, extractSearchText } from "./codegen.js";
+import { diffDocuments, type FieldChange } from "./patch.js";
 import {
   type CollectionAccess,
   type CollectionConfig,
   flattenDoc,
   flattenFields,
+  type JsonValue,
   nestDoc,
   type RelationshipDepth,
 } from "./types.js";
@@ -701,6 +703,17 @@ export interface VersionedLocalApi<
   ): Promise<InferSelectModel<TTable>>;
   /** Clears the main row's published pointer; the row's data is untouched. */
   unpublish(context: TContext, id: number): Promise<InferSelectModel<TTable>>;
+  /**
+   * Field-level diff (issue #14) between two version snapshots' `versionData`
+   * — the per-field added/removed/changed list a version-history UI renders.
+   * Both versions must belong to the same parent. Bookkeeping keys
+   * (`id`/`createdAt`/`status`/`publishedVersionId`) are ignored.
+   */
+  diffVersions(
+    context: TContext,
+    fromVersionId: number,
+    toVersionId: number,
+  ): Promise<FieldChange[]>;
 }
 
 export function createVersionedLocalApi<
@@ -814,6 +827,32 @@ export function createVersionedLocalApi<
         .returning();
       if (!row) notFound(config, id);
       return row as InferSelectModel<TTable>;
+    },
+
+    async diffVersions(context, fromVersionId, toVersionId) {
+      await checkAccess(config, "read", context);
+      const rows = await db
+        .select()
+        .from(versionsTable)
+        .where(inArray(versionsIdColumn, [fromVersionId, toVersionId]));
+      const byId = new Map(
+        rows.map((r) => [
+          (r as Record<string, unknown>).id as number,
+          (r as Record<string, unknown>).versionData as Record<
+            string,
+            JsonValue
+          >,
+        ]),
+      );
+      const before = byId.get(fromVersionId);
+      const after = byId.get(toVersionId);
+      if (!before) notFoundVersion(config, fromVersionId);
+      if (!after) notFoundVersion(config, toVersionId);
+      // Ignore bookkeeping columns — only real content fields are of interest
+      // in a version-history view.
+      return diffDocuments(before, after, {
+        ignore: ["id", "createdAt", "status", "publishedVersionId"],
+      });
     },
   };
 }
