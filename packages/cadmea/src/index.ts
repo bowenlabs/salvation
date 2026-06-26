@@ -17,3 +17,5 @@ export type {
   SearchPaletteResult,
 } from "./SearchPalette.js";
 export { SearchPalette } from "./SearchPalette.js";
+export type { VisualEditingPaneProps } from "./VisualEditingPane.js";
+export { VisualEditingPane } from "./VisualEditingPane.js";
