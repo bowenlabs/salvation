@@ -131,6 +131,8 @@ export interface DraftActions {
   autosave?: boolean;
   /** Debounce window for autosave, in ms. Default 1500. */
   autosaveMs?: number;
+  /** Ask for confirmation (a dialog) before publishing. */
+  confirmPublish?: boolean;
 }
 
 export interface CollectionEditProps {
@@ -281,6 +283,12 @@ export function CollectionEdit(props: CollectionEditProps) {
   const [autosaveStatus, setAutosaveStatus] = createSignal<
     "idle" | "saving" | "saved"
   >("idle");
+  // Publish-confirmation dialog (opt-in via draftActions.confirmPublish).
+  const [confirmingPublish, setConfirmingPublish] = createSignal(false);
+  function requestPublish() {
+    if (props.draftActions?.confirmPublish) setConfirmingPublish(true);
+    else void props.draftActions?.onPublish?.();
+  }
   let autosaveTimer: ReturnType<typeof setTimeout> | undefined;
   createEffect(() => {
     const dirty = !isDefaultValue();
@@ -397,7 +405,7 @@ export function CollectionEdit(props: CollectionEditProps) {
             disabled={
               !props.draftActions?.canPublish || props.draftActions?.publishing
             }
-            onClick={() => void props.draftActions?.onPublish?.()}
+            onClick={requestPublish}
           >
             <Show
               when={props.draftActions?.publishing}
@@ -436,6 +444,43 @@ export function CollectionEdit(props: CollectionEditProps) {
           </Show>
         </Show>
       </div>
+
+      {/* Publish-confirmation dialog — a gentle gate before content goes live. */}
+      <Show when={confirmingPublish()}>
+        <div class="modal modal-open" role="dialog" aria-modal="true">
+          <div class="modal-box">
+            <h3 class="text-lg font-semibold">Publish changes?</h3>
+            <p class="text-base-content/70 py-2 text-sm">
+              Your latest saved draft will go live on the site.
+            </p>
+            <div class="modal-action">
+              <button
+                type="button"
+                class="btn btn-ghost"
+                onClick={() => setConfirmingPublish(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                onClick={() => {
+                  setConfirmingPublish(false);
+                  void props.draftActions?.onPublish?.();
+                }}
+              >
+                Publish
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="modal-backdrop"
+            aria-label="Cancel"
+            onClick={() => setConfirmingPublish(false)}
+          />
+        </div>
+      </Show>
     </form>
   );
 }

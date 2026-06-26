@@ -238,3 +238,16 @@ describe("CollectionList", () => {
     expect(selections).toEqual([new Set([1])]);
   });
 });
+
+describe("CollectionList — empty state (E)", () => {
+  it("renders a custom empty state when there are no rows", () => {
+    render(() => (
+      <CollectionList
+        config={pagesCollection}
+        rows={[]}
+        emptyState={<div>Make your first page</div>}
+      />
+    ));
+    expect(screen.getByText("Make your first page")).toBeInTheDocument();
+  });
+});

@@ -5,7 +5,7 @@ import {
   getCoreRowModel,
 } from "@tanstack/solid-table";
 import type { CollectionConfig, FieldConfig } from "@thebes/cadmus/cms";
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, type JSX, Show } from "solid-js";
 
 type Row = Record<string, unknown>;
 
@@ -59,6 +59,12 @@ export interface CollectionListProps {
   selectable?: boolean;
   selectedIds?: ReadonlySet<number>;
   onSelectionChange?: (selectedIds: Set<number>) => void;
+
+  /**
+   * Friendly empty state shown when there are no rows — pass one with a "New"
+   * CTA (the list factory does this). Falls back to a simple default.
+   */
+  emptyState?: JSX.Element;
 }
 
 export function CollectionList(props: CollectionListProps) {
@@ -156,7 +162,15 @@ export function CollectionList(props: CollectionListProps) {
 
       <Show
         when={props.rows.length > 0}
-        fallback={<p class="text-sm opacity-70">No {props.config.slug} yet.</p>}
+        fallback={
+          props.emptyState ?? (
+            <div class="border-base-300 rounded-box flex flex-col items-center gap-1 border border-dashed py-12 text-center">
+              <p class="text-base-content/70 m-0">
+                No {props.config.slug} yet.
+              </p>
+            </div>
+          )
+        }
       >
         {/* Table on desktop — hidden below md per the mobile-first card
             layout below, not the other way around. */}
