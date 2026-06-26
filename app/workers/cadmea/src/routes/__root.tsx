@@ -10,6 +10,7 @@ import {
 } from "@tanstack/solid-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/solid-router-devtools";
 import { type JSX, Show } from "solid-js";
+import { HydrationScript } from "solid-js/web";
 import BrandColorProvider from "../components/BrandColorProvider";
 import { DesignPreviewProvider } from "../components/design-preview-context";
 import Footer from "../components/Footer";
@@ -71,6 +72,13 @@ function RootDocument(props: { children: JSX.Element }) {
     <html lang="en">
       <head>
         <script innerHTML={THEME_INIT_SCRIPT} />
+        {/* Initializes Solid's `_$HY` global BEFORE the serialized
+            hydration-data scripts <Scripts/> emits at end of body. Without
+            it, those inline data scripts reference an undefined `_$HY` and
+            throw, so the panel never hydrates client-side and every
+            collection list renders empty. TanStack Solid Start's <Scripts/>
+            does not emit this itself. */}
+        <HydrationScript />
         <HeadContent />
       </head>
       <body class="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]">

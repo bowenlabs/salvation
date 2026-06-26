@@ -521,6 +521,36 @@ a {
   }
 }
 
+/* ── Admin collection tables ──────────────────────────────────────────
+   Readability polish on top of daisyUI's `.table` for CollectionList:
+   uppercase muted headers, zebra rows, and a clear clickable-row hover.
+   (Responsive switching and per-cell truncation are handled in the
+   CollectionList component itself.) */
+.table thead th {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+  white-space: nowrap;
+  background: color-mix(in oklab, var(--color-base-200) 70%, var(--color-base-100));
+}
+.table thead th::first-letter {
+  text-transform: uppercase;
+}
+.table tbody td {
+  padding-block: 0.62rem;
+}
+.table tbody td:first-child {
+  font-weight: 600;
+}
+.table tbody tr:nth-child(even) {
+  background: color-mix(in oklab, var(--color-base-content) 3.5%, transparent);
+}
+.table tbody tr:hover {
+  background: color-mix(in oklab, var(--color-primary) 11%, transparent);
+}
+
 /* Global keyboard focus indicator (WCAG 2.4.7). A safety net for any
    interactive element whose component-library focus style is missing or
    gets reset — keyboard users always get a visible, consistent ring.
