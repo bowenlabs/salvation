@@ -148,3 +148,30 @@ describe("createCollectionEditPage", () => {
     openSpy.mockRestore();
   });
 });
+
+describe("createCollectionEditPage — live preview pane (D)", () => {
+  it("renders a preview iframe beside the form when preview is configured", async () => {
+    const Page = createCollectionEditPage({
+      ...buildOptions(),
+      preview: { url: () => "https://site.example/preview/pages/home?edit=1" },
+    });
+    renderPage(Page);
+    await waitFor(() =>
+      expect(screen.getByLabelText("Title *")).toBeInTheDocument(),
+    );
+    const iframe = document.querySelector(
+      'iframe[title="Live preview"]',
+    ) as HTMLIFrameElement | null;
+    expect(iframe).not.toBeNull();
+    expect(iframe?.src).toContain("edit=1");
+  });
+
+  it("renders no preview iframe when preview is omitted", async () => {
+    const Page = createCollectionEditPage(buildOptions());
+    renderPage(Page);
+    await waitFor(() =>
+      expect(screen.getByLabelText("Title *")).toBeInTheDocument(),
+    );
+    expect(document.querySelector('iframe[title="Live preview"]')).toBeNull();
+  });
+});
