@@ -173,75 +173,89 @@ export function CollectionList(props: CollectionListProps) {
         }
       >
         {/* Table on desktop — hidden below md per the mobile-first card
-            layout below, not the other way around. */}
-        <table class="table hidden md:table">
-          <thead>
-            <For each={table.getHeaderGroups()}>
-              {(headerGroup) => (
-                <tr>
-                  <Show when={selectMode()}>
-                    <th />
-                  </Show>
-                  <For each={headerGroup.headers}>
-                    {(header) => (
-                      <th>
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                      </th>
-                    )}
-                  </For>
-                </tr>
-              )}
-            </For>
-          </thead>
-          <tbody>
-            <For each={table.getRowModel().rows}>
-              {(row) => (
-                <tr
-                  class={
-                    props.onRowClick || selectMode()
-                      ? "cursor-pointer hover"
-                      : undefined
-                  }
-                  onClick={() => handleRowActivate(row.original)}
-                >
-                  <Show when={selectMode()}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        class="checkbox checkbox-sm"
-                        onClick={(e) => e.stopPropagation()}
-                        checked={
-                          rowId(row.original) !== undefined &&
-                          (props.selectedIds?.has(
-                            rowId(row.original) as number,
-                          ) ??
-                            false)
-                        }
-                        onChange={() => {
-                          const id = rowId(row.original);
-                          if (id !== undefined) toggleSelected(id);
-                        }}
-                      />
-                    </td>
-                  </Show>
-                  <For each={row.getVisibleCells()}>
-                    {(cell) => (
+            layout below, not the other way around. The `hidden md:block`
+            lives on a WRAPPER, not the <table>: daisyUI's `.table` sets
+            `display: table` with higher precedence than Tailwind's
+            `.hidden`, so `class="table hidden md:table"` leaked the table
+            into the mobile breakpoint (table AND cards rendered at once).
+            `overflow-x-auto` lets a wide table scroll instead of clipping. */}
+        <div class="hidden overflow-x-auto md:block">
+          <table class="table">
+            <thead>
+              <For each={table.getHeaderGroups()}>
+                {(headerGroup) => (
+                  <tr>
+                    <Show when={selectMode()}>
+                      <th />
+                    </Show>
+                    <For each={headerGroup.headers}>
+                      {(header) => (
+                        <th>
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                        </th>
+                      )}
+                    </For>
+                  </tr>
+                )}
+              </For>
+            </thead>
+            <tbody>
+              <For each={table.getRowModel().rows}>
+                {(row) => (
+                  <tr
+                    class={
+                      props.onRowClick || selectMode()
+                        ? "cursor-pointer hover"
+                        : undefined
+                    }
+                    onClick={() => handleRowActivate(row.original)}
+                  >
+                    <Show when={selectMode()}>
                       <td>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
+                        <input
+                          type="checkbox"
+                          class="checkbox checkbox-sm"
+                          onClick={(e) => e.stopPropagation()}
+                          checked={
+                            rowId(row.original) !== undefined &&
+                            (props.selectedIds?.has(
+                              rowId(row.original) as number,
+                            ) ??
+                              false)
+                          }
+                          onChange={() => {
+                            const id = rowId(row.original);
+                            if (id !== undefined) toggleSelected(id);
+                          }}
+                        />
                       </td>
-                    )}
-                  </For>
-                </tr>
-              )}
-            </For>
-          </tbody>
-        </table>
+                    </Show>
+                    <For each={row.getVisibleCells()}>
+                      {(cell) => (
+                        // Truncate long cell values (slugs, SEO meta, free
+                        // text) so one field can't blow a column out and make
+                        // the whole table unreadable; `title` exposes the full
+                        // value on hover.
+                        <td
+                          class="max-w-[28ch] truncate"
+                          title={String(cell.getValue() ?? "")}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </td>
+                      )}
+                    </For>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </div>
 
         {/* Stacked card list on mobile/tablet — tap-to-select via an
             always-visible checkbox in select mode, never hover-revealed.
