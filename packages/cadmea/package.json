@@ -1,6 +1,6 @@
 {
   "name": "@thebes/cadmea",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Generic SolidJS admin-UI components for @thebes/cadmus/cms collections",
   "author": "BowenLabs <hello@bowenlabs.io>",
   "license": "MIT",

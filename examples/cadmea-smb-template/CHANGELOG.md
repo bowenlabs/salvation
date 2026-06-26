@@ -1,5 +1,12 @@
 # cadmea-example-smb-template
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies [f1dc0a8]
+  - @thebes/cadmus@0.4.1
+
 ## 0.0.3
 
 ### Patch Changes
