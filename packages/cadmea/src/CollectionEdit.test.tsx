@@ -509,3 +509,95 @@ describe("CollectionEdit — admin field metadata (A)", () => {
     await vi.waitFor(() => expect(submitted).toEqual({ title: "Home" }));
   });
 });
+
+describe("CollectionEdit — visual block builder (B)", () => {
+  const blocksConfig: CollectionConfig = {
+    slug: "pages",
+    fields: {
+      blocks: {
+        type: "array",
+        fields: { type: { type: "select", options: ["hero", "text"] } },
+        discriminator: {
+          key: "type",
+          variants: {
+            hero: { heading: { type: "text", required: true } },
+            text: { body: { type: "text" } },
+          },
+          variantsAdmin: { hero: { label: "Hero banner", icon: "ph ph-image" } },
+        },
+      },
+    },
+  };
+
+  it("offers an Add-block picker with one entry per variant (admin label or humanized)", () => {
+    render(() => <CollectionEdit config={blocksConfig} onSubmit={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add block" }));
+    expect(
+      screen.getByRole("menuitem", { name: "Hero banner" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Text" })).toBeInTheDocument();
+  });
+
+  it("adds a block of the chosen variant, presetting its type and showing its fields", () => {
+    render(() => <CollectionEdit config={blocksConfig} onSubmit={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add block" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Hero banner" }));
+    // The hero variant's field is shown, and the block header reflects the type.
+    expect(screen.getByLabelText("Heading *")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Hero banner" }),
+    ).toBeInTheDocument();
+  });
+
+  it("reorders blocks with Move down, reflecting the new order on submit", async () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: { items: { type: "array", fields: { label: { type: "text" } } } },
+    };
+    let submitted: Record<string, unknown> | undefined;
+    render(() => (
+      <CollectionEdit config={config} onSubmit={(v) => (submitted = v)} />
+    ));
+    fireEvent.click(screen.getByRole("button", { name: "Add Items" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Items" }));
+    const labels = screen.getAllByLabelText("Label");
+    fireEvent.input(labels[0], { target: { value: "A" } });
+    fireEvent.input(labels[1], { target: { value: "B" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Move down" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() =>
+      expect(submitted).toEqual({ items: [{ label: "B" }, { label: "A" }] }),
+    );
+  });
+
+  it("duplicates a block", async () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: { items: { type: "array", fields: { label: { type: "text" } } } },
+    };
+    let submitted: Record<string, unknown> | undefined;
+    render(() => (
+      <CollectionEdit config={config} onSubmit={(v) => (submitted = v)} />
+    ));
+    fireEvent.click(screen.getByRole("button", { name: "Add Items" }));
+    fireEvent.input(screen.getByLabelText("Label"), { target: { value: "A" } });
+    fireEvent.click(screen.getByRole("button", { name: "Duplicate" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() =>
+      expect(submitted).toEqual({ items: [{ label: "A" }, { label: "A" }] }),
+    );
+  });
+
+  it("collapses a block to hide its fields", () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: { items: { type: "array", fields: { label: { type: "text" } } } },
+    };
+    render(() => <CollectionEdit config={config} onSubmit={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add Items" }));
+    expect(screen.getByLabelText("Label")).toBeInTheDocument();
+    // The header toggle is named after the block (the array label here).
+    fireEvent.click(screen.getByRole("button", { name: "Items" }));
+    expect(screen.queryByLabelText("Label")).not.toBeInTheDocument();
+  });
+});

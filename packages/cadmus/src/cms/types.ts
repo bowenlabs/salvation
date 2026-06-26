@@ -157,6 +157,13 @@ export interface ArrayFieldConfig extends BaseFieldConfig {
   discriminator?: {
     key: string;
     variants: Record<string, Record<string, FieldConfig>>;
+    /**
+     * Optional per-variant presentation for the studio's "Add block" picker
+     * (the visual block builder). `label` defaults to a humanized variant
+     * name; `icon` is an opaque CSS class the studio applies to an `<i>`
+     * (e.g. a Phosphor `"ph ph-image"`), keeping cadmea icon-library-agnostic.
+     */
+    variantsAdmin?: Record<string, { label?: string; icon?: string }>;
   };
 }
 

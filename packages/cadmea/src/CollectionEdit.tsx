@@ -26,7 +26,9 @@ type FieldAccessor = () => {
   handleChange: (value: unknown) => void;
   handleBlur: () => void;
   pushValue: (value: unknown) => void;
+  insertValue: (index: number, value: unknown) => void;
   removeValue: (index: number) => void;
+  moveValue: (from: number, to: number) => void;
 };
 
 // Dynamic import, not a static one — @tiptap/core + @tiptap/starter-kit
@@ -797,67 +799,243 @@ function renderArray(
 ): JSX.Element {
   return (
     <form.Field name={name} mode="array">
-      {(fieldApi: FieldAccessor) => {
-        const items = () =>
-          Array.isArray(fieldApi().state.value)
-            ? (fieldApi().state.value as Record<string, unknown>[])
-            : [];
+      {(fieldApi: FieldAccessor) => (
+        <BlockEditor
+          form={form}
+          ctx={ctx}
+          name={name}
+          field={field}
+          label={label}
+          fieldApi={fieldApi}
+        />
+      )}
+    </form.Field>
+  );
+}
 
-        return (
-          <div class="form-control md:col-span-2">
-            <label class="label">
-              {label}
-              <Show when={field.required}>
-                <span class="text-error">{" *"}</span>
-              </Show>
-            </label>
-            <Show when={field.admin?.description}>
-              <p class="text-base-content/60 mb-1 text-xs">
-                {field.admin?.description}
-              </p>
-            </Show>
-            <div class="flex flex-col gap-3">
-              {/* <Index> (not <For>) keys rows by position so a keystroke in
-                  one item's input — which replaces the array reference via
-                  TanStack's immutable update — doesn't unmount/remount the
-                  whole row and steal focus. Item names are position-based
-                  (`blocks[0].title`), so position keying is correct here. */}
-              <Index each={items()}>
-                {(item, index) => (
-                  <div class="card bg-base-200 flex flex-col gap-2 p-3">
-                    <For each={fieldsForItem(field, item())}>
+function variantLabel(
+  disc: NonNullable<(FieldConfig & { type: "array" })["discriminator"]>,
+  variant: string,
+): string {
+  return disc.variantsAdmin?.[variant]?.label ?? humanize(variant);
+}
+
+// Visual block builder (Workstream B) — turns a discriminated `array` field
+// into a page-builder: a friendly "Add block" picker (one entry per variant,
+// with optional icon), per-block reorder/duplicate/remove, and collapse to a
+// one-line summary so a stack of blocks reads like a page outline. A plain
+// (non-discriminated) array keeps a single "Add" button.
+function BlockEditor(props: {
+  form: FormApi;
+  ctx: RenderContext;
+  name: string;
+  field: FieldConfig & { type: "array" };
+  label: string;
+  fieldApi: FieldAccessor;
+}): JSX.Element {
+  const [collapsed, setCollapsed] = createSignal<Set<number>>(new Set());
+  const [menuOpen, setMenuOpen] = createSignal(false);
+
+  const disc = props.field.discriminator;
+  const variants = disc ? Object.keys(disc.variants) : [];
+  const items = () =>
+    Array.isArray(props.fieldApi().state.value)
+      ? (props.fieldApi().state.value as Record<string, unknown>[])
+      : [];
+
+  function addBlock(variant?: string) {
+    const seed = variant && disc ? { [disc.key]: variant } : {};
+    props.fieldApi().pushValue(seed);
+    setMenuOpen(false);
+  }
+  function duplicate(index: number) {
+    props.fieldApi().insertValue(index + 1, { ...items()[index] });
+  }
+  function move(from: number, to: number) {
+    if (to < 0 || to >= items().length) return;
+    props.fieldApi().moveValue(from, to);
+  }
+  function toggleCollapse(index: number) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  function blockTitle(item: Record<string, unknown>): string {
+    if (disc) {
+      const v = item[disc.key];
+      if (typeof v === "string") return variantLabel(disc, v);
+    }
+    return props.label;
+  }
+  // A one-line preview for a collapsed block — the first non-discriminator
+  // text/select value, so the outline reads meaningfully.
+  function blockSummary(item: Record<string, unknown>): string {
+    for (const [key, f] of fieldsForItem(props.field, item)) {
+      if (key === disc?.key) continue;
+      if ((f.type === "text" || f.type === "select") && item[key]) {
+        return String(item[key]);
+      }
+    }
+    return "";
+  }
+
+  return (
+    <div class="form-control md:col-span-2">
+      <label class="label">
+        {props.label}
+        <Show when={props.field.required}>
+          <span class="text-error">{" *"}</span>
+        </Show>
+      </label>
+      <Show when={props.field.admin?.description}>
+        <p class="text-base-content/60 mb-1 text-xs">
+          {props.field.admin?.description}
+        </p>
+      </Show>
+      <div class="flex flex-col gap-3">
+        {/* <Index> (not <For>) keys rows by position so a keystroke in one
+            item's input — which replaces the array reference via TanStack's
+            immutable update — doesn't unmount/remount the whole row and steal
+            focus. Item names are position-based (`blocks[0].title`). */}
+        <Index each={items()}>
+          {(item, index) => {
+            const isCollapsed = () => collapsed().has(index);
+            return (
+              <div class="card bg-base-200 flex flex-col gap-2 p-3">
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-sm gap-2"
+                    aria-expanded={!isCollapsed()}
+                    onClick={() => toggleCollapse(index)}
+                  >
+                    <span aria-hidden="true">{isCollapsed() ? "▸" : "▾"}</span>
+                    <span class="font-semibold">{blockTitle(item())}</span>
+                  </button>
+                  <Show when={isCollapsed() && blockSummary(item())}>
+                    <span class="text-base-content/60 truncate text-sm">
+                      {blockSummary(item())}
+                    </span>
+                  </Show>
+                  <div class="ml-auto flex gap-1">
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs"
+                      aria-label="Move up"
+                      disabled={index === 0}
+                      onClick={() => move(index, index - 1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs"
+                      aria-label="Move down"
+                      disabled={index === items().length - 1}
+                      onClick={() => move(index, index + 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs"
+                      aria-label="Duplicate"
+                      onClick={() => duplicate(index)}
+                    >
+                      ⧉
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs text-error"
+                      aria-label="Remove"
+                      onClick={() => props.fieldApi().removeValue(index)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+                <Show when={!isCollapsed()}>
+                  <div class="flex flex-col gap-2">
+                    <For each={fieldsForItem(props.field, item())}>
                       {([itemKey, itemField]) =>
                         renderField(
-                          form,
-                          ctx,
-                          `${name}[${index}].${itemKey}`,
+                          props.form,
+                          props.ctx,
+                          `${props.name}[${index}].${itemKey}`,
                           itemField,
                           labelFor(itemKey, itemField),
                         )
                       }
                     </For>
-                    <button
-                      type="button"
-                      class="btn btn-error btn-outline btn-sm self-start"
-                      onClick={() => fieldApi().removeValue(index)}
-                    >
-                      Remove
-                    </button>
                   </div>
-                )}
-              </Index>
-              <button
-                type="button"
-                class="btn btn-outline btn-sm self-start"
-                onClick={() => fieldApi().pushValue({})}
+                </Show>
+              </div>
+            );
+          }}
+        </Index>
+
+        {/* Discriminated arrays get a block-type picker; plain arrays keep a
+            single Add button. */}
+        <Show
+          when={disc && variants.length > 0}
+          fallback={
+            <button
+              type="button"
+              class="btn btn-outline btn-sm self-start"
+              onClick={() => addBlock()}
+            >
+              Add {props.label}
+            </button>
+          }
+        >
+          <div class="relative self-start">
+            <button
+              type="button"
+              class="btn btn-outline btn-sm"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen()}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              Add block
+            </button>
+            <Show when={menuOpen()}>
+              <ul
+                role="menu"
+                class="menu bg-base-100 border-base-300 rounded-box absolute z-10 mt-1 border p-1 shadow"
               >
-                Add {label}
-              </button>
-            </div>
+                <For each={variants}>
+                  {(variant) => (
+                    <li>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        class="gap-2"
+                        onClick={() => addBlock(variant)}
+                      >
+                        <Show when={disc?.variantsAdmin?.[variant]?.icon}>
+                          <i
+                            class={disc?.variantsAdmin?.[variant]?.icon}
+                            aria-hidden="true"
+                          />
+                        </Show>
+                        {variantLabel(
+                          disc as NonNullable<typeof disc>,
+                          variant,
+                        )}
+                      </button>
+                    </li>
+                  )}
+                </For>
+              </ul>
+            </Show>
           </div>
-        );
-      }}
-    </form.Field>
+        </Show>
+      </div>
+    </div>
   );
 }
 
