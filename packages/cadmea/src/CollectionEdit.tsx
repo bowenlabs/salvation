@@ -582,6 +582,7 @@ function renderControl(
             id={name}
             content={fieldApi().state.value as object | undefined}
             onChange={(doc) => change(doc)}
+            onUploadFile={ctx.onUploadFile}
           />
         </Suspense>
       );
