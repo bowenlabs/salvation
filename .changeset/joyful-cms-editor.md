@@ -1,6 +1,6 @@
 ---
 "@thebes/cadmea": minor
-"@thebes/cadmus": minor
+"@thebes/cadmus": patch
 ---
 
 Friendlier, schema-driven CMS editor.
