@@ -1,5 +1,11 @@
 # @thebes/cadmus
 
+## 0.4.0
+
+### Minor Changes
+
+- Phase 4 (framework maturity): version-history patch model + field-level diff (`patch.ts`, `VersionedLocalApi.diffVersions`) (#14); content-migration runner (`migrate.ts`: `defineMigration`/`runMigration`, dry-run + apply, idempotent) (#18); image hotspot/crop on the `ImageService` contract (`ImageHotspot`/`ImageCrop`, render() gains hotspot/crop/sourceWidth/Height) (#17); visual-editing primitives (`visual-editing.ts`: editAttr/encode/decode + mountVisualEditing) (#15). All additive.
+
 ## 0.3.0
 
 ### Minor Changes

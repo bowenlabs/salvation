@@ -1,6 +1,6 @@
 {
   "name": "@thebes/cadmea-plugin-printful",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Printful FulfillmentProvider for @thebes/cadmea-plugin-ecommerce — raw fetch() + crypto.subtle, no Printful Node SDK",
   "author": "BowenLabs <hello@bowenlabs.io>",
   "license": "MIT",
