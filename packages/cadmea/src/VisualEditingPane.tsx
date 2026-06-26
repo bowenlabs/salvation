@@ -3,10 +3,12 @@
 
 import {
   type EditRef,
+  PREVIEW_VALUES_MESSAGE,
+  type PreviewValuesMessage,
   VISUAL_EDIT_MESSAGE,
   type VisualEditingMessage,
 } from "@thebes/cadmus/cms";
-import { onCleanup, onMount } from "solid-js";
+import { createEffect, onCleanup, onMount } from "solid-js";
 
 /**
  * Visual-editing preview pane (issue #15, studio side). Embeds the site's
@@ -32,6 +34,14 @@ export interface VisualEditingPaneProps {
   /** Class for the iframe (size it via the consumer's layout). */
   class?: string;
   title?: string;
+  /**
+   * In-progress form values to push into the preview for as-you-type live
+   * updates. Posted to the iframe on every change; the preview page must call
+   * `mountPreviewSync` to receive them. Requires `previewTarget`.
+   */
+  previewValues?: Record<string, unknown>;
+  /** Which document `previewValues` belong to (matched by the preview). */
+  previewTarget?: { collection: string; id: number };
 }
 
 function originOf(url: string): string | undefined {
@@ -43,6 +53,9 @@ function originOf(url: string): string | undefined {
 }
 
 export function VisualEditingPane(props: VisualEditingPaneProps) {
+  let iframe: HTMLIFrameElement | undefined;
+  const targetOrigin = () => props.allowedOrigin ?? originOf(props.src) ?? "*";
+
   onMount(() => {
     const expected = props.allowedOrigin ?? originOf(props.src);
     const handler = (event: MessageEvent) => {
@@ -57,8 +70,28 @@ export function VisualEditingPane(props: VisualEditingPaneProps) {
     onCleanup(() => window.removeEventListener("message", handler));
   });
 
+  // As-you-type live preview: push the latest form values into the iframe on
+  // every change. The preview page's mountPreviewSync patches its tagged
+  // text regions in response.
+  createEffect(() => {
+    const values = props.previewValues;
+    const target = props.previewTarget;
+    const win = iframe?.contentWindow;
+    if (!values || !target || !win) return;
+    const message: PreviewValuesMessage = {
+      type: PREVIEW_VALUES_MESSAGE,
+      collection: target.collection,
+      id: target.id,
+      values,
+    };
+    win.postMessage(message, targetOrigin());
+  });
+
   return (
     <iframe
+      ref={(el) => {
+        iframe = el;
+      }}
       src={props.src}
       title={props.title ?? "Preview"}
       class={props.class ?? "h-full w-full border-0"}
