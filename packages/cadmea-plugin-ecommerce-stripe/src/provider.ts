@@ -172,7 +172,10 @@ async function findOrCreateCustomer(
   const created = await stripeFetch(config, "/v1/customers", {
     method: "POST",
     body: { email },
-    idempotencyKey,
+    // Stripe scopes idempotency keys per endpoint and rejects reusing one
+    // across endpoints — the checkout flow passes the same logical key to
+    // both find-or-create-customer and the payment intent, so namespace it.
+    idempotencyKey: `${idempotencyKey}:customer`,
   });
   return created.id as string;
 }
@@ -215,7 +218,7 @@ async function checkout(
       automatic_payment_methods: { enabled: true, allow_redirects: "never" },
       metadata: request.metadata,
     },
-    idempotencyKey: request.idempotencyKey,
+    idempotencyKey: `${request.idempotencyKey}:payment_intent`,
   });
 
   const id = paymentIntent.id as string;
