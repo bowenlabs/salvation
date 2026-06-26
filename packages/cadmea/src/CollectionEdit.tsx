@@ -8,6 +8,7 @@ import {
   Index,
   type JSX,
   lazy,
+  onCleanup,
   Show,
   Suspense,
 } from "solid-js";
@@ -121,6 +122,15 @@ export interface DraftActions {
   saveDraftLabel?: string;
   publishLabel?: string;
   previewLabel?: string;
+  /**
+   * Opt in to debounced autosave: while the form is dirty, `onSaveDraft` is
+   * called automatically after a pause in typing, and a "Saving…/Saved"
+   * status shows in the action bar. Off by default (existing consumers keep
+   * the manual Save-draft button only).
+   */
+  autosave?: boolean;
+  /** Debounce window for autosave, in ms. Default 1500. */
+  autosaveMs?: number;
 }
 
 export interface CollectionEditProps {
@@ -255,6 +265,37 @@ export function CollectionEdit(props: CollectionEditProps) {
   const fieldGroups = groupFields(editableFields(props.config));
   const versioned = () => props.config.versions?.drafts && props.draftActions;
 
+  // Debounced autosave (opt-in via draftActions.autosave). While the form is
+  // dirty, persist the draft after a pause in typing and surface a status so
+  // the client never wonders whether their work is saved. Manual Save
+  // draft/Publish still work alongside it.
+  const [autosaveStatus, setAutosaveStatus] = createSignal<
+    "idle" | "saving" | "saved"
+  >("idle");
+  let autosaveTimer: ReturnType<typeof setTimeout> | undefined;
+  createEffect(() => {
+    const dirty = !isDefaultValue();
+    const values = formValues();
+    if (!versioned() || !props.draftActions?.autosave) return;
+    if (!dirty) {
+      setAutosaveStatus("idle");
+      return;
+    }
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(async () => {
+      setAutosaveStatus("saving");
+      try {
+        await props.draftActions?.onSaveDraft(editablePayload(values));
+        setAutosaveStatus("saved");
+      } catch {
+        // Surface nothing special on failure — the manual Save draft button
+        // (and its error handling) remains the explicit path.
+        setAutosaveStatus("idle");
+      }
+    }, props.draftActions?.autosaveMs ?? 1500);
+  });
+  onCleanup(() => clearTimeout(autosaveTimer));
+
   return (
     <form
       class="flex flex-col gap-4"
@@ -373,6 +414,16 @@ export function CollectionEdit(props: CollectionEditProps) {
                 <span class="loading loading-spinner loading-sm" />
               </Show>
             </button>
+          </Show>
+          <Show when={props.draftActions?.autosave}>
+            {/* aria-live so assistive tech announces autosave transitions. */}
+            <span
+              class="text-base-content/60 self-center px-1 text-xs"
+              aria-live="polite"
+            >
+              <Show when={autosaveStatus() === "saving"}>Saving…</Show>
+              <Show when={autosaveStatus() === "saved"}>Saved</Show>
+            </span>
           </Show>
         </Show>
       </div>
