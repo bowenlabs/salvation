@@ -6,6 +6,7 @@ export * from "./codegen.js";
 export * from "./defineCollection.js";
 export * from "./localApi.js";
 export * from "./meta.js";
+export * from "./migrate.js";
 export * from "./patch.js";
 export * from "./schema-gen.js";
 export * from "./structure.js";
