@@ -1,5 +1,13 @@
 # @thebes/cadmea
 
+## 1.7.1
+
+### Patch Changes
+
+- cbbccbc: Mobile-first split-pane preview: the live-preview pane in the edit-page factory
+  is now a desktop (lg+) enrichment only, so phones get a full-width, edit-focused
+  form instead of a collapsed-height preview iframe.
+
 ## 1.7.0
 
 ### Minor Changes
