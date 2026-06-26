@@ -231,9 +231,13 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
       <Show when={options.preview} fallback={<EditorPane />}>
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <EditorPane />
+          {/* Mobile-first: the editor is full-width and edit-focused on phones;
+              the side-by-side live preview is a desktop (lg+) enrichment, so the
+              pane only renders there (and avoids a collapsed-height iframe on
+              mobile). */}
           <Show when={options.preview?.url()}>
             {(url) => (
-              <div class="lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
+              <div class="hidden lg:sticky lg:top-4 lg:block lg:h-[calc(100vh-2rem)]">
                 <VisualEditingPane
                   src={url()}
                   allowedOrigin={options.preview?.allowedOrigin?.()}
