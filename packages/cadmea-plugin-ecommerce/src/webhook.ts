@@ -26,6 +26,17 @@ export interface WebhookHandlerOptions<TContext> {
    * own `access` config accepts for system-level writes.
    */
   context: TContext;
+  /**
+   * Fires once, right after an order's status is written as "paid" by
+   * this handler — the order-paid hook point a `FulfillmentProvider`
+   * integration (e.g. `@thebes/cadmea-plugin-printful`) wires into to
+   * submit the order for shipment. Receives the just-updated order row.
+   * Errors thrown here are caught the same way dispatch-handler errors
+   * are below — logged, never surfaced as a failure to the payment
+   * provider, since the charge already succeeded and the provider must
+   * not retry the whole webhook over a fulfillment-side problem.
+   */
+  onOrderPaid?: (order: Record<string, unknown>) => Promise<void>;
 }
 
 // Matches the exact message text `localApi.ts`'s `wrapWriteError` authors
@@ -87,9 +98,14 @@ async function dispatchEvent<TContext>(
             : event.status === "refunded"
               ? "refunded"
               : "failed";
-        await options.orders.update(options.context, order.id as number, {
-          status,
-        });
+        const updated = await options.orders.update(
+          options.context,
+          order.id as number,
+          { status },
+        );
+        if (status === "paid" && options.onOrderPaid) {
+          await options.onOrderPaid(updated);
+        }
       }
       return;
     }
@@ -101,9 +117,14 @@ async function dispatchEvent<TContext>(
         event.providerOrderRef,
       );
       if (order) {
-        await options.orders.update(options.context, order.id as number, {
-          status: event.status,
-        });
+        const updated = await options.orders.update(
+          options.context,
+          order.id as number,
+          { status: event.status },
+        );
+        if (event.status === "paid" && options.onOrderPaid) {
+          await options.onOrderPaid(updated);
+        }
       }
       return;
     }

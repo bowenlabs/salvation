@@ -157,3 +157,84 @@ export interface PaymentProvider {
     cancel(providerSubscriptionRef: string): Promise<void>;
   };
 }
+
+/**
+ * `FulfillmentProvider` is a second instance of the "plugin-defined
+ * provider interface" pattern documented in EXTENDING.md alongside
+ * `PaymentProvider` — orthogonal to it, not a variant of it. A
+ * `PaymentProvider` charges a card; a `FulfillmentProvider` ships physical
+ * goods (print-on-demand, a 3PL, etc.) once an order is paid. An order's
+ * `provider` field (who charged the card) and `fulfillmentProvider` field
+ * (who ships it) are independent — a single Stripe-charged order might be
+ * fulfilled by Printful, a different POD vendor, or not at all (digital
+ * goods).
+ */
+export interface FulfillmentLineItem {
+  /** Fulfillment provider's own catalog identifier (e.g. Printful sync variant id) — opaque to this plugin, distinct from `CartLineItem.catalogRef`. */
+  catalogRef: string;
+  quantity: number;
+}
+
+export interface FulfillmentOrderRequest {
+  /** This plugin's own `orders.id` — round-tripped so `createFulfillmentOrder` can correlate its result back to the order row that requested it. */
+  orderId: number;
+  lineItems: FulfillmentLineItem[];
+  shippingAddress: {
+    firstName?: string;
+    lastName?: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+    phone?: string;
+  };
+  customerEmail?: string;
+}
+
+export interface FulfillmentOrderResult {
+  /** Provider's own identifier for the fulfillment order — stored on `orders.fulfillmentProviderRef`, the correlation key inbound fulfillment webhooks dispatch against. */
+  providerFulfillmentRef: string;
+  status: "pending" | "shipped" | "delivered" | "failed";
+}
+
+/**
+ * The shape every fulfillment provider's raw webhook payload is translated
+ * into — mirrors `NormalizedWebhookEvent`'s role for `PaymentProvider`, kept
+ * as a separate type rather than a union member of it since the two event
+ * vocabularies (payment status vs. shipment status) don't overlap.
+ */
+export type NormalizedFulfillmentWebhookEvent =
+  | {
+      kind: "fulfillment.updated";
+      providerFulfillmentRef: string;
+      status: "shipped" | "delivered" | "failed";
+      trackingNumber?: string;
+      trackingCarrier?: string;
+      trackingUrl?: string;
+    }
+  | { kind: "unhandled"; rawType: string };
+
+export interface FulfillmentProvider {
+  /** e.g. "printful" — a plain string, not a closed union like `PaymentProvider.name`: fulfillment backends are a more open set (POD vendors, 3PLs) than the two payment rails this plugin ships providers for. */
+  readonly name: string;
+
+  /** Submits a paid order's line items for fulfillment. Called once per order, after `PaymentProvider` reports the order as paid. */
+  createFulfillmentOrder(
+    request: FulfillmentOrderRequest,
+  ): Promise<FulfillmentOrderResult>;
+
+  /** Verifies an inbound webhook's signature — same contract as `PaymentProvider.verifyWebhookSignature`. */
+  verifyWebhookSignature(args: {
+    rawBody: string;
+    headers: Headers;
+    secret: string;
+  }): Promise<boolean>;
+
+  /** Parses an already-verified raw webhook body into a normalized event, plus the provider's own event id for dedup. */
+  parseWebhookEvent(rawBody: string): {
+    eventId: string;
+    event: NormalizedFulfillmentWebhookEvent;
+  };
+}

@@ -1,5 +1,14 @@
 # cadmea-example-smb-template
 
+## 0.0.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @thebes/cadmea-plugin-ecommerce@1.1.0
+  - @thebes/cadmea-plugin-ecommerce-square@1.0.1
+  - @thebes/cadmea-plugin-ecommerce-stripe@1.0.1
+
 ## 0.0.2
 
 ### Patch Changes

@@ -140,6 +140,14 @@ function buildOrdersCollection(
         type: "select",
         options: ["pending", "shipped", "delivered", "failed"],
       },
+      // Which FulfillmentProvider is shipping this order — independent of
+      // `provider` (who charged the card); see types.ts's doc comment on
+      // FulfillmentProvider for why these are separate axes.
+      fulfillmentProvider: { type: "text" },
+      // The fulfillment provider's own order identifier — the correlation
+      // key createFulfillmentWebhookHandler dispatches inbound shipment
+      // webhooks against, mirroring providerOrderRef's role for payments.
+      fulfillmentProviderRef: { type: "text" },
       trackingNumber: { type: "text" },
       trackingCarrier: { type: "text" },
       trackingUrl: { type: "text" },

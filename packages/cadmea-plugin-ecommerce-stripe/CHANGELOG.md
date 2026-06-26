@@ -1,5 +1,12 @@
 # @thebes/cadmea-plugin-ecommerce-stripe
 
+## 1.0.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @thebes/cadmea-plugin-ecommerce@1.1.0
+
 ## 1.0.0
 
 ### Patch Changes

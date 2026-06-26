@@ -14,5 +14,6 @@
 export * from "./checkout.js";
 export * from "./collections.js";
 export * from "./errors.js";
+export * from "./fulfillment.js";
 export * from "./types.js";
 export * from "./webhook.js";
