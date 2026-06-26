@@ -1,5 +1,11 @@
 # @thebes/cadmea-plugin-printful
 
+## 1.1.1
+
+### Patch Changes
+
+- Republish: 1.1.0 tarball was missing dist/ (published before build completed). No code changes vs 1.1.0.
+
 ## 1.1.0
 
 ### Minor Changes
