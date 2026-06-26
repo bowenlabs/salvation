@@ -610,3 +610,67 @@ describe("CollectionEdit — visual block builder (B)", () => {
     expect(screen.queryByLabelText("Label")).not.toBeInTheDocument();
   });
 });
+
+describe("CollectionEdit — autosave (D)", () => {
+  const versioned: CollectionConfig = {
+    slug: "pages",
+    fields: { title: { type: "text", required: true } },
+    versions: { drafts: true },
+  };
+
+  it("debounce-autosaves the draft after an edit when autosave is on", async () => {
+    vi.useFakeTimers();
+    try {
+      let saved: Record<string, unknown> | undefined;
+      render(() => (
+        <CollectionEdit
+          config={versioned}
+          initialValues={{ title: "Home" }}
+          onSubmit={() => {}}
+          draftActions={{
+            onSaveDraft: (v) => {
+              saved = v;
+            },
+            autosave: true,
+            autosaveMs: 500,
+          }}
+        />
+      ));
+      fireEvent.input(screen.getByLabelText("Title *"), {
+        target: { value: "Updated" },
+      });
+      expect(saved).toBeUndefined(); // not yet — still debouncing
+      await vi.advanceTimersByTimeAsync(500);
+      expect(saved).toEqual({ title: "Updated" });
+      expect(screen.getByText("Saved")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not autosave when the flag is off", async () => {
+    vi.useFakeTimers();
+    try {
+      let saved: Record<string, unknown> | undefined;
+      render(() => (
+        <CollectionEdit
+          config={versioned}
+          initialValues={{ title: "Home" }}
+          onSubmit={() => {}}
+          draftActions={{
+            onSaveDraft: (v) => {
+              saved = v;
+            },
+          }}
+        />
+      ));
+      fireEvent.input(screen.getByLabelText("Title *"), {
+        target: { value: "Updated" },
+      });
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(saved).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
