@@ -41,7 +41,7 @@
   },
   "peerDependencies": {
     "@thebes/cadmea-plugin-ecommerce": "workspace:^",
-    "@thebes/cadmus": "workspace:^"
+    "@thebes/cadmus": ">=0.4.0 <1.0.0"
   },
   "devDependencies": {
     "@thebes/cadmea-plugin-ecommerce": "workspace:^",

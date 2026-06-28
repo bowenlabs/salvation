@@ -30,7 +30,7 @@
   "peerDependencies": {
     "@tanstack/solid-query": ">=5.0.0",
     "@tanstack/solid-router": ">=1.0.0",
-    "@thebes/cadmus": "workspace:^",
+    "@thebes/cadmus": ">=0.4.0 <1.0.0",
     "solid-js": ">=1.9.0"
   },
   "dependencies": {
