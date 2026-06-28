@@ -2,6 +2,7 @@ import { createQuery } from "@tanstack/solid-query";
 import { Link } from "@tanstack/solid-router";
 import type { CollectionConfig } from "@thebes/cadmus/cms";
 import { createSignal, Show } from "solid-js";
+import { isServer } from "solid-js/web";
 import { CollectionList } from "../CollectionList.js";
 import type { CollectionCapabilities } from "../capabilities.js";
 
@@ -100,6 +101,14 @@ export function createCollectionListPage<TRow extends Record<string, unknown>>(
           sortField: sortField(),
           sortDirection: sortDirection(),
         }),
+      // Client-only. If this query runs during SSR its in-flight fetch is
+      // serialized as a streamed hydration resource that TanStack Start never
+      // resolves, so a hard page load hangs on the loading spinner forever
+      // (a client-side navigation into the same route renders fine). Disabling
+      // it on the server means SSR emits a static spinner (see the `isServer`
+      // guard on the loading `Show` below) and the client fetches fresh on
+      // mount. Downstream apps then don't each need a route-level `ssr` flag.
+      enabled: !isServer,
     }));
 
     function handleSortChange(field: string, direction: "asc" | "desc") {
@@ -125,7 +134,7 @@ export function createCollectionListPage<TRow extends Record<string, unknown>>(
           </Show>
         </div>
         <Show
-          when={!result.isLoading}
+          when={!isServer && !result.isLoading}
           fallback={<div class="loading loading-spinner" />}
         >
           <CollectionList
