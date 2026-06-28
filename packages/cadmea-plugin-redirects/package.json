@@ -35,7 +35,7 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@thebes/cadmus": "workspace:^"
+    "@thebes/cadmus": ">=0.4.0 <1.0.0"
   },
   "devDependencies": {
     "@thebes/cadmus": "workspace:^",
