@@ -4,9 +4,14 @@ import {
   useQueryClient,
 } from "@tanstack/solid-query";
 import { useBlocker } from "@tanstack/solid-router";
-import type { CollectionConfig } from "@thebes/cadmus/cms";
-import { createSignal, Show } from "solid-js";
-import { CollectionEdit, type CollectionEditProps } from "../CollectionEdit.js";
+import type { CollectionConfig, EditRef } from "@thebes/cadmus/cms";
+import { parseBlockFieldRef } from "@thebes/cadmus/cms";
+import { createEffect, createSignal, Show } from "solid-js";
+import {
+  type BlockFocusTarget,
+  CollectionEdit,
+  type CollectionEditProps,
+} from "../CollectionEdit.js";
 import type { CollectionCapabilities } from "../capabilities.js";
 import { VisualEditingPane } from "../VisualEditingPane.js";
 
@@ -82,6 +87,14 @@ export interface CollectionEditPageOptions {
   capabilities?: () => CollectionCapabilities | undefined;
   /** Side-by-side as-you-type live preview (issue #15/#28). */
   preview?: CollectionEditPreviewOptions;
+  /**
+   * An externally-driven block to focus (#15, per-block visual edit) — e.g.
+   * the standalone visual-edit page navigates here with the clicked block in
+   * a search param, and the route reads it into this. A function so it's
+   * re-read reactively. Clicks in the side-by-side preview focus blocks too,
+   * without going through this.
+   */
+  focusBlock?: () => BlockFocusTarget | undefined;
 }
 
 /**
@@ -101,6 +114,20 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
     const [previewValues, setPreviewValues] = createSignal<
       Record<string, unknown>
     >({});
+
+    // The block to focus (#15). Either source — the external `focusBlock`
+    // option (the standalone visual-edit page → search param) or a click in
+    // the side-by-side preview below — sets this; the later one wins. Each
+    // write stamps a fresh nonce so re-selecting the same block re-focuses.
+    const [focusBlock, setFocusBlock] = createSignal<BlockFocusTarget>();
+    createEffect(() => {
+      const ext = options.focusBlock?.();
+      if (ext) setFocusBlock({ ...ext, nonce: ext.nonce ?? Date.now() });
+    });
+    const onPreviewEdit = (ref: EditRef) => {
+      const parsed = parseBlockFieldRef(ref.field);
+      if (parsed) setFocusBlock({ ...parsed, nonce: Date.now() });
+    };
 
     // Blocks in-app navigation (including the mobile back-gesture, which
     // is just another history pop TanStack Router intercepts the same
@@ -192,6 +219,7 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
             fieldWidgets={options.fieldWidgets}
             onDirtyChange={setDirty}
             onValuesChange={setPreviewValues}
+            focusBlock={focusBlock()}
             capabilities={options.capabilities?.()}
             draftActions={
               options.draftActions && {
@@ -241,6 +269,7 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
                 <VisualEditingPane
                   src={url()}
                   allowedOrigin={options.preview?.allowedOrigin?.()}
+                  onEdit={onPreviewEdit}
                   previewValues={previewValues()}
                   previewTarget={{
                     collection: options.collection.slug,

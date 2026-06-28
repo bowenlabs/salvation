@@ -6,8 +6,10 @@ import {
   within,
 } from "@solidjs/testing-library";
 import type { CollectionConfig } from "@thebes/cadmus/cms";
+import { BLOCK_KEY } from "@thebes/cadmus/cms";
+import { createSignal } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CollectionEdit } from "./CollectionEdit.js";
+import { type BlockFocusTarget, CollectionEdit } from "./CollectionEdit.js";
 
 const pagesCollection: CollectionConfig = {
   slug: "pages",
@@ -562,6 +564,62 @@ describe("CollectionEdit — visual block builder (B)", () => {
     expect(
       screen.getByRole("button", { name: "Hero banner" }),
     ).toBeInTheDocument();
+  });
+
+  it("stamps a stable, non-numeric _key on each new block", async () => {
+    let submitted: Record<string, unknown> | undefined;
+    render(() => (
+      <CollectionEdit config={blocksConfig} onSubmit={(v) => (submitted = v)} />
+    ));
+    fireEvent.click(screen.getByRole("button", { name: "Add block" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Hero banner" }));
+    fireEvent.input(screen.getByLabelText("Heading *"), {
+      target: { value: "Hi" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(submitted).toBeDefined());
+    const blocks = (submitted as { blocks: Record<string, unknown>[] }).blocks;
+    expect(blocks[0]).toMatchObject({ type: "hero", heading: "Hi" });
+    expect(blocks[0][BLOCK_KEY]).toEqual(expect.any(String));
+    // Non-numeric so the studio can tell `blocks.<_key>` from `blocks.<index>`.
+    expect(String(blocks[0][BLOCK_KEY])).not.toMatch(/^\d+$/);
+  });
+
+  it("gives a duplicated block its own _key, not the source's", async () => {
+    let submitted: Record<string, unknown> | undefined;
+    render(() => (
+      <CollectionEdit config={blocksConfig} onSubmit={(v) => (submitted = v)} />
+    ));
+    fireEvent.click(screen.getByRole("button", { name: "Add block" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Text" }));
+    fireEvent.input(screen.getByLabelText("Body"), { target: { value: "x" } });
+    fireEvent.click(screen.getByRole("button", { name: "Duplicate" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(submitted).toBeDefined());
+    const blocks = (submitted as { blocks: Record<string, unknown>[] }).blocks;
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0][BLOCK_KEY]).not.toBe(blocks[1][BLOCK_KEY]);
+  });
+
+  it("expands and reveals a collapsed block when focusBlock targets its _key", () => {
+    const key = "btarget01";
+    const [focus, setFocus] = createSignal<BlockFocusTarget>();
+    render(() => (
+      <CollectionEdit
+        config={blocksConfig}
+        initialValues={{
+          blocks: [{ type: "hero", heading: "Find me", [BLOCK_KEY]: key }],
+        }}
+        focusBlock={focus()}
+        onSubmit={() => {}}
+      />
+    ));
+    // Collapse the block so its input is hidden.
+    fireEvent.click(screen.getByRole("button", { name: "Hero banner" }));
+    expect(screen.queryByLabelText("Heading *")).not.toBeInTheDocument();
+    // A focus request for its key re-expands it.
+    setFocus({ field: "blocks", key, nonce: 1 });
+    expect(screen.getByLabelText("Heading *")).toBeInTheDocument();
   });
 
   it("reorders blocks with Move down, reflecting the new order on submit", async () => {

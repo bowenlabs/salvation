@@ -1,4 +1,8 @@
-export type { CollectionEditProps, FieldWidget } from "./CollectionEdit.js";
+export type {
+  BlockFocusTarget,
+  CollectionEditProps,
+  FieldWidget,
+} from "./CollectionEdit.js";
 export { CollectionEdit } from "./CollectionEdit.js";
 export type { CollectionListProps } from "./CollectionList.js";
 export { CollectionList } from "./CollectionList.js";
