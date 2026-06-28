@@ -1,6 +1,6 @@
 import { createForm } from "@tanstack/solid-form";
 import type { CollectionConfig, FieldConfig } from "@thebes/cadmus/cms";
-import { validateDocument } from "@thebes/cadmus/cms";
+import { BLOCK_KEY, newBlockKey, validateDocument } from "@thebes/cadmus/cms";
 import {
   createEffect,
   createSignal,
@@ -8,6 +8,7 @@ import {
   Index,
   type JSX,
   lazy,
+  on,
   onCleanup,
   Show,
   Suspense,
@@ -96,6 +97,25 @@ export interface RelationshipOption {
 }
 
 /**
+ * A request to focus a specific block in a discriminated `array` field
+ * (#15, per-block visual edit). Produced from a click-to-edit ref's
+ * `field` (`parseBlockFieldRef`) and consumed by the block builder, which
+ * expands that block, scrolls it into view, and focuses its first input.
+ */
+export interface BlockFocusTarget {
+  /** The array field to focus within — the ref's first path segment. */
+  field: string;
+  /** The target block's stable `_key`, or its array index as a string. */
+  key: string;
+  /**
+   * Bumped on every focus request so re-clicking the same block re-focuses
+   * it (the effect keys on this, not just `key`). Optional — callers that
+   * only ever focus once can omit it.
+   */
+  nonce?: number;
+}
+
+/**
  * Replaces the generic "Save" button with "Save draft"/"Publish" when the
  * collection has `versions: { drafts: true }` — a separate privilege from
  * a plain update, matching `access.publish` in `@thebes/cadmus/cms`.
@@ -180,6 +200,13 @@ export interface CollectionEditProps {
   /** Only rendered when `config.versions?.drafts` is also true. */
   draftActions?: DraftActions;
   /**
+   * A block to bring into view and focus (#15, per-block visual edit). When
+   * this changes, the matching `array` field expands the target block,
+   * scrolls it into view, and focuses its first input. The studio sets this
+   * from a click-to-edit selection.
+   */
+  focusBlock?: BlockFocusTarget;
+  /**
    * Hides the Save button when `canUpdate` is `false` — see issue #26's
    * RBAC-aware admin UI. Undefined (the default — most collections don't
    * wire this up) reads as "allowed", same as `@thebes/cadmus/cms`'s own
@@ -192,6 +219,7 @@ interface RenderContext {
   onUploadFile?: (file: File) => Promise<{ url: string }>;
   relationshipOptions?: Partial<Record<string, RelationshipOption[]>>;
   fieldWidgets?: Record<string, FieldWidget>;
+  focusBlock?: BlockFocusTarget;
 }
 
 export function CollectionEdit(props: CollectionEditProps) {
@@ -270,6 +298,9 @@ export function CollectionEdit(props: CollectionEditProps) {
     },
     get fieldWidgets() {
       return props.fieldWidgets;
+    },
+    get focusBlock() {
+      return props.focusBlock;
     },
   };
 
@@ -962,13 +993,74 @@ function BlockEditor(props: {
       : [];
 
   function addBlock(variant?: string) {
-    const seed = variant && disc ? { [disc.key]: variant } : {};
+    // Discriminated arrays are the page-builder's blocks — give each a stable
+    // `_key` so a per-block visual-edit ref (`blocks.<_key>`) survives later
+    // reordering. Plain arrays (e.g. a list of links) aren't visually editable
+    // blocks, so they stay key-free.
+    const seed: Record<string, unknown> =
+      variant && disc ? { [disc.key]: variant } : {};
+    if (disc) seed[BLOCK_KEY] = newBlockKey();
     props.fieldApi().pushValue(seed);
     setMenuOpen(false);
   }
   function duplicate(index: number) {
-    props.fieldApi().insertValue(index + 1, { ...items()[index] });
+    // A duplicate is a new block — mint a fresh `_key` (for discriminated
+    // arrays) rather than copying the source's, so the two stay independently
+    // addressable.
+    const copy = { ...items()[index] };
+    if (disc) copy[BLOCK_KEY] = newBlockKey();
+    props.fieldApi().insertValue(index + 1, copy);
   }
+
+  // Resolve a focus request to an array index: by stable `_key` first, then
+  // (for legacy keyless blocks) by a numeric index segment.
+  function resolveFocusIndex(key: string): number {
+    const list = items();
+    const byKey = list.findIndex((b) => b[BLOCK_KEY] === key);
+    if (byKey >= 0) return byKey;
+    if (/^\d+$/.test(key)) {
+      const i = Number(key);
+      if (i >= 0 && i < list.length) return i;
+    }
+    return -1;
+  }
+
+  let listEl: HTMLDivElement | undefined;
+  // Bring a clicked-from-preview block into view (#15). Keyed (via `on`) on
+  // the target's identity + nonce only — the callback reads `items()`
+  // untracked, so typing in a block doesn't re-trigger a scroll.
+  createEffect(
+    on(
+      () => {
+        const t = props.ctx.focusBlock;
+        return t && t.field === props.name ? `${t.key}:${t.nonce ?? ""}` : null;
+      },
+      (sig) => {
+        const t = props.ctx.focusBlock;
+        if (!sig || !t) return;
+        const index = resolveFocusIndex(t.key);
+        if (index < 0) return;
+        // Expand it first (a collapsed block renders no inputs to focus).
+        setCollapsed((prev) => {
+          if (!prev.has(index)) return prev;
+          const next = new Set(prev);
+          next.delete(index);
+          return next;
+        });
+        // Defer to let the expanded inputs mount before scrolling/focusing.
+        queueMicrotask(() => {
+          const card = listEl?.querySelector(`[data-block-index="${index}"]`);
+          if (!(card instanceof HTMLElement)) return;
+          // Guard scrollIntoView — not implemented in every test/headless DOM.
+          if (typeof card.scrollIntoView === "function") {
+            card.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+          const input = card.querySelector("input, textarea, select");
+          if (input instanceof HTMLElement) input.focus();
+        });
+      },
+    ),
+  );
   function move(from: number, to: number) {
     if (to < 0 || to >= items().length) return;
     props.fieldApi().moveValue(from, to);
@@ -1015,7 +1107,12 @@ function BlockEditor(props: {
           {props.field.admin?.description}
         </p>
       </Show>
-      <div class="flex flex-col gap-3">
+      <div
+        class="flex flex-col gap-3"
+        ref={(el) => {
+          listEl = el;
+        }}
+      >
         {/* <Index> (not <For>) keys rows by position so a keystroke in one
             item's input — which replaces the array reference via TanStack's
             immutable update — doesn't unmount/remount the whole row and steal
@@ -1024,7 +1121,10 @@ function BlockEditor(props: {
           {(item, index) => {
             const isCollapsed = () => collapsed().has(index);
             return (
-              <div class="card bg-base-200 flex flex-col gap-2 p-3">
+              <div
+                class="card bg-base-200 flex flex-col gap-2 p-3"
+                data-block-index={index}
+              >
                 <div class="flex items-center gap-2">
                   <button
                     type="button"

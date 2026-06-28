@@ -32,6 +32,43 @@ export interface EditRef {
 /** The data attribute editable regions are tagged with. */
 export const EDIT_ATTR = "data-cadmus-edit";
 
+/**
+ * Per-item stable key on `array`/block items (#15, per-block tagging). The
+ * studio's block builder stamps this on each block it creates so a click-to-
+ * edit ref (`blocks.<_key>`) survives reordering — unlike a bare array index.
+ * It rides along in the block's JSON (the `array` field is a verbatim JSON
+ * column) and is never rendered as an input (the editor only renders declared
+ * sub-fields).
+ */
+export const BLOCK_KEY = "_key";
+
+/**
+ * Generate a stable block key. Deliberately starts with a letter so a ref
+ * segment `blocks.<key>` is always distinguishable from a legacy index path
+ * (`blocks.<n>.<field>`) by whether the segment is numeric — see
+ * {@link parseBlockFieldRef}'s consumers.
+ */
+export function newBlockKey(): string {
+  return `b${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Split a block field path into the array field name and the target block's
+ * key (or legacy index). Handles both the per-block wrapper ref
+ * (`blocks.<_key>`) and the per-field live-preview path (`blocks.<index>.
+ * <field>`) — either way the first segment is the array, the second the
+ * block. Returns null for a bare array ref (`blocks`) that names no specific
+ * block. Shared by the studio (routing a click to a block) and the block
+ * builder (focusing it) so the two can't drift.
+ */
+export function parseBlockFieldRef(
+  field: string,
+): { field: string; key: string } | null {
+  const parts = field.split(".");
+  if (parts.length < 2 || !parts[0] || !parts[1]) return null;
+  return { field: parts[0], key: parts[1] };
+}
+
 /** `postMessage` payload type for a click-to-edit selection. */
 export const VISUAL_EDIT_MESSAGE = "cadmus:visual-edit";
 

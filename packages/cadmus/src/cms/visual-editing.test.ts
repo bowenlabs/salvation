@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   applyPreviewValues,
+  BLOCK_KEY,
   decodeEditRef,
   EDIT_ATTR,
   type EditRef,
   editAttr,
   encodeEditRef,
+  newBlockKey,
+  parseBlockFieldRef,
 } from "./visual-editing.js";
 
 describe("edit-ref encoding", () => {
@@ -23,6 +26,46 @@ describe("edit-ref encoding", () => {
     expect(decodeEditRef("pages:7")).toBeNull();
     expect(decodeEditRef("pages:notanumber:title")).toBeNull();
     expect(decodeEditRef("")).toBeNull();
+  });
+});
+
+describe("block keys", () => {
+  it("newBlockKey is non-numeric so it can't be mistaken for an index", () => {
+    for (let i = 0; i < 50; i++) {
+      const key = newBlockKey();
+      expect(key).not.toMatch(/^\d+$/);
+      expect(key.length).toBeGreaterThan(1);
+    }
+  });
+
+  it("newBlockKey is reasonably unique", () => {
+    const keys = new Set(Array.from({ length: 200 }, () => newBlockKey()));
+    expect(keys.size).toBe(200);
+  });
+
+  it("BLOCK_KEY is the conventional _key", () => {
+    expect(BLOCK_KEY).toBe("_key");
+  });
+});
+
+describe("parseBlockFieldRef", () => {
+  it("splits a per-block wrapper ref into field + key", () => {
+    expect(parseBlockFieldRef("blocks.babc1234")).toEqual({
+      field: "blocks",
+      key: "babc1234",
+    });
+  });
+
+  it("takes the block segment from a per-field live-preview path", () => {
+    expect(parseBlockFieldRef("blocks.0.heading")).toEqual({
+      field: "blocks",
+      key: "0",
+    });
+  });
+
+  it("returns null for a bare array ref naming no block", () => {
+    expect(parseBlockFieldRef("blocks")).toBeNull();
+    expect(parseBlockFieldRef("")).toBeNull();
   });
 });
 
