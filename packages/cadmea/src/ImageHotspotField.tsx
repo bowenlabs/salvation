@@ -248,7 +248,6 @@ export function ImageHotspotField(props: FieldWidgetProps) {
               Click the image to set the focal point.
             </p>
             <div class="relative inline-block max-w-md">
-              {/* biome-ignore lint/a11y/noStaticElementInteractions: the image is the hotspot-picking surface */}
               {/* biome-ignore lint/a11y/useKeyWithClickEvents: pointer-based focal-point picker; numeric inputs below are the keyboard-accessible path */}
               <img
                 src={url()}
