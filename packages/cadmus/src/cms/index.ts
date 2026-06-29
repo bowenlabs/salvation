@@ -8,6 +8,7 @@ export * from "./localApi.js";
 export * from "./meta.js";
 export * from "./migrate.js";
 export * from "./patch.js";
+export * from "./richtext.js";
 export * from "./schema-gen.js";
 export * from "./structure.js";
 // types.ts now ships real value exports too (flattenFields/flattenDoc/

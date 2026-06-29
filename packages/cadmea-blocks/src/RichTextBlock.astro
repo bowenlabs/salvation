@@ -1,0 +1,8 @@
+---
+import { renderRichText } from "@thebes/cadmus/cms";
+import type { RichTextBlockProps } from "./types";
+
+const { content } = Astro.props as RichTextBlockProps;
+---
+
+<div class="prose max-w-none" set:html={renderRichText(content)} />

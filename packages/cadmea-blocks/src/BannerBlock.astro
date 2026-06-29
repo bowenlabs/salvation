@@ -1,0 +1,24 @@
+---
+import { renderRichText } from "@thebes/cadmus/cms";
+import type { BannerBlockProps } from "./types";
+
+const { style = "info", content } = Astro.props as BannerBlockProps;
+
+// Accent per style — themeable via CSS variables, with sensible fallbacks so
+// the block looks reasonable before a theme overrides them.
+const ACCENT: Record<string, string> = {
+  info: "var(--accent)",
+  success: "var(--color-success, #3f7d5a)",
+  warning: "var(--color-warning, #b07d2e)",
+  error: "var(--color-error, #a13a2e)",
+};
+const accent = ACCENT[style] ?? "var(--accent)";
+---
+
+<section class="section-container py-6">
+  <aside
+    class="prose max-w-none"
+    style={`border-left: 3px solid ${accent}; padding: 14px 20px; background: color-mix(in srgb, ${accent} 7%, transparent); border-radius: 0 4px 4px 0; font-size: 14px; line-height: 1.65;`}
+    set:html={renderRichText(content)}
+  />
+</section>

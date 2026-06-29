@@ -1,6 +1,6 @@
 import { type CollectionConfig, defineCmsConfig } from "@thebes/cadmus/cms";
 import { describe, expect, it } from "vitest";
-import { renderSeoTags, seoPlugin } from "./index.js";
+import { buildHeadTags, renderSeoTags, seoPlugin } from "./index.js";
 
 const pagesCollection: CollectionConfig = {
   slug: "pages",
@@ -140,5 +140,52 @@ describe("renderSeoTags", () => {
 
   it("returns an empty string when there is nothing to render", () => {
     expect(renderSeoTags({})).toBe("");
+  });
+});
+
+describe("buildHeadTags", () => {
+  it("emits title, canonical, og:url, and default og:type=website", () => {
+    const out = buildHeadTags({ title: "Home", canonical: "https://x.com/" });
+    expect(out).toContain("<title>Home</title>");
+    expect(out).toContain('<link rel="canonical" href="https://x.com/" />');
+    expect(out).toContain('property="og:url" content="https://x.com/"');
+    expect(out).toContain('property="og:type" content="website"');
+  });
+
+  it("defaults ogTitle to title and uses a plain summary card without an image", () => {
+    const out = buildHeadTags({ title: "T", canonical: "u" });
+    expect(out).toContain('property="og:title" content="T"');
+    expect(out).toContain('name="twitter:title" content="T"');
+    expect(out).toContain('name="twitter:card" content="summary"');
+  });
+
+  it("uses a large twitter card + image meta when ogImage is set", () => {
+    const out = buildHeadTags({
+      title: "T",
+      canonical: "u",
+      ogImage: "https://cdn/x.png",
+    });
+    expect(out).toContain('name="twitter:card" content="summary_large_image"');
+    expect(out).toContain('property="og:image" content="https://cdn/x.png"');
+    expect(out).toContain('name="twitter:image" content="https://cdn/x.png"');
+  });
+
+  it("emits robots noindex only when requested", () => {
+    expect(
+      buildHeadTags({ title: "T", canonical: "u", noindex: true }),
+    ).toContain('<meta name="robots" content="noindex" />');
+    expect(buildHeadTags({ title: "T", canonical: "u" })).not.toContain(
+      "noindex",
+    );
+  });
+
+  it("omits description meta when empty and escapes values", () => {
+    const out = buildHeadTags({
+      title: '"><x>',
+      canonical: "u",
+      description: "",
+    });
+    expect(out).not.toContain('name="description"');
+    expect(out).toContain("&quot;&gt;&lt;x&gt;");
   });
 });
