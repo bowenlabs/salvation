@@ -110,7 +110,10 @@ export function createSecurityHeaders(
       "camera=(), microphone=(), geolocation=(), payment=(), interest-cohort=()",
     );
 
-    const extra = mergeSources(options.csp ?? {}, options.dynamicCsp?.(c) ?? {});
+    const extra = mergeSources(
+      options.csp ?? {},
+      options.dynamicCsp?.(c) ?? {},
+    );
 
     const frameAncestors = c.res.headers.get(FRAME_ANCESTORS_HEADER);
     if (frameAncestors) {

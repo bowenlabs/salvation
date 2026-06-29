@@ -30,7 +30,9 @@ describe("renderRichText", () => {
       content: [
         {
           type: "bulletList",
-          content: [{ type: "listItem", content: [{ type: "text", text: "a" }] }],
+          content: [
+            { type: "listItem", content: [{ type: "text", text: "a" }] },
+          ],
         },
       ],
     });
@@ -43,7 +45,7 @@ describe("renderRichText", () => {
         { type: "paragraph", content: [{ type: "text", text: '<x> & "y"' }] },
       ],
     });
-    expect(html).toContain('&lt;x&gt; &amp; &quot;y&quot;');
+    expect(html).toContain("&lt;x&gt; &amp; &quot;y&quot;");
     expect(html).not.toContain("<x>");
   });
 

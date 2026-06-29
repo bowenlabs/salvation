@@ -180,7 +180,11 @@ describe("buildHeadTags", () => {
   });
 
   it("omits description meta when empty and escapes values", () => {
-    const out = buildHeadTags({ title: '"><x>', canonical: "u", description: "" });
+    const out = buildHeadTags({
+      title: '"><x>',
+      canonical: "u",
+      description: "",
+    });
     expect(out).not.toContain('name="description"');
     expect(out).toContain("&quot;&gt;&lt;x&gt;");
   });

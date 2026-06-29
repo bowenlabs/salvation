@@ -191,7 +191,9 @@ export function buildHeadTags(input: HeadTagsInput): string {
   if (noindex) tags.push('<meta name="robots" content="noindex" />');
   tags.push(`<link rel="canonical" href="${escapeHtml(canonical)}" />`);
   if (description) {
-    tags.push(`<meta name="description" content="${escapeHtml(description)}" />`);
+    tags.push(
+      `<meta name="description" content="${escapeHtml(description)}" />`,
+    );
   }
 
   // Open Graph
