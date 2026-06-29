@@ -1,6 +1,6 @@
 {
   "name": "@thebes/cadmea-blocks",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Theme-neutral Astro block components for Cadmea sites — rich text, image, hero, divider, banner, content",
   "author": "BowenLabs <hello@bowenlabs.io>",
   "license": "MIT",

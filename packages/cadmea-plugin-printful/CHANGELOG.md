@@ -1,5 +1,13 @@
 # @thebes/cadmea-plugin-printful
 
+## 1.2.0
+
+### Minor Changes
+
+- 0000c2f: Add `computePrintTransform` — pure print geometry (border px from inches×DPI, the
+  inner image box, source-pixel crop, and focal-point gravity) for building
+  print-ready files from a cropped source image.
+
 ## 1.1.3
 
 ### Patch Changes
