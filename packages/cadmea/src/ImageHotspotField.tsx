@@ -266,6 +266,50 @@ export function ImageHotspotField(props: FieldWidgetProps) {
                   />
                 )}
               </Show>
+              {/* Crop overlay — dims excluded area, highlights crop boundary */}
+              <Show when={parsed()?.crop}>
+                {(crop) => {
+                  const maskId = `crop-mask-${props.fieldKey}`;
+                  const t = () => `${(crop().top ?? 0) * 100}%`;
+                  const l = () => `${(crop().left ?? 0) * 100}%`;
+                  const w = () => `${(1 - (crop().left ?? 0) - (crop().right ?? 0)) * 100}%`;
+                  const h = () => `${(1 - (crop().top ?? 0) - (crop().bottom ?? 0)) * 100}%`;
+                  return (
+                    <svg
+                      class="pointer-events-none absolute inset-0 h-full w-full"
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <defs>
+                        <mask id={maskId}>
+                          {/* White = dark overlay visible; black = see-through (crop window) */}
+                          <rect width="100" height="100" fill="white" />
+                          <rect
+                            x={(crop().left ?? 0) * 100}
+                            y={(crop().top ?? 0) * 100}
+                            width={(1 - (crop().left ?? 0) - (crop().right ?? 0)) * 100}
+                            height={(1 - (crop().top ?? 0) - (crop().bottom ?? 0)) * 100}
+                            fill="black"
+                          />
+                        </mask>
+                      </defs>
+                      {/* Dim area outside crop */}
+                      <rect width="100" height="100" fill="rgba(0,0,0,0.45)" mask={`url(#${maskId})`} />
+                      {/* Crop border */}
+                      <rect
+                        x={(crop().left ?? 0) * 100}
+                        y={(crop().top ?? 0) * 100}
+                        width={(1 - (crop().left ?? 0) - (crop().right ?? 0)) * 100}
+                        height={(1 - (crop().top ?? 0) - (crop().bottom ?? 0)) * 100}
+                        fill="none"
+                        stroke="rgba(255,255,255,0.9)"
+                        stroke-width="0.8"
+                      />
+                    </svg>
+                  );
+                }}
+              </Show>
             </div>
 
             {/* Shape + aspect-ratio crop controls. Ratio crops need the

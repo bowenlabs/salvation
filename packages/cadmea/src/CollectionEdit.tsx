@@ -158,6 +158,12 @@ export interface DraftActions {
 export interface CollectionEditProps {
   config: CollectionConfig;
   initialValues?: Record<string, unknown>;
+  /**
+   * Persists the edited values. Throw / reject to signal the save failed — the
+   * form then stays dirty (the unsaved-changes guard is left armed) so the user
+   * can retry. On success the form re-baselines to the saved values, clearing
+   * the guard. See the `onSubmit` wiring in `createForm` below.
+   */
   onSubmit: (values: Record<string, unknown>) => void | Promise<void>;
   submitLabel?: string;
   error?: string;
@@ -258,8 +264,28 @@ export function CollectionEdit(props: CollectionEditProps) {
       onSubmitAsync: ({ value }: { value: Record<string, unknown> }) =>
         validateForm(value),
     },
-    onSubmit: async ({ value }: { value: Record<string, unknown> }) => {
-      await props.onSubmit(editablePayload(value));
+    onSubmit: async ({
+      value,
+      formApi,
+    }: {
+      value: Record<string, unknown>;
+      formApi: { reset: (values?: Record<string, unknown>) => void };
+    }) => {
+      try {
+        await props.onSubmit(editablePayload(value));
+      } catch {
+        // Save failed (props.onSubmit threw/rejected) — leave the form dirty so
+        // the guard stays armed and the user can retry. The consumer surfaces
+        // the message separately via the `error` prop.
+        return;
+      }
+      // Re-baseline the form to the just-saved values so the unsaved-changes
+      // guard clears: isDefaultValue() flips back to true → onDirtyChange(false),
+      // disarming the consuming route's useBlocker + beforeunload prompt.
+      // reset(values) updates the form's *default* values too — without this the
+      // baseline stays the pre-edit snapshot and the form reads dirty forever
+      // after a save (won't let you leave the page; reload warns of lost changes).
+      formApi.reset(value);
     },
   }));
 
