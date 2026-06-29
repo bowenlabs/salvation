@@ -3,3 +3,4 @@
 
 export * from "./client.js";
 export * from "./cms.js";
+export * from "./security-headers.js";
