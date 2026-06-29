@@ -270,12 +270,9 @@ export function ImageHotspotField(props: FieldWidgetProps) {
               <Show when={parsed()?.crop}>
                 {(crop) => {
                   const maskId = `crop-mask-${props.fieldKey}`;
-                  const t = () => `${(crop().top ?? 0) * 100}%`;
-                  const l = () => `${(crop().left ?? 0) * 100}%`;
-                  const w = () => `${(1 - (crop().left ?? 0) - (crop().right ?? 0)) * 100}%`;
-                  const h = () => `${(1 - (crop().top ?? 0) - (crop().bottom ?? 0)) * 100}%`;
                   return (
                     <svg
+                      aria-hidden="true"
                       class="pointer-events-none absolute inset-0 h-full w-full"
                       viewBox="0 0 100 100"
                       preserveAspectRatio="none"
@@ -288,20 +285,35 @@ export function ImageHotspotField(props: FieldWidgetProps) {
                           <rect
                             x={(crop().left ?? 0) * 100}
                             y={(crop().top ?? 0) * 100}
-                            width={(1 - (crop().left ?? 0) - (crop().right ?? 0)) * 100}
-                            height={(1 - (crop().top ?? 0) - (crop().bottom ?? 0)) * 100}
+                            width={
+                              (1 - (crop().left ?? 0) - (crop().right ?? 0)) *
+                              100
+                            }
+                            height={
+                              (1 - (crop().top ?? 0) - (crop().bottom ?? 0)) *
+                              100
+                            }
                             fill="black"
                           />
                         </mask>
                       </defs>
                       {/* Dim area outside crop */}
-                      <rect width="100" height="100" fill="rgba(0,0,0,0.45)" mask={`url(#${maskId})`} />
+                      <rect
+                        width="100"
+                        height="100"
+                        fill="rgba(0,0,0,0.45)"
+                        mask={`url(#${maskId})`}
+                      />
                       {/* Crop border */}
                       <rect
                         x={(crop().left ?? 0) * 100}
                         y={(crop().top ?? 0) * 100}
-                        width={(1 - (crop().left ?? 0) - (crop().right ?? 0)) * 100}
-                        height={(1 - (crop().top ?? 0) - (crop().bottom ?? 0)) * 100}
+                        width={
+                          (1 - (crop().left ?? 0) - (crop().right ?? 0)) * 100
+                        }
+                        height={
+                          (1 - (crop().top ?? 0) - (crop().bottom ?? 0)) * 100
+                        }
                         fill="none"
                         stroke="rgba(255,255,255,0.9)"
                         stroke-width="0.8"
