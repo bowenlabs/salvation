@@ -274,6 +274,50 @@ describe("CollectionEdit", () => {
     expect(dirtyStates).toEqual([false, true, false]);
   });
 
+  it("clears dirty state after a successful save (re-baselines to saved values)", async () => {
+    const dirtyStates: boolean[] = [];
+    render(() => (
+      <CollectionEdit
+        config={pagesCollection}
+        initialValues={{ title: "Home" }}
+        onSubmit={() => {}}
+        onDirtyChange={(dirty) => dirtyStates.push(dirty)}
+      />
+    ));
+    expect(dirtyStates).toEqual([false]);
+    fireEvent.input(screen.getByLabelText("Title *"), {
+      target: { value: "Changed" },
+    });
+    expect(dirtyStates).toEqual([false, true]);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    // After a successful submit the form re-baselines to the saved values, so
+    // the unsaved-changes guard clears. Without the reset it would stay dirty
+    // forever — the bug this guards against.
+    await vi.waitFor(() => expect(dirtyStates.at(-1)).toBe(false));
+  });
+
+  it("stays dirty after a failed save (onSubmit throws)", async () => {
+    const dirtyStates: boolean[] = [];
+    render(() => (
+      <CollectionEdit
+        config={pagesCollection}
+        initialValues={{ title: "Home" }}
+        onSubmit={() => {
+          throw new Error("save failed");
+        }}
+        onDirtyChange={(dirty) => dirtyStates.push(dirty)}
+      />
+    ));
+    fireEvent.input(screen.getByLabelText("Title *"), {
+      target: { value: "Changed" },
+    });
+    expect(dirtyStates.at(-1)).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    // A failed save must leave the guard armed so the user can retry.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(dirtyStates.at(-1)).toBe(true);
+  });
+
   it("renders the generic Save button when the collection isn't versioned", () => {
     render(() => (
       <CollectionEdit

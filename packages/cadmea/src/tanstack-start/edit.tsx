@@ -71,6 +71,8 @@ export interface CollectionEditPageOptions {
   onUploadFile?: (file: File) => Promise<{ url: string }>;
   /** Per-field custom editor widgets (issue #17), keyed by field name — forwarded to CollectionEdit. */
   fieldWidgets?: CollectionEditProps["fieldWidgets"];
+  /** Options for relationship fields, keyed by the related collection's slug — forwarded to CollectionEdit. */
+  relationshipOptions?: CollectionEditProps["relationshipOptions"];
   /**
    * Renders "Save draft"/"Publish" instead of the generic Save button —
    * only meaningful when `collection.versions?.drafts` is also true (see
@@ -214,9 +216,16 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
             submitLabel={options.submitLabel ?? "Save changes"}
             error={error()}
             saving={update.isPending}
-            onSubmit={(values) => update.mutate(values)}
+            // await the mutation so CollectionEdit only re-baselines (clears the
+            // unsaved-changes guard) once the save actually lands. mutateAsync
+            // rejects on error — CollectionEdit catches that to keep the form
+            // dirty; the mutation's own onError still surfaces the message.
+            onSubmit={async (values) => {
+              await update.mutateAsync(values);
+            }}
             onUploadFile={options.onUploadFile}
             fieldWidgets={options.fieldWidgets}
+            relationshipOptions={options.relationshipOptions}
             onDirtyChange={setDirty}
             onValuesChange={setPreviewValues}
             focusBlock={focusBlock()}
