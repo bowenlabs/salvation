@@ -1,0 +1,17 @@
+---
+import type { HeroBlockProps } from "./types";
+
+const { heading, subtext, ctaLabel, ctaHref } = Astro.props as HeroBlockProps;
+---
+
+<section class="hero">
+  <h1>{heading}</h1>
+  {subtext && <p>{subtext}</p>}
+  {
+    ctaLabel && ctaHref && (
+      <a class="btn btn-primary" href={ctaHref}>
+        {ctaLabel}
+      </a>
+    )
+  }
+</section>

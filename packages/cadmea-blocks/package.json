@@ -1,0 +1,45 @@
+{
+  "name": "@thebes/cadmea-blocks",
+  "version": "0.0.0",
+  "description": "Theme-neutral Astro block components for Cadmea sites — rich text, image, hero, divider, banner, content",
+  "author": "BowenLabs <hello@bowenlabs.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bowenlabs/project-thebes",
+    "directory": "packages/cadmea-blocks"
+  },
+  "homepage": "https://github.com/bowenlabs/project-thebes/tree/main/packages/cadmea-blocks#readme",
+  "bugs": {
+    "url": "https://github.com/bowenlabs/project-thebes/issues"
+  },
+  "keywords": [
+    "cadmea",
+    "cadmus",
+    "astro",
+    "blocks",
+    "cloudflare"
+  ],
+  "type": "module",
+  "exports": {
+    "./RichTextBlock.astro": "./src/RichTextBlock.astro",
+    "./ImageBlock.astro": "./src/ImageBlock.astro",
+    "./HeroBlock.astro": "./src/HeroBlock.astro",
+    "./DividerBlock.astro": "./src/DividerBlock.astro",
+    "./BannerBlock.astro": "./src/BannerBlock.astro",
+    "./ContentBlock.astro": "./src/ContentBlock.astro",
+    "./types": "./src/types.ts"
+  },
+  "peerDependencies": {
+    "@thebes/cadmus": ">=0.5.0 <1.0.0",
+    "astro": ">=5.0.0"
+  },
+  "devDependencies": {
+    "@thebes/cadmus": "workspace:^"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
+}

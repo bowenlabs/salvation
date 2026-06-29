@@ -1,0 +1,20 @@
+---
+import { renderRichText } from "@thebes/cadmus/cms";
+import type { ContentBlockProps } from "./types";
+
+const { layout, columns = [] } = Astro.props as ContentBlockProps;
+const cols = layout === "three" ? 3 : layout === "two" ? 2 : 1;
+---
+
+<section class="section-container py-[var(--section-y)]">
+  <div
+    class="grid gap-12 stack-mobile"
+    style={`grid-template-columns: repeat(${cols}, minmax(0, 1fr));`}
+  >
+    {
+      columns.map((col) => (
+        <div class="prose max-w-none" set:html={renderRichText(col.content)} />
+      ))
+    }
+  </div>
+</section>

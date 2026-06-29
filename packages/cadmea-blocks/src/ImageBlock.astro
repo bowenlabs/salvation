@@ -1,0 +1,33 @@
+---
+import { parseImageRef } from "@thebes/cadmus/storage";
+import type { ImageBlockProps } from "./types";
+
+const { url, alt, caption, imageService } = Astro.props as ImageBlockProps;
+
+// `url` holds a bare URL or the hotspot/crop widget's JSON — parse, then render
+// through the ImageService (which applies hotspot/crop + builds the srcset).
+const img = parseImageRef(url);
+const rendered = imageService.render({
+  url: img.url,
+  alt,
+  hotspot: img.hotspot,
+  crop: img.crop,
+  // Source dims activate the crop (trim=) path in the image service.
+  sourceWidth: img.width,
+  sourceHeight: img.height,
+});
+const isCircle = img.shape === "circle";
+---
+
+<figure>
+  <img
+    src={rendered.src}
+    srcset={rendered.srcset}
+    sizes={rendered.sizes}
+    alt={alt}
+    loading="lazy"
+    decoding="async"
+    style={isCircle ? "border-radius: 50%;" : undefined}
+  />
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>

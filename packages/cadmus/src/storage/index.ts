@@ -100,3 +100,36 @@ export function validateImageFile(file: File): void {
     );
   }
 }
+
+/**
+ * A stored image-field value once parsed: either a bare URL, or the JSON
+ * `{ url, hotspot?, crop?, width?, height?, shape? }` a hotspot/crop editor
+ * writes (issue #17). `width`/`height` are the source pixel dimensions captured
+ * at upload — the crop render path needs them. `shape: "circle"` marks a 1:1
+ * crop that should render round.
+ */
+export interface ParsedImageRef {
+  url: string;
+  hotspot?: ImageHotspot;
+  crop?: ImageCrop;
+  width?: number;
+  height?: number;
+  shape?: "rect" | "circle";
+}
+
+/**
+ * Parse a stored image-ref string into a render-ready shape. Bad JSON or a
+ * plain string falls back to a bare URL, so existing content keeps working.
+ */
+export function parseImageRef(raw: string): ParsedImageRef {
+  const trimmed = (raw ?? "").trim();
+  if (trimmed.startsWith("{")) {
+    try {
+      const obj = JSON.parse(trimmed) as ParsedImageRef;
+      if (obj && typeof obj.url === "string") return obj;
+    } catch {
+      // fall through to treating it as a bare URL
+    }
+  }
+  return { url: trimmed };
+}
