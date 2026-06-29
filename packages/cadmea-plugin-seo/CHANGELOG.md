@@ -1,5 +1,14 @@
 # @thebes/cadmea-plugin-seo
 
+## 1.1.0
+
+### Minor Changes
+
+- 0000c2f: Add JSON-LD schema.org builders (`websiteJsonLd`, `personJsonLd`,
+  `visualArtworkJsonLd`, `productJsonLd`, `breadcrumbJsonLd`, `serializeJsonLd`), a
+  pure sitemap serializer (`buildSitemapXml`), and a resolved-input `<head>`
+  builder (`buildHeadTags`) alongside the existing `renderSeoTags`.
+
 ## 1.0.1
 
 ### Patch Changes
