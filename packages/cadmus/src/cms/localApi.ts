@@ -127,9 +127,32 @@ function rejectUnknownFields(
   }
 }
 
+// The driver-level "UNIQUE constraint failed: …" text we classify on isn't
+// always on the top-level error's `message`: drizzle-orm's D1 driver wraps the
+// underlying D1/SQLite error, surfacing `message = "Failed query: …"` and
+// stashing the real SQLite text on `error.cause` (sometimes a level deeper).
+// Classifying off `message` alone therefore misses every unique violation
+// against D1 — they fall through to the generic "Write failed", and callers
+// that branch on the unique message (e.g. the ecommerce plugin's webhook dedup
+// guard) never recognize the duplicate. Flatten the whole `cause` chain so the
+// match holds regardless of how deep the driver buried it. The depth cap is a
+// guard against a pathological self-referential `cause`.
+function errorChainMessage(error: unknown): string {
+  const parts: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; current != null && depth < 10; depth++) {
+    parts.push(current instanceof Error ? current.message : String(current));
+    current =
+      current instanceof Error
+        ? (current as { cause?: unknown }).cause
+        : undefined;
+  }
+  return parts.join(" | ");
+}
+
 function wrapWriteError(config: CollectionConfig, error: unknown): never {
   if (error instanceof CadmusCmsError) throw error;
-  const message = error instanceof Error ? error.message : String(error);
+  const message = errorChainMessage(error);
   if (message.includes("UNIQUE constraint failed")) {
     throw new CadmusCmsError(
       `Unique constraint violated for collection "${config.slug}"`,
