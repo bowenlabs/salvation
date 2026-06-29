@@ -206,6 +206,13 @@ describe("createLocalApi", () => {
       .catch((e) => e);
     expect(error).toBeInstanceOf(CadmusCmsError);
     expect(error.cause).toBeDefined();
+    // Must be *classified* as a unique violation, not the generic write
+    // failure: drizzle's D1 driver buries "UNIQUE constraint failed" on
+    // error.cause (message is "Failed query: …"), so this asserts wrapWriteError
+    // walks the cause chain. Callers (e.g. the ecommerce webhook dedup guard)
+    // branch on exactly this message. Regression guard for the bug where the
+    // classification only inspected the top-level message.
+    expect(error.message).toContain("Unique constraint violated");
   });
 });
 
