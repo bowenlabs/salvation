@@ -594,15 +594,15 @@ describe("CollectionEdit — visual block builder (B)", () => {
     render(() => <CollectionEdit config={blocksConfig} onSubmit={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: "Add block" }));
     expect(
-      screen.getByRole("menuitem", { name: "Hero banner" }),
+      screen.getByRole("button", { name: "Hero banner" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Text" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Text" })).toBeInTheDocument();
   });
 
   it("adds a block of the chosen variant, presetting its type and showing its fields", () => {
     render(() => <CollectionEdit config={blocksConfig} onSubmit={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: "Add block" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Hero banner" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hero banner" }));
     // The hero variant's field is shown, and the block header reflects the type.
     expect(screen.getByLabelText("Heading *")).toBeInTheDocument();
     expect(
@@ -616,7 +616,7 @@ describe("CollectionEdit — visual block builder (B)", () => {
       <CollectionEdit config={blocksConfig} onSubmit={(v) => (submitted = v)} />
     ));
     fireEvent.click(screen.getByRole("button", { name: "Add block" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Hero banner" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hero banner" }));
     fireEvent.input(screen.getByLabelText("Heading *"), {
       target: { value: "Hi" },
     });
@@ -635,7 +635,7 @@ describe("CollectionEdit — visual block builder (B)", () => {
       <CollectionEdit config={blocksConfig} onSubmit={(v) => (submitted = v)} />
     ));
     fireEvent.click(screen.getByRole("button", { name: "Add block" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Text" }));
+    fireEvent.click(screen.getByRole("button", { name: "Text" }));
     fireEvent.input(screen.getByLabelText("Body"), { target: { value: "x" } });
     fireEvent.click(screen.getByRole("button", { name: "Duplicate" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));

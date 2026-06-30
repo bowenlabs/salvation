@@ -1040,7 +1040,18 @@ function BlockEditor(props: {
   fieldApi: FieldAccessor;
 }): JSX.Element {
   const [collapsed, setCollapsed] = createSignal<Set<number>>(new Set());
+  // `menuOpen` drives the block-type picker modal (Add block → a grid of
+  // variants). The cleanup from the previous run removes the Escape listener
+  // when the modal closes.
   const [menuOpen, setMenuOpen] = createSignal(false);
+  createEffect(() => {
+    if (!menuOpen() || typeof document === "undefined") return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    onCleanup(() => document.removeEventListener("keydown", onKey));
+  });
 
   const disc = props.field.discriminator;
   const variants = disc ? Object.keys(disc.variants) : [];
@@ -1279,30 +1290,58 @@ function BlockEditor(props: {
               Add block
             </button>
             <Show when={menuOpen()}>
-              {/* role="menu"/"menuitem" on div + button (not ul/li) so the
-                  menu items are natively focusable interactive elements. */}
+              {/* Block-type picker — a modal grid of variant cards (the Studio
+                  Prototype's block picker). `addBlock` closes it; Cancel and
+                  Escape (keydown listener above) and the backdrop also close. */}
+              {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-close convenience; the modal also closes via Cancel and Escape. */}
+              {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard close is Escape + the Cancel button; the backdrop click is mouse-only sugar. */}
               <div
-                role="menu"
-                class="bg-base-100 border-base-300 rounded-box absolute z-10 mt-1 flex flex-col border p-1 shadow"
+                class="modal modal-open"
+                onClick={(event) => {
+                  if (event.target === event.currentTarget) setMenuOpen(false);
+                }}
               >
-                <For each={variants}>
-                  {(variant) => (
+                <div
+                  class="modal-box max-w-2xl"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={`Add a ${props.label} block`}
+                >
+                  <h3 class="m-0 text-lg font-semibold">Add a block</h3>
+                  <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <For each={variants}>
+                      {(variant) => (
+                        <button
+                          type="button"
+                          class="border-base-300 hover:border-primary hover:bg-base-200 rounded-box flex flex-col items-center gap-2 border p-4 text-center transition-colors"
+                          onClick={() => addBlock(variant)}
+                        >
+                          <Show when={disc?.variantsAdmin?.[variant]?.icon}>
+                            <i
+                              class={`${disc?.variantsAdmin?.[variant]?.icon} text-2xl`}
+                              aria-hidden="true"
+                            />
+                          </Show>
+                          <span class="text-sm font-medium">
+                            {variantLabel(
+                              disc as NonNullable<typeof disc>,
+                              variant,
+                            )}
+                          </span>
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                  <div class="modal-action">
                     <button
                       type="button"
-                      role="menuitem"
-                      class="flex items-center gap-2 rounded px-3 py-2 text-left"
-                      onClick={() => addBlock(variant)}
+                      class="btn btn-ghost btn-sm"
+                      onClick={() => setMenuOpen(false)}
                     >
-                      <Show when={disc?.variantsAdmin?.[variant]?.icon}>
-                        <i
-                          class={disc?.variantsAdmin?.[variant]?.icon}
-                          aria-hidden="true"
-                        />
-                      </Show>
-                      {variantLabel(disc as NonNullable<typeof disc>, variant)}
+                      Cancel
                     </button>
-                  )}
-                </For>
+                  </div>
+                </div>
               </div>
             </Show>
           </div>
