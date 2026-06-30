@@ -219,6 +219,13 @@ export interface CollectionEditProps {
    * "no access fn = allowed" default.
    */
   capabilities?: CollectionCapabilities;
+  /**
+   * Optional right-hand sidebar content (status, metadata, publish controls,
+   * …). When provided, the fields render in a two-column grid with this
+   * sidebar alongside; when omitted, the editor stays single-column exactly
+   * as before. Additive — existing consumers are unaffected.
+   */
+  renderSidebar?: () => JSX.Element;
 }
 
 interface RenderContext {
@@ -386,31 +393,55 @@ export function CollectionEdit(props: CollectionEditProps) {
           {props.error}
         </p>
       </Show>
-      <For each={fieldGroups}>
-        {(group) => (
-          <Show
-            when={group.name}
-            fallback={
-              <FieldsGrid
-                form={form}
-                ctx={ctx}
-                fields={group.fields}
-                values={formValues}
-              />
-            }
-          >
-            <fieldset class="border-base-300 rounded-box border p-4">
-              <legend class="px-2 text-sm font-semibold">{group.name}</legend>
-              <FieldsGrid
-                form={form}
-                ctx={ctx}
-                fields={group.fields}
-                values={formValues}
-              />
-            </fieldset>
-          </Show>
-        )}
-      </For>
+      {/* Two-column layout when a `renderSidebar` slot is provided; otherwise
+          the wrappers are `display: contents` (generate no box), so the
+          original single-column flow is byte-for-byte unchanged. */}
+      <div
+        class={
+          props.renderSidebar
+            ? "grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]"
+            : "contents"
+        }
+      >
+        <div
+          class={
+            props.renderSidebar ? "flex min-w-0 flex-col gap-4" : "contents"
+          }
+        >
+          <For each={fieldGroups}>
+            {(group) => (
+              <Show
+                when={group.name}
+                fallback={
+                  <FieldsGrid
+                    form={form}
+                    ctx={ctx}
+                    fields={group.fields}
+                    values={formValues}
+                  />
+                }
+              >
+                <fieldset class="border-base-300 rounded-box border p-4">
+                  <legend class="px-2 text-sm font-semibold">
+                    {group.name}
+                  </legend>
+                  <FieldsGrid
+                    form={form}
+                    ctx={ctx}
+                    fields={group.fields}
+                    values={formValues}
+                  />
+                </fieldset>
+              </Show>
+            )}
+          </For>
+        </div>
+        <Show when={props.renderSidebar}>
+          <aside class="flex flex-col gap-4 lg:sticky lg:top-4">
+            {props.renderSidebar?.()}
+          </aside>
+        </Show>
+      </div>
       {/* Bottom-anchored, full-width action bar — not a top toolbar, per
           issue #25's mobile-first note. */}
       <div class="bg-base-100 sticky bottom-0 flex gap-2 border-t py-3">

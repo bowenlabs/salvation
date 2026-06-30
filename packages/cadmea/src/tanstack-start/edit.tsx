@@ -73,6 +73,8 @@ export interface CollectionEditPageOptions {
   fieldWidgets?: CollectionEditProps["fieldWidgets"];
   /** Options for relationship fields, keyed by the related collection's slug — forwarded to CollectionEdit. */
   relationshipOptions?: CollectionEditProps["relationshipOptions"];
+  /** Optional right-hand sidebar content — forwarded to CollectionEdit (two-column layout). */
+  renderSidebar?: CollectionEditProps["renderSidebar"];
   /**
    * Renders "Save draft"/"Publish" instead of the generic Save button —
    * only meaningful when `collection.versions?.drafts` is also true (see
@@ -226,6 +228,7 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
             onUploadFile={options.onUploadFile}
             fieldWidgets={options.fieldWidgets}
             relationshipOptions={options.relationshipOptions}
+            renderSidebar={options.renderSidebar}
             onDirtyChange={setDirty}
             onValuesChange={setPreviewValues}
             focusBlock={focusBlock()}
