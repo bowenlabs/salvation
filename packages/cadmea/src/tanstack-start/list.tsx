@@ -1,9 +1,14 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Link } from "@tanstack/solid-router";
 import type { CollectionConfig } from "@thebes/cadmus/cms";
-import { createSignal, Show } from "solid-js";
+import { createSignal, type JSX, Show } from "solid-js";
 import { isServer } from "solid-js/web";
-import { type BulkAction, CollectionList } from "../CollectionList.js";
+import {
+  type BulkAction,
+  CollectionList,
+  type ListLayout,
+  type RowRenderHelpers,
+} from "../CollectionList.js";
 import type { CollectionCapabilities } from "../capabilities.js";
 
 export interface CollectionListQueryParams {
@@ -57,6 +62,18 @@ export interface CollectionListPageOptions<
    * selection automatically once it resolves. Omit to keep the list read-only.
    */
   bulkActions?: BulkAction[];
+  /**
+   * Presentational layout + render slots, passed straight through to
+   * {@link CollectionList} — for bespoke per-collection rows (`layout: "rows"`
+   * + `renderHead`/`renderRow`) or card grids (`layout: "cards"` +
+   * `renderCard`), and an extra `renderToolbar` slot (filter chips). The query,
+   * pagination, sorting, selection, and bulk wiring are unchanged.
+   */
+  layout?: ListLayout;
+  renderHead?: () => JSX.Element;
+  renderRow?: (row: TRow, helpers: RowRenderHelpers) => JSX.Element;
+  renderCard?: (row: TRow, helpers: RowRenderHelpers) => JSX.Element;
+  renderToolbar?: () => JSX.Element;
 }
 
 /**
@@ -199,6 +216,25 @@ export function createCollectionListPage<TRow extends Record<string, unknown>>(
             selectedIds={selectedIds()}
             onSelectionChange={setSelectedIds}
             bulkActions={bulkActions()}
+            layout={options.layout}
+            renderHead={options.renderHead}
+            renderRow={
+              options.renderRow as
+                | ((
+                    row: Record<string, unknown>,
+                    helpers: RowRenderHelpers,
+                  ) => JSX.Element)
+                | undefined
+            }
+            renderCard={
+              options.renderCard as
+                | ((
+                    row: Record<string, unknown>,
+                    helpers: RowRenderHelpers,
+                  ) => JSX.Element)
+                | undefined
+            }
+            renderToolbar={options.renderToolbar}
           />
         </Show>
       </div>
