@@ -148,6 +148,9 @@ describe("generateSchemaSource", () => {
     expect(source).toContain(
       'status: text("status", { enum: ["draft", "published"] }).notNull()',
     );
+    expect(source).toContain(
+      'scheduledAt: integer("scheduled_at", { mode: "timestamp" })',
+    );
   });
 
   it("emits no column for a hasMany:true relationship, plus a join table block", () => {

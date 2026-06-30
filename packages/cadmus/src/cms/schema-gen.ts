@@ -142,6 +142,7 @@ function versionsTableSource(
     '  versionData: text("version_data", { mode: "json" }).$type<JsonValue>().notNull(),\n' +
     '  status: text("status", { enum: ["draft", "published"] }).notNull(),\n' +
     '  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),\n' +
+    '  scheduledAt: integer("scheduled_at", { mode: "timestamp" }),\n' +
     "});"
   );
 }

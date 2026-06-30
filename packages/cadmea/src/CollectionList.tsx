@@ -32,6 +32,18 @@ function rowId(row: Row): number | undefined {
   return typeof row.id === "number" ? row.id : undefined;
 }
 
+/** A bulk operation offered in select mode, run against the selected row ids. */
+export interface BulkAction {
+  /** Button label, e.g. "Publish", "Delete". */
+  label: string;
+  /** daisyUI button modifier appended to the class, e.g. "btn-error". */
+  variant?: string;
+  /** If set, `window.confirm(this)` must pass before the action runs. */
+  confirm?: string;
+  /** Runs the action against the currently-selected row ids. */
+  run: (ids: number[]) => void | Promise<void>;
+}
+
 export interface CollectionListProps {
   config: CollectionConfig;
   rows: Row[];
@@ -59,6 +71,12 @@ export interface CollectionListProps {
   selectable?: boolean;
   selectedIds?: ReadonlySet<number>;
   onSelectionChange?: (selectedIds: Set<number>) => void;
+  /**
+   * Bulk operations shown in select mode. Each runs against the selected ids;
+   * selection is cleared once the action resolves. Provide these to surface the
+   * action toolbar (publish/delete/status, etc.).
+   */
+  bulkActions?: BulkAction[];
 
   /**
    * Friendly empty state shown when there are no rows — pass one with a "New"
@@ -94,12 +112,44 @@ export function CollectionList(props: CollectionListProps) {
   });
 
   const [selectMode, setSelectMode] = createSignal(false);
+  const [running, setRunning] = createSignal(false);
+
+  const selectedCount = () => props.selectedIds?.size ?? 0;
+
+  const pageIds = (): number[] =>
+    props.rows.map(rowId).filter((id): id is number => id !== undefined);
+
+  const allSelected = () => {
+    const ids = pageIds();
+    return ids.length > 0 && ids.every((id) => props.selectedIds?.has(id));
+  };
 
   function toggleSelected(id: number) {
     const next = new Set(props.selectedIds ?? []);
     if (next.has(id)) next.delete(id);
     else next.add(id);
     props.onSelectionChange?.(next);
+  }
+
+  function toggleAll() {
+    const next = new Set(props.selectedIds ?? []);
+    const ids = pageIds();
+    if (allSelected()) for (const id of ids) next.delete(id);
+    else for (const id of ids) next.add(id);
+    props.onSelectionChange?.(next);
+  }
+
+  async function runBulk(action: BulkAction) {
+    const ids = [...(props.selectedIds ?? [])];
+    if (ids.length === 0 || running()) return;
+    if (action.confirm && !window.confirm(action.confirm)) return;
+    setRunning(true);
+    try {
+      await action.run(ids);
+      props.onSelectionChange?.(new Set());
+    } finally {
+      setRunning(false);
+    }
   }
 
   function handleRowActivate(row: Row) {
@@ -160,6 +210,39 @@ export function CollectionList(props: CollectionListProps) {
         </Show>
       </div>
 
+      {/* Bulk-action toolbar — appears in select mode. Page-scoped "select all",
+          a live selected count, and the consumer's actions (publish/delete/…),
+          disabled while one is running or nothing is selected. */}
+      <Show when={selectMode()}>
+        <div class="bg-base-200 rounded-box flex flex-wrap items-center gap-2 p-2">
+          <span class="text-sm opacity-70">{selectedCount()} selected</span>
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs"
+            disabled={pageIds().length === 0}
+            onClick={toggleAll}
+          >
+            {allSelected() ? "Clear all" : "Select all"}
+          </button>
+          <Show when={props.bulkActions?.length}>
+            <div class="ml-auto flex flex-wrap gap-2">
+              <For each={props.bulkActions}>
+                {(action) => (
+                  <button
+                    type="button"
+                    class={`btn btn-sm ${action.variant ?? ""}`}
+                    disabled={selectedCount() === 0 || running()}
+                    onClick={() => runBulk(action)}
+                  >
+                    {action.label}
+                  </button>
+                )}
+              </For>
+            </div>
+          </Show>
+        </div>
+      </Show>
+
       <Show
         when={props.rows.length > 0}
         fallback={
@@ -186,7 +269,15 @@ export function CollectionList(props: CollectionListProps) {
                 {(headerGroup) => (
                   <tr>
                     <Show when={selectMode()}>
-                      <th />
+                      <th>
+                        <input
+                          type="checkbox"
+                          class="checkbox checkbox-sm"
+                          aria-label="Select all"
+                          checked={allSelected()}
+                          onChange={toggleAll}
+                        />
+                      </th>
                     </Show>
                     <For each={headerGroup.headers}>
                       {(header) => (

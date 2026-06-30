@@ -200,13 +200,23 @@ describe("collectionVersionsTable", () => {
     const table = collectionVersionsTable(pagesCollection);
     const columns = getTableColumns(table);
     expect(Object.keys(columns).sort()).toEqual(
-      ["id", "parentId", "versionData", "status", "createdAt"].sort(),
+      [
+        "id",
+        "parentId",
+        "versionData",
+        "status",
+        "createdAt",
+        "scheduledAt",
+      ].sort(),
     );
     expect(columns.id.primary).toBe(true);
     expect(columns.parentId.notNull).toBe(true);
     expect(columns.versionData.columnType).toBe("SQLiteTextJson");
     expect(columns.versionData.notNull).toBe(true);
     expect(columns.status.enumValues).toEqual(["draft", "published"]);
+    // Nullable scheduled-publish marker — null unless a draft is scheduled.
+    expect(columns.scheduledAt.name).toBe("scheduled_at");
+    expect(columns.scheduledAt.notNull).toBe(false);
   });
 });
 

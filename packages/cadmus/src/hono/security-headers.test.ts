@@ -1,6 +1,7 @@
 import { type Context, Hono } from "hono";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  createCspReportHandler,
   createSecurityHeaders,
   FRAME_ANCESTORS_HEADER,
 } from "./security-headers.js";
@@ -91,5 +92,77 @@ describe("createSecurityHeaders", () => {
     expect(normal.headers.get("Content-Security-Policy")).not.toContain(
       "frame-ancestors",
     );
+  });
+
+  it("omits the report sink by default", async () => {
+    const app = new Hono();
+    app.use("*", createSecurityHeaders());
+    app.get("/", (c) => c.text("ok"));
+    const res = await app.request("/");
+    const csp = res.headers.get("Content-Security-Policy") ?? "";
+    expect(csp).not.toContain("report-uri");
+    expect(csp).not.toContain("report-to");
+    expect(res.headers.get("Reporting-Endpoints")).toBeNull();
+  });
+
+  it("wires a report sink when reportUri is set (both locked and framed responses)", async () => {
+    const app = new Hono();
+    app.use("*", createSecurityHeaders({ reportUri: "/csp-report" }));
+    app.get("/", (c) => c.text("ok"));
+    app.get("/edit", (c) => {
+      c.header(FRAME_ANCESTORS_HEADER, "https://cms.example.com");
+      return c.text("framed");
+    });
+    for (const path of ["/", "/edit"]) {
+      const res = await app.request(path);
+      const csp = res.headers.get("Content-Security-Policy") ?? "";
+      expect(csp).toContain("report-uri /csp-report");
+      // Default group name is "csp".
+      expect(csp).toContain("report-to csp");
+      expect(res.headers.get("Reporting-Endpoints")).toBe('csp="/csp-report"');
+    }
+  });
+
+  it("honors a custom report-to group name", async () => {
+    const app = new Hono();
+    app.use(
+      "*",
+      createSecurityHeaders({ reportUri: "/r", reportTo: "violations" }),
+    );
+    app.get("/", (c) => c.text("ok"));
+    const res = await app.request("/");
+    expect(res.headers.get("Content-Security-Policy")).toContain(
+      "report-to violations",
+    );
+    expect(res.headers.get("Reporting-Endpoints")).toBe('violations="/r"');
+  });
+});
+
+describe("createCspReportHandler", () => {
+  it("parses a report, hands it to onReport, and answers 204", async () => {
+    const onReport = vi.fn();
+    const app = new Hono();
+    app.post("/csp-report", createCspReportHandler({ onReport }));
+    const report = { "csp-report": { "violated-directive": "script-src" } };
+    const res = await app.request("/csp-report", {
+      method: "POST",
+      headers: { "content-type": "application/csp-report" },
+      body: JSON.stringify(report),
+    });
+    expect(res.status).toBe(204);
+    expect(onReport).toHaveBeenCalledOnce();
+    expect(onReport.mock.calls[0][0]).toEqual(report);
+  });
+
+  it("never errors on a malformed body — still 204, onReport not called", async () => {
+    const onReport = vi.fn();
+    const app = new Hono();
+    app.post("/csp-report", createCspReportHandler({ onReport }));
+    const res = await app.request("/csp-report", {
+      method: "POST",
+      body: "not json",
+    });
+    expect(res.status).toBe(204);
+    expect(onReport).not.toHaveBeenCalled();
   });
 });

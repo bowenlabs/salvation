@@ -34,6 +34,16 @@ export interface SecurityHeadersOptions {
    * `c.env`. Merged into `csp` for each response.
    */
   dynamicCsp?: (c: Context) => CspSources;
+  /**
+   * CSP violation report sink. When set, the policy gains `report-uri <url>`
+   * (legacy, still widely honored) and `report-to <group>`, and each response
+   * declares the group via a `Reporting-Endpoints` header — so the browser
+   * POSTs violations here. Usually a same-origin collector path
+   * (e.g. `/csp-report`, mounted with {@link createCspReportHandler}).
+   */
+  reportUri?: string;
+  /** Group name for the `report-to` directive / `Reporting-Endpoints` header. Default `"csp"`. */
+  reportTo?: string;
 }
 
 const DIRECTIVE_KEYS = [
@@ -54,7 +64,16 @@ function mergeSources(a: CspSources, b: CspSources): CspSources {
   return out;
 }
 
-function buildCsp(extra: CspSources, frameAncestors?: string): string {
+interface CspReport {
+  uri: string;
+  group: string;
+}
+
+function buildCsp(
+  extra: CspSources,
+  frameAncestors?: string,
+  report?: CspReport,
+): string {
   const src = (base: string[], add?: string[]) =>
     [...base, ...(add ?? [])].join(" ");
   const directives = [
@@ -73,6 +92,12 @@ function buildCsp(extra: CspSources, frameAncestors?: string): string {
   }
   directives.push("base-uri 'self'", "form-action 'self'", "object-src 'none'");
   if (frameAncestors) directives.push(`frame-ancestors ${frameAncestors}`);
+  if (report) {
+    // report-uri is deprecated but still the most broadly honored; report-to is
+    // the modern Reporting API form (its group is declared via the
+    // Reporting-Endpoints response header, set alongside this in the middleware).
+    directives.push(`report-uri ${report.uri}`, `report-to ${report.group}`);
+  }
   return directives.join("; ");
 }
 
@@ -115,16 +140,72 @@ export function createSecurityHeaders(
       options.dynamicCsp?.(c) ?? {},
     );
 
+    const report: CspReport | undefined = options.reportUri
+      ? { uri: options.reportUri, group: options.reportTo ?? "csp" }
+      : undefined;
+    if (report) {
+      // Declare the report-to group's endpoint. Reporting-Endpoints is the
+      // current standard (supersedes the older Report-To JSON header).
+      c.header("Reporting-Endpoints", `${report.group}="${report.uri}"`);
+    }
+
     const frameAncestors = c.res.headers.get(FRAME_ANCESTORS_HEADER);
     if (frameAncestors) {
       // This response opted into cross-origin framing. Strip the internal
       // marker and emit a scoped frame-ancestors instead of X-Frame-Options
       // (the latter has no allowlist form and would override frame-ancestors).
       c.res.headers.delete(FRAME_ANCESTORS_HEADER);
-      c.header("Content-Security-Policy", buildCsp(extra, frameAncestors));
+      c.header(
+        "Content-Security-Policy",
+        buildCsp(extra, frameAncestors, report),
+      );
     } else {
       c.header("X-Frame-Options", "SAMEORIGIN");
-      c.header("Content-Security-Policy", buildCsp(extra));
+      c.header("Content-Security-Policy", buildCsp(extra, undefined, report));
     }
+  };
+}
+
+/** A parsed CSP violation report plus the request that delivered it. */
+export interface CspReportHandlerOptions {
+  /**
+   * Sink for each delivered report. Receives the parsed JSON body (shape varies
+   * by browser: a legacy `{ "csp-report": {...} }` for `report-uri`, or an array
+   * of reports for `report-to`) and the Hono context. Defaults to a
+   * `console.warn` so violations surface in `wrangler tail` / Logpush / Sentry.
+   */
+  onReport?: (report: unknown, c: Context) => void | Promise<void>;
+}
+
+/**
+ * Hono handler for a same-origin CSP report collector. Mount it at the path you
+ * passed as `reportUri`:
+ *
+ * ```ts
+ * app.post("/csp-report", createCspReportHandler());
+ * ```
+ *
+ * Always answers `204` (even on a malformed body) so a misbehaving reporter can
+ * never turn into a user-visible error.
+ */
+export function createCspReportHandler(
+  options: CspReportHandlerOptions = {},
+): MiddlewareHandler {
+  const onReport =
+    options.onReport ??
+    ((report: unknown) => {
+      console.warn("[csp-report]", JSON.stringify(report));
+    });
+  return async (c) => {
+    try {
+      // Parse the raw text rather than c.req.json(): browsers send CSP reports
+      // as application/csp-report or application/reports+json, and json() warns
+      // on those non-application/json content types.
+      const raw = await c.req.text();
+      if (raw) await onReport(JSON.parse(raw), c);
+    } catch {
+      // Ignore malformed / empty bodies — a report endpoint must never 5xx.
+    }
+    return c.body(null, 204);
   };
 }
