@@ -172,7 +172,7 @@ export interface CspReportHandlerOptions {
    * Sink for each delivered report. Receives the parsed JSON body (shape varies
    * by browser: a legacy `{ "csp-report": {...} }` for `report-uri`, or an array
    * of reports for `report-to`) and the Hono context. Defaults to a
-   * `console.warn` so violations surface in `wrangler tail` / Logpush / Sentry.
+   * `console.warn` so violations surface in `wrangler tail` / Workers Logs / Sentry.
    */
   onReport?: (report: unknown, c: Context) => void | Promise<void>;
 }
