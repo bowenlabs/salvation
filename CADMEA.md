@@ -145,6 +145,16 @@ Local API, admin meta) is documented separately in
 that's the authoritative reference for collection config shape, plugins,
 access, hooks, and the REST API. This document doesn't repeat it.
 
+This doc covers the admin (write) side. The **read/render side** — how the
+content authored here renders on the public Astro site — lives in separate
+packages: `@thebes/cadmus/cms`'s `renderRichText` (TipTap JSON → HTML) and
+`@thebes/cadmea-blocks` (theme-neutral Astro components for the generic block
+types: richText/image/hero/divider/banner/content). `RichTextEditor.tsx`
+above is the editor; `renderRichText` + `@thebes/cadmea-blocks` are its
+public-site counterpart, both consuming the same stored JSON with no transform
+layer. SEO `<head>` tags, JSON-LD, and the sitemap for that public site come
+from `@thebes/cadmea-plugin-seo` (see EXTENDING.md).
+
 ---
 
 ## What Cadmea is not

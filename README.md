@@ -49,7 +49,9 @@ thebes/
 │   ├── cadmea-plugin-ecommerce/   @thebes/cadmea-plugin-ecommerce — provider-agnostic ecommerce core (CMS axis)
 │   ├── cadmea-plugin-ecommerce-square/  Square's PaymentProvider implementation
 │   ├── cadmea-plugin-ecommerce-stripe/  Stripe's PaymentProvider implementation
+│   ├── cadmea-plugin-printful/    @thebes/cadmea-plugin-printful — Printful FulfillmentProvider implementation
 │   ├── cadmea-ecommerce-ui/       @thebes/cadmea-ecommerce-ui — storefront SolidJS components (standalone lib)
+│   ├── cadmea-blocks/             @thebes/cadmea-blocks — theme-neutral Astro block components for the public site (standalone lib)
 │   └── cadmus-cloudflare-images/  @thebes/cadmus-cloudflare-images — image adapter (framework axis)
 ├── app/
 │   ├── workers/site/   docs + marketing for Cadmus and Cadmea, example deployment
@@ -154,8 +156,17 @@ core collections plus Square and Stripe `PaymentProvider` implementations
 (`@thebes/cadmea-plugin-ecommerce`, `-square`, `-stripe`), a storefront
 SolidJS component library (`@thebes/cadmea-ecommerce-ui`), and two more
 generalized plugins (`@thebes/cadmea-plugin-redirects`,
-`@thebes/cadmea-plugin-crm`). See `examples/cadmea-smb-template` for all of
-it wired together.
+`@thebes/cadmea-plugin-crm`). The commerce plugin also defines a second
+provider interface, `FulfillmentProvider`, with a Printful implementation
+(`@thebes/cadmea-plugin-printful`). See `examples/cadmea-smb-template` for all
+of it wired together.
+
+`@thebes/cadmus` 0.6.0 added a configurable security-headers middleware
+(`createSecurityHeaders`, `@thebes/cadmus/hono`), read-side TipTap rendering
+(`renderRichText`, `@thebes/cadmus/cms`), and image-ref parsing (`parseImageRef`,
+`@thebes/cadmus/storage`) — the last two power the new `@thebes/cadmea-blocks`
+package, theme-neutral Astro components for rendering CMS block content on the
+public site.
 
 ---
 
@@ -206,13 +217,13 @@ story Cadmus wants to be the backend for.
 
 ## Status
 
-| Project | Version | Status |
+| Package | Version | Status |
 |---|---|---|
-| Cadmus | 0.1.0 | 🚧 Active development — Phase 3 |
-| Cadmea | 0.1.0 | 🚧 Active development — Phase 3 |
+| `@thebes/cadmus` | 0.6.0 | 🚧 Active development — Phase 3 |
+| `@thebes/cadmea` | 1.9.0 | 🚧 Active development — Phase 3 |
 
-Both projects are `0.x`. Breaking changes will happen.
-Stability guarantees begin at `1.0.0`.
+Breaking changes will happen while these are in active development — see each
+package's CHANGELOG for what moved.
 
 ---
 

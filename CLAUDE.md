@@ -172,6 +172,13 @@ thebes/
 │   │                              same raw-fetch()-only constraint; `/client`
 │   │                              subpath ships createStripeCardField
 │   │
+│   ├── cadmea-plugin-printful/  ← @thebes/cadmea-plugin-printful — Printful's
+│   │                              FulfillmentProvider implementation for
+│   │                              @thebes/cadmea-plugin-ecommerce (a second
+│   │                              plugin-defined provider interface, distinct
+│   │                              from PaymentProvider — see EXTENDING.md), raw
+│   │                              fetch() + crypto.subtle, no Printful Node SDK
+│   │
 │   ├── cadmea-ecommerce-ui/     ← @thebes/cadmea-ecommerce-ui — storefront
 │   │                              SolidJS components (ProductDetail,
 │   │                              CartProvider/CartDrawer, CheckoutForm) for
@@ -180,6 +187,15 @@ thebes/
 │   │                              (see DECISIONS.md's "Component framework
 │   │                              tiering" entry) — not the public site's
 │   │                              own Alpine.js sprinkle-on tier
+│   │
+│   ├── cadmea-blocks/           ← @thebes/cadmea-blocks — theme-neutral Astro
+│   │                              block components (richText/image/hero/divider/
+│   │                              banner/content) for rendering CMS block content
+│   │                              on the public site. A library (neither axis);
+│   │                              peers on astro + @thebes/cadmus (renderRichText/
+│   │                              parseImageRef/ImageService). Supersedes the
+│   │                              inline <BlockRenderer> the example template
+│   │                              used to define
 │   │
 │   └── cadmus-cloudflare-images/ ← @thebes/cadmus-cloudflare-images — image
 │                                  adapter (Cadmus axis: an alternate
@@ -280,14 +296,19 @@ defined by the plugin itself, not by Cadmus core, because it needs
 commerce-domain concepts (cart line items, normalized webhook events) that
 have no business in framework-layer Cadmus. `@thebes/cadmea-plugin-ecommerce-square`
 and `@thebes/cadmea-plugin-ecommerce-stripe` implement it via raw `fetch()`
-+ `crypto.subtle` only — no Square/Stripe Node SDK, ever. See EXTENDING.md's
-"Plugin-defined provider interfaces" section before reaching for this
-pattern elsewhere; it's not a license to invent a third top-level axis.
++ `crypto.subtle` only — no Square/Stripe Node SDK, ever. The same plugin now
+defines a second such interface, `FulfillmentProvider`, implemented by
+`@thebes/cadmea-plugin-printful` under the identical raw-fetch()-only
+constraint — two provider interfaces of the same pattern, not a new axis. See
+EXTENDING.md's "Plugin-defined provider interfaces" section before reaching
+for this pattern elsewhere; it's not a license to invent a third top-level axis.
 
 Shared code that is **neither** axis (no CMS config, no Cadmus interface) ships
 as a plain library, not an extension — e.g. `@thebes/cadmea-design-system`,
-the framework-agnostic design-token engine extracted from `app/core/lib`, and
-Section 3's `@thebes/cadmea-access-helpers` and `@thebes/cadmea-ecommerce-ui`.
+the framework-agnostic design-token engine extracted from `app/core/lib`,
+Section 3's `@thebes/cadmea-access-helpers` and `@thebes/cadmea-ecommerce-ui`,
+and `@thebes/cadmea-blocks` (theme-neutral Astro components for rendering CMS
+block content on the public site).
 Don't force a library onto an axis.
 
 ---
@@ -574,7 +595,12 @@ type Block =
 
 The generic block-canvas admin field renders these the same way it would
 render any `array`/`richText` field on any collection. The public site
-renders them via `<BlockRenderer>`, defined in the example template.
+renders them by mapping each block type to a component from
+`@thebes/cadmea-blocks` (theme-neutral Astro components — `RichTextBlock`,
+`ImageBlock`, `HeroBlock`, `DividerBlock`, `BannerBlock`, `ContentBlock`),
+wired through a block registry that the example template can override
+per-type. (This replaces the inline `<BlockRenderer>` the template used to
+hand-define.)
 
 ---
 
@@ -668,13 +694,19 @@ Setup instructions in the README (SPF, DKIM, DMARC).
 
 ## Security
 
-Security headers in Hono middleware — applies to all responses:
+Security headers come from `createSecurityHeaders(options)`
+(`@thebes/cadmus/hono`, since cadmus 0.6.0) — a configurable Hono middleware
+that centralizes these and applies them to all responses:
 - `Strict-Transport-Security: max-age=31536000; includeSubDomains`
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: SAMEORIGIN` — **never DENY** (preview iframes require SAMEORIGIN)
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
 - CSP: allowlist Cloudflare Fonts, Cloudflare Analytics, `'self'`
+
+Framing is same-origin by default; a handler can opt a single response into
+different `frame-ancestors` by setting the `FRAME_ANCESTORS_HEADER`
+(`x-cadmus-frame-ancestors`) header, which the middleware consumes and strips.
 
 Rate limiting via `@thebes/cadmus/rate-limit` (KV-based).
 Honeypot on all public forms (`name="website"`, hidden).

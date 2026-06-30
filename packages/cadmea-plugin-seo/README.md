@@ -59,6 +59,54 @@ const tags = renderSeoTags(page, {
 Title resolution is `metaTitle → title → siteName`; description and OG image
 fall back to the site defaults. Returns `""` when there is nothing to render.
 
+For pages where the consumer has already resolved doc fields → page props →
+site defaults itself, `buildHeadTags(input)` is the lower-level escaped builder
+`renderSeoTags` wraps — it takes an explicit `title` / `canonical` / `ogImage` /
+`ogType` / `noindex` (`HeadTagsInput`) and emits the same `<title>` + canonical
++ OG/Twitter markup.
+
+## Structured data (JSON-LD)
+
+Pure builders that return plain schema.org objects for rich results in search
+and grounding in AI answer engines (AEO). Serialize one or an array with
+`serializeJsonLd` (it escapes `<` so a value can't break out of the script
+element) and inject into a `<script type="application/ld+json">`.
+
+- `websiteJsonLd({ siteName?, url })` — `WebSite`
+- `personJsonLd({ name?, url, image?, sameAs? })` — `Person`
+- `visualArtworkJsonLd(art)` — `VisualArtwork`, with an `Offer` when `price > 0`
+- `productJsonLd(product)` — `Product`, with an optional `Brand`
+- `breadcrumbJsonLd(items)` — `BreadcrumbList` from `{ name, url }[]`
+
+```astro
+---
+import { websiteJsonLd, serializeJsonLd } from "@thebes/cadmea-plugin-seo";
+const ld = serializeJsonLd(websiteJsonLd({ siteName: settings?.siteName, url: origin }));
+---
+<script type="application/ld+json" set:html={ld} />
+```
+
+Builders drop `null`/`undefined`/`""`/empty-array fields, so emitted JSON stays
+minimal and valid.
+
+## Sitemap
+
+`buildSitemapXml(origin, urls)` serializes a `<urlset>` from an origin
+(scheme+host, no trailing slash) and a list of `SitemapUrl` (`{ path, lastmod? }`).
+It de-dupes by `path` (first occurrence wins, so push the entry whose `lastmod`
+you want to keep first) and omits `<lastmod>` for absent/invalid dates. Serve
+it from a Worker/Astro endpoint at `/sitemap.xml` with
+`Content-Type: application/xml`.
+
+```ts
+import { buildSitemapXml } from "@thebes/cadmea-plugin-seo";
+
+const xml = buildSitemapXml("https://example.com", [
+  { path: "/", lastmod: new Date() },
+  { path: "/about", lastmod: page.updatedAt },
+]);
+```
+
 ## License
 
 MIT © BowenLabs

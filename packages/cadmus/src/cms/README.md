@@ -275,3 +275,21 @@ generic 400, and non-Cadmus errors are rethrown rather than swallowed as a
 200). It has no opinion on CORS or rate limiting — see
 `app/core/lib/cms-api.ts` in this repo's own app for a real example layering
 both on top before mounting.
+
+## Rendering rich text — `renderRichText`
+
+`richText` fields are stored as TipTap JSON (`TipTapJSONContent`) with no
+transform layer — the Local API and REST API hand it back exactly as authored.
+`renderRichText(content)` is the read-side counterpart: it turns that stored
+JSON into an HTML string for the public site, escaping text so stored content
+can't inject markup.
+
+```ts
+import { renderRichText } from "@thebes/cadmus/cms";
+
+const html = renderRichText(page.body); // TipTapJSONContent → string
+```
+
+It's framework-agnostic (just returns a string) — inject it via Astro's
+`set:html`, Hono's `c.html`, or anywhere else. `@thebes/cadmea-blocks`'
+`RichTextBlock.astro` wraps it for the generic block-rendering path.

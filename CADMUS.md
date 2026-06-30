@@ -174,11 +174,12 @@ packages/cadmus/
 │   │   ├── schema-gen.ts       ← collection config → generated Drizzle schema source
 │   │   ├── codegen.ts          ← collectionToTable (runtime Drizzle table from config)
 │   │   ├── localApi.ts         ← Local API (find / findByID / create / update / deleteByID); enforces hooks
+│   │   ├── richtext.ts         ← renderRichText (read-side TipTap JSON → HTML) + TipTapJSONContent
 │   │   ├── meta.ts             ← getCollectionsMeta() admin-UI introspection contract
 │   │   └── README.md           ← cms engine docs (collections, plugins, hooks, Local API)
 │   │
 │   ├── storage/
-│   │   ├── index.ts         ← ImageService interface, R2 upload/serve helper
+│   │   ├── index.ts         ← ImageService interface, R2 upload/serve helper, parseImageRef
 │   │   └── README.md
 │   │
 │   ├── cache/
@@ -202,7 +203,7 @@ packages/cadmus/
 │   │   └── README.md
 │   │
 │   ├── hono/
-│   │   ├── index.ts         ← Hono middleware + helpers (thin wrappers over raw primitives)
+│   │   ├── index.ts         ← Hono middleware + helpers (thin wrappers over raw primitives) + createSecurityHeaders
 │   │   └── README.md
 │   │
 │   ├── errors.ts            ← CadmusError base class + typed subtypes
@@ -447,6 +448,23 @@ export function cadmusRateLimit(options: { limit: number; window: number }) {
     await next()
   }
 }
+```
+
+`@thebes/cadmus/hono` also ships `createSecurityHeaders(options)` (since
+0.6.0) — a configurable middleware that sets HSTS, CSP, `X-Content-Type-Options`,
+`Referrer-Policy`, and `Permissions-Policy` on every response, with
+same-origin framing by default. A handler opts a single response into a
+different `frame-ancestors` policy by setting the `FRAME_ANCESTORS_HEADER`
+(`x-cadmus-frame-ancestors`) header, which the middleware reads and strips
+before the response leaves. `CspSources` lets callers extend the default
+allowlist per directive.
+
+```typescript
+import { createSecurityHeaders } from '@thebes/cadmus/hono'
+
+app.use('*', createSecurityHeaders({
+  csp: { scriptSrc: ['https://static.cloudflareinsights.com'] },
+}))
 ```
 
 **Rules for the Hono layer:**
