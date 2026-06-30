@@ -1,5 +1,31 @@
 # @thebes/cadmus
 
+## 0.7.0
+
+### Minor Changes
+
+- 72c7af4: Add a CSP violation report sink to `createSecurityHeaders`. New `reportUri` (and
+  optional `reportTo` group, default `"csp"`) options append `report-uri` +
+  `report-to` directives to the policy and emit a `Reporting-Endpoints` response
+  header, so browsers POST violations to a same-origin collector. Adds
+  `createCspReportHandler()` — a Hono handler that parses reports (content-type
+  agnostic), forwards them to an `onReport` callback (defaults to `console.warn`
+  so they surface in Logpush / Sentry), and always answers `204`.
+- 72c7af4: Add `createErrorMonitoring` — a vendor-neutral Hono `onError` handler factory.
+  The consumer supplies a `capture(error, c)` sink (Sentry, Axiom, console, …) and
+  cadmus stays SDK-free. It reports the error best-effort (swallowing sink
+  failures, running via `waitUntil` when an execution context is present), then
+  responds via an optional `onError` delegate (default `500`). Registered on the
+  outermost app it also catches errors rethrown by inner mounted routers.
+- 72c7af4: Add scheduled publishing to versioned collections. The generated
+  `${slug}_versions` table gains a nullable `scheduled_at` column (codegen +
+  schema-gen), and `VersionedLocalApi` gains `scheduleDraft(ctx, id, input, when)`
+  (saves a draft stamped with a future publish time) and `publishScheduled(ctx,
+now?)` (publishes every still-draft version due at/before `now`, oldest-first,
+  clearing each schedule). Intended to be driven by a scheduled worker (e.g. a
+  Cloudflare cron trigger). Consumers with `versions.drafts` collections will need
+  a migration adding the `scheduled_at` column.
+
 ## 0.6.0
 
 ### Minor Changes
