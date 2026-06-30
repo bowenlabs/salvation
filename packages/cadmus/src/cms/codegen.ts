@@ -169,6 +169,9 @@ export function collectionVersionsTable(config: CollectionConfig) {
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
       () => new Date(),
     ),
+    // When set on a draft, createVersionedLocalApi.publishScheduled() promotes
+    // it once the time arrives. Null = not scheduled. Cleared once published.
+    scheduledAt: integer("scheduled_at", { mode: "timestamp" }),
   });
 }
 

@@ -532,7 +532,8 @@ describe("createVersionedLocalApi", () => {
         parent_id INTEGER NOT NULL,
         version_data TEXT NOT NULL,
         status TEXT NOT NULL,
-        created_at INTEGER
+        created_at INTEGER,
+        scheduled_at INTEGER
       )
     `);
     await db.run(
@@ -687,6 +688,95 @@ describe("createVersionedLocalApi", () => {
     });
     await expect(
       versionedApi.unpublish({ canPublish: false }, created.id),
+    ).rejects.toThrow(CadmusAccessDeniedError);
+  });
+
+  it("scheduleDraft stamps scheduledAt and leaves the main row untouched", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+    const when = new Date("2020-01-01T00:00:00Z");
+    const draft = await versionedApi.scheduleDraft(
+      ctx,
+      created.id,
+      { title: "Later", slug: "home" },
+      when,
+    );
+    expect(draft.status).toBe("draft");
+    expect(draft.scheduledAt).toEqual(when);
+
+    const stillOriginal = await versionedApi.findByID(ctx, created.id);
+    expect(stillOriginal.title).toBe("Home");
+  });
+
+  it("publishScheduled promotes due drafts oldest-first and clears their schedule", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+    const past = new Date(Date.now() - 60_000);
+    await versionedApi.scheduleDraft(
+      ctx,
+      created.id,
+      { title: "First", slug: "home" },
+      past,
+    );
+    const second = await versionedApi.scheduleDraft(
+      ctx,
+      created.id,
+      { title: "Second", slug: "home" },
+      past,
+    );
+
+    const published = await versionedApi.publishScheduled({ canPublish: true });
+    expect(published).toHaveLength(2);
+
+    // Oldest-first publish order — the later draft wins on the main row.
+    const row = await versionedApi.findByID(ctx, created.id);
+    expect(row.title).toBe("Second");
+    expect(row.publishedVersionId).toBe(second.id);
+
+    const versions = await versionedApi.findVersions(ctx, created.id);
+    for (const v of versions) {
+      expect(v.status).toBe("published");
+      expect(v.scheduledAt).toBeNull();
+    }
+  });
+
+  it("publishScheduled ignores drafts scheduled for the future", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+    await versionedApi.scheduleDraft(
+      ctx,
+      created.id,
+      { title: "Future", slug: "home" },
+      new Date(Date.now() + 60_000),
+    );
+    const published = await versionedApi.publishScheduled({ canPublish: true });
+    expect(published).toHaveLength(0);
+    const row = await versionedApi.findByID(ctx, created.id);
+    expect(row.title).toBe("Home");
+  });
+
+  it("publishScheduled ignores plain unscheduled drafts", async () => {
+    const created = await versionedApi.create(ctx, {
+      title: "Home",
+      slug: "home",
+    });
+    await versionedApi.saveDraft(ctx, created.id, {
+      title: "Plain draft",
+      slug: "home",
+    });
+    const published = await versionedApi.publishScheduled({ canPublish: true });
+    expect(published).toHaveLength(0);
+  });
+
+  it("publishScheduled enforces publish access", async () => {
+    await expect(
+      versionedApi.publishScheduled({ canPublish: false }),
     ).rejects.toThrow(CadmusAccessDeniedError);
   });
 });

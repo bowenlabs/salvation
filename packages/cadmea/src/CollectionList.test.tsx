@@ -6,7 +6,8 @@ import {
   within,
 } from "@solidjs/testing-library";
 import type { CollectionConfig } from "@thebes/cadmus/cms";
-import { afterEach, describe, expect, it } from "vitest";
+import { createSignal } from "solid-js";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CollectionList } from "./CollectionList.js";
 
 const pagesCollection: CollectionConfig = {
@@ -203,8 +204,12 @@ describe("CollectionList", () => {
     fireEvent.click(toggle);
     expect(screen.getByText("Done")).toBeInTheDocument();
 
-    const checkbox = desktopTable().getByRole("checkbox");
-    fireEvent.click(checkbox);
+    // Two checkboxes now: the header "Select all" and the row's. Click the row's.
+    const rowCheckbox = desktopTable()
+      .getAllByRole("checkbox")
+      .find((cb) => cb.getAttribute("aria-label") !== "Select all");
+    if (!rowCheckbox) throw new Error("row checkbox not found");
+    fireEvent.click(rowCheckbox);
     expect(selections).toEqual([new Set([1])]);
   });
 
@@ -236,6 +241,97 @@ describe("CollectionList", () => {
     fireEvent.click(row);
     expect(clicked).toEqual([]);
     expect(selections).toEqual([new Set([1])]);
+  });
+});
+
+describe("CollectionList — bulk actions", () => {
+  const twoRows = [
+    { id: 1, title: "Home", slug: "home" },
+    { id: 2, title: "About", slug: "about" },
+  ];
+
+  it("shows the toolbar in select mode and runs an action against the selection", async () => {
+    const [selected, setSelected] = createSignal<Set<number>>(new Set());
+    const ran: number[][] = [];
+    render(() => (
+      <CollectionList
+        config={pagesCollection}
+        rows={twoRows}
+        selectable
+        selectedIds={selected()}
+        onSelectionChange={setSelected}
+        bulkActions={[{ label: "Delete", run: (ids) => ran.push(ids) }]}
+      />
+    ));
+    fireEvent.click(screen.getByText("Select"));
+    expect(screen.getByText("0 selected")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Select all"));
+    expect(selected()).toEqual(new Set([1, 2]));
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Delete"));
+    expect(ran).toEqual([[1, 2]]);
+  });
+
+  it("disables actions until something is selected", () => {
+    const [selected, setSelected] = createSignal<Set<number>>(new Set());
+    render(() => (
+      <CollectionList
+        config={pagesCollection}
+        rows={twoRows}
+        selectable
+        selectedIds={selected()}
+        onSelectionChange={setSelected}
+        bulkActions={[{ label: "Delete", run: () => {} }]}
+      />
+    ));
+    fireEvent.click(screen.getByText("Select"));
+    expect(screen.getByText("Delete")).toBeDisabled();
+  });
+
+  it("gates an action behind window.confirm when confirm is set", () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const [selected, setSelected] = createSignal<Set<number>>(new Set([1]));
+    const ran: number[][] = [];
+    render(() => (
+      <CollectionList
+        config={pagesCollection}
+        rows={twoRows}
+        selectable
+        selectedIds={selected()}
+        onSelectionChange={setSelected}
+        bulkActions={[
+          { label: "Delete", confirm: "Sure?", run: (ids) => ran.push(ids) },
+        ]}
+      />
+    ));
+    fireEvent.click(screen.getByText("Select"));
+    fireEvent.click(screen.getByText("Delete"));
+    expect(confirmSpy).toHaveBeenCalledWith("Sure?");
+    expect(ran).toEqual([]); // declined
+
+    confirmSpy.mockReturnValue(true);
+    fireEvent.click(screen.getByText("Delete"));
+    expect(ran).toEqual([[1]]);
+    confirmSpy.mockRestore();
+  });
+
+  it("does not render action buttons when no bulkActions are provided", () => {
+    const [selected, setSelected] = createSignal<Set<number>>(new Set());
+    render(() => (
+      <CollectionList
+        config={pagesCollection}
+        rows={twoRows}
+        selectable
+        selectedIds={selected()}
+        onSelectionChange={setSelected}
+      />
+    ));
+    fireEvent.click(screen.getByText("Select"));
+    // Toolbar (count + select-all) is present; no consumer action buttons.
+    expect(screen.getByText("0 selected")).toBeInTheDocument();
+    expect(screen.queryByText("Delete")).not.toBeInTheDocument();
   });
 });
 

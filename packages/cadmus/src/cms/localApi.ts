@@ -2,12 +2,16 @@
 // Cadmus is MIT licensed. See LICENSE in the repo root.
 
 import {
+  and,
+  asc,
   count as countRows,
   desc,
   eq,
   type InferInsertModel,
   type InferSelectModel,
   inArray,
+  isNotNull,
+  lte,
   type SQL,
   sql,
 } from "drizzle-orm";
@@ -719,11 +723,31 @@ export interface VersionedLocalApi<
     id: number,
     input: Partial<InferInsertModel<TTable>>,
   ): Promise<InferSelectModel<TVersionsTable>>;
+  /**
+   * Like {@link saveDraft}, but stamps the draft with a `scheduledAt` time so
+   * {@link publishScheduled} promotes it once that time arrives.
+   */
+  scheduleDraft(
+    context: TContext,
+    id: number,
+    input: Partial<InferInsertModel<TTable>>,
+    scheduledAt: Date,
+  ): Promise<InferSelectModel<TVersionsTable>>;
   /** Copies a version's snapshot onto the main row and marks it published. */
   publish(
     context: TContext,
     versionId: number,
   ): Promise<InferSelectModel<TTable>>;
+  /**
+   * Publishes every still-draft version whose `scheduledAt` is at or before
+   * `now` (default: the current time), oldest first. Returns the published main
+   * rows. Intended to be driven by a scheduled worker (e.g. a Cloudflare cron
+   * trigger). A single access check (`publish`) covers the whole batch.
+   */
+  publishScheduled(
+    context: TContext,
+    now?: Date,
+  ): Promise<InferSelectModel<TTable>[]>;
   /** Clears the main row's published pointer; the row's data is untouched. */
   unpublish(context: TContext, id: number): Promise<InferSelectModel<TTable>>;
   /**
@@ -754,6 +778,61 @@ export function createVersionedLocalApi<
   const idColumn = table.id;
   const versionsIdColumn = versionsTable.id;
   const versionsParentIdColumn = versionsTable.parentId;
+  const versionsStatusColumn = versionsTable.status;
+  const versionsScheduledAtColumn = versionsTable.scheduledAt;
+
+  // Core publish path, shared by publish() and publishScheduled(). Access is
+  // checked by the public methods, not here.
+  async function doPublish(
+    versionId: number,
+  ): Promise<InferSelectModel<TTable>> {
+    const [version] = await db
+      .select()
+      .from(versionsTable)
+      .where(eq(versionsIdColumn, versionId));
+    if (!version) notFoundVersion(config, versionId);
+    const versionRecord = version as Record<string, unknown>;
+    const data = await runBeforeChange(
+      config,
+      versionRecord.versionData as Record<string, unknown>,
+    );
+    validateRequiredFields(config, data);
+    rejectUnknownFields(config, data);
+    const parentId = versionRecord.parentId as number;
+    // Publishing writes the whole version snapshot to the live row, so
+    // validate every field (not a partial). `unique` excludes the parent
+    // row by its own id.
+    await assertValid(config, data, {
+      operation: "update",
+      id: parentId,
+      db,
+      table,
+      registry,
+    });
+    let doc: InferSelectModel<TTable> | undefined;
+    try {
+      const [row] = await db
+        .update(table)
+        // biome-ignore lint/suspicious/noExplicitAny: see createLocalApi.update's .set() cast
+        .set({ ...data, publishedVersionId: versionId } as any)
+        .where(eq(idColumn, parentId))
+        .returning();
+      if (!row) notFound(config, parentId);
+      doc = row as InferSelectModel<TTable>;
+    } catch (error) {
+      wrapWriteError(config, error);
+    }
+    await db
+      .update(versionsTable)
+      // biome-ignore lint/suspicious/noExplicitAny: status is a fixed enum column; scheduledAt is cleared so a re-scheduled republish needs a fresh draft
+      .set({ status: "published", scheduledAt: null } as any)
+      .where(eq(versionsIdColumn, versionId));
+    await syncSearchIndex(db, config, doc as AnyRecord);
+    // publish() writes to an already-existing row, never a new one —
+    // counts as "update" the same way createLocalApi.update() does.
+    await runAfterChange(config, doc as Record<string, unknown>, "update");
+    return doc as InferSelectModel<TTable>;
+  }
 
   return {
     ...base,
@@ -790,54 +869,53 @@ export function createVersionedLocalApi<
       return row as InferSelectModel<TVersionsTable>;
     },
 
-    async publish(context, versionId) {
-      await checkAccess(config, "publish", context);
-      const [version] = await db
-        .select()
-        .from(versionsTable)
-        .where(eq(versionsIdColumn, versionId));
-      if (!version) notFoundVersion(config, versionId);
-      const versionRecord = version as Record<string, unknown>;
+    async scheduleDraft(context, id, input, scheduledAt) {
+      await checkAccess(config, "update", context);
+      const [parent] = await db.select().from(table).where(eq(idColumn, id));
+      if (!parent) notFound(config, id);
       const data = await runBeforeChange(
         config,
-        versionRecord.versionData as Record<string, unknown>,
+        input as Record<string, unknown>,
       );
-      validateRequiredFields(config, data);
       rejectUnknownFields(config, data);
-      const parentId = versionRecord.parentId as number;
-      // Publishing writes the whole version snapshot to the live row, so
-      // validate every field (not a partial). `unique` excludes the parent
-      // row by its own id.
-      await assertValid(config, data, {
-        operation: "update",
-        id: parentId,
-        db,
-        table,
-        registry,
-      });
-      let doc: InferSelectModel<TTable> | undefined;
-      try {
-        const [row] = await db
-          .update(table)
-          // biome-ignore lint/suspicious/noExplicitAny: see createLocalApi.update's .set() cast
-          .set({ ...data, publishedVersionId: versionId } as any)
-          .where(eq(idColumn, parentId))
-          .returning();
-        if (!row) notFound(config, parentId);
-        doc = row as InferSelectModel<TTable>;
-      } catch (error) {
-        wrapWriteError(config, error);
+      const insertValues = {
+        parentId: id,
+        versionData: data,
+        status: "draft",
+        scheduledAt,
+        // biome-ignore lint/suspicious/noExplicitAny: TVersionsTable is abstract here, same rationale as saveDraft above
+      } as any;
+      const [row] = await db
+        .insert(versionsTable)
+        .values(insertValues)
+        .returning();
+      return row as InferSelectModel<TVersionsTable>;
+    },
+
+    async publish(context, versionId) {
+      await checkAccess(config, "publish", context);
+      return doPublish(versionId);
+    },
+
+    async publishScheduled(context, now = new Date()) {
+      await checkAccess(config, "publish", context);
+      const due = await db
+        .select()
+        .from(versionsTable)
+        .where(
+          and(
+            eq(versionsStatusColumn, "draft"),
+            isNotNull(versionsScheduledAtColumn),
+            lte(versionsScheduledAtColumn, now),
+          ),
+        )
+        .orderBy(asc(versionsIdColumn));
+      const published: InferSelectModel<TTable>[] = [];
+      for (const version of due) {
+        const versionId = (version as Record<string, unknown>).id as number;
+        published.push(await doPublish(versionId));
       }
-      await db
-        .update(versionsTable)
-        // biome-ignore lint/suspicious/noExplicitAny: status is a fixed two-value enum column
-        .set({ status: "published" } as any)
-        .where(eq(versionsIdColumn, versionId));
-      await syncSearchIndex(db, config, doc as AnyRecord);
-      // publish() writes to an already-existing row, never a new one —
-      // counts as "update" the same way createLocalApi.update() does.
-      await runAfterChange(config, doc as Record<string, unknown>, "update");
-      return doc as InferSelectModel<TTable>;
+      return published;
     },
 
     async unpublish(context, id) {

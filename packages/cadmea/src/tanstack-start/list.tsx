@@ -3,7 +3,7 @@ import { Link } from "@tanstack/solid-router";
 import type { CollectionConfig } from "@thebes/cadmus/cms";
 import { createSignal, Show } from "solid-js";
 import { isServer } from "solid-js/web";
-import { CollectionList } from "../CollectionList.js";
+import { type BulkAction, CollectionList } from "../CollectionList.js";
 import type { CollectionCapabilities } from "../capabilities.js";
 
 export interface CollectionListQueryParams {
@@ -51,6 +51,12 @@ export interface CollectionListPageOptions<
    * issue #26's RBAC-aware admin UI.
    */
   capabilities?: () => CollectionCapabilities | undefined;
+  /**
+   * Bulk operations offered in select mode (publish/delete/status, …). Each
+   * `run(ids)` performs the mutation; the list refetches and clears the
+   * selection automatically once it resolves. Omit to keep the list read-only.
+   */
+  bulkActions?: BulkAction[];
 }
 
 /**
@@ -91,6 +97,7 @@ export function createCollectionListPage<TRow extends Record<string, unknown>>(
     const [sortDirection, setSortDirection] = createSignal<"asc" | "desc">(
       "asc",
     );
+    const [selectedIds, setSelectedIds] = createSignal<Set<number>>(new Set());
 
     const result = createQuery(() => ({
       queryKey: [...options.queryKey, page(), sortField(), sortDirection()],
@@ -115,7 +122,26 @@ export function createCollectionListPage<TRow extends Record<string, unknown>>(
       setSortField(field);
       setSortDirection(direction);
       setPage(1);
+      setSelectedIds(new Set());
     }
+
+    function handlePageChange(next: number) {
+      // Selection is page-scoped — drop it so a bulk action can't act on ids
+      // from a page no longer in view.
+      setSelectedIds(new Set());
+      setPage(next);
+    }
+
+    // Wrap each consumer action so the list refetches after it mutates; the
+    // CollectionList clears the selection itself once run() resolves.
+    const bulkActions = (): BulkAction[] | undefined =>
+      options.bulkActions?.map((action) => ({
+        ...action,
+        run: async (ids) => {
+          await action.run(ids);
+          await result.refetch();
+        },
+      }));
 
     return (
       <div class="flex flex-col gap-4">
@@ -165,10 +191,14 @@ export function createCollectionListPage<TRow extends Record<string, unknown>>(
             page={page()}
             pageSize={pageSize}
             totalCount={result.data?.total}
-            onPageChange={setPage}
+            onPageChange={handlePageChange}
             sortField={sortField()}
             sortDirection={sortDirection()}
             onSortChange={handleSortChange}
+            selectable={!!options.bulkActions?.length}
+            selectedIds={selectedIds()}
+            onSelectionChange={setSelectedIds}
+            bulkActions={bulkActions()}
           />
         </Show>
       </div>
