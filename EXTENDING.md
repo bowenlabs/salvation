@@ -153,6 +153,15 @@ swappability discipline (one interface, N implementations, resolved in one
 place by whichever route/handler the consumer wires a provider into) without
 actually being one:
 
+`@thebes/cadmea-plugin-ecommerce` defines a **second** interface of exactly
+this kind — `FulfillmentProvider` — for handing a paid order to a
+fulfillment backend. `@thebes/cadmea-plugin-printful` implements it (Printful's
+print-on-demand API, raw `fetch()` + `crypto.subtle`, no SDK), wired in via
+the plugin's `createFulfillmentOrder` / `createFulfillmentWebhookHandler`. Two
+provider interfaces under the same pattern, both defined by the commerce
+plugin, neither a Cadmus adapter — the count of interfaces doesn't change the
+category.
+
 ```ts
 // defined by the plugin, not by @thebes/cadmus
 export interface PaymentProvider {
@@ -210,11 +219,17 @@ publishes:
 - [`@thebes/cadmea-plugin-crm`](./packages/cadmea-plugin-crm/README.md) — `contacts`/`activities` collections + upsert hook
 - [`@thebes/cadmea-plugin-ecommerce`](./packages/cadmea-plugin-ecommerce/README.md) — provider-agnostic commerce core
 
-**Plugin-defined `PaymentProvider` implementations** (see above — not Axis 1)
+**Plugin-defined provider implementations** (see above — not Axis 1)
+
+`PaymentProvider` (defined by `@thebes/cadmea-plugin-ecommerce`):
 - [`@thebes/cadmea-plugin-ecommerce-square`](./packages/cadmea-plugin-ecommerce-square/README.md)
 - [`@thebes/cadmea-plugin-ecommerce-stripe`](./packages/cadmea-plugin-ecommerce-stripe/README.md)
+
+`FulfillmentProvider` (also defined by `@thebes/cadmea-plugin-ecommerce`):
+- [`@thebes/cadmea-plugin-printful`](./packages/cadmea-plugin-printful/README.md) — Printful print-on-demand
 
 **Libraries** (neither axis)
 - [`@thebes/cadmea-design-system`](./packages/cadmea-design-system/README.md) — design-token engine
 - [`@thebes/cadmea-access-helpers`](./packages/cadmea-access-helpers/README.md) — composable `access` predicates
 - [`@thebes/cadmea-ecommerce-ui`](./packages/cadmea-ecommerce-ui/README.md) — storefront SolidJS components
+- [`@thebes/cadmea-blocks`](./packages/cadmea-blocks/README.md) — theme-neutral Astro block components for the public site
