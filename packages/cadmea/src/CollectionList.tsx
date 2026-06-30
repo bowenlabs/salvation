@@ -5,9 +5,39 @@ import {
   getCoreRowModel,
 } from "@tanstack/solid-table";
 import type { CollectionConfig, FieldConfig } from "@thebes/cadmus/cms";
-import { createSignal, For, type JSX, Show } from "solid-js";
+import { createSignal, For, type JSX, Match, Show, Switch } from "solid-js";
 
 type Row = Record<string, unknown>;
+
+/**
+ * Presentational layout for the list. "table" (default) keeps the generic
+ * daisyUI table + mobile cards. "rows" renders each row through `renderRow`
+ * beneath an optional `renderHead` — for bespoke per-collection row markup
+ * (status pills, avatars, custom columns). "cards" renders `renderCard` in a
+ * responsive grid (portfolio / media galleries). Selection, sorting,
+ * pagination, and the data query are identical across every layout — only the
+ * row presentation changes.
+ */
+export type ListLayout = "table" | "rows" | "cards";
+
+/**
+ * Passed to custom `renderRow` / `renderCard` slots so bespoke markup stays
+ * wired to the list's selection + activation behaviour. The `selectMode` /
+ * `selected` getters read the underlying signals, so reading them inside a
+ * renderer's JSX is reactive.
+ */
+export interface RowRenderHelpers {
+  /** Row id (`row.id`), or undefined for id-less rows. */
+  id: number | undefined;
+  /** Whether bulk-select mode is active. */
+  readonly selectMode: boolean;
+  /** Whether this row is currently selected. */
+  readonly selected: boolean;
+  /** Toggle this row's selection (no-op for id-less rows). */
+  toggleSelected: () => void;
+  /** Activate the row — toggles selection in select mode, else onRowClick. */
+  activate: () => void;
+}
 
 // Field types that can be rendered as a plain table cell today.
 // `id` is intentionally excluded — it's never a useful list column.
@@ -83,6 +113,20 @@ export interface CollectionListProps {
    * CTA (the list factory does this). Falls back to a simple default.
    */
   emptyState?: JSX.Element;
+
+  /** Presentational layout — see {@link ListLayout}. Defaults to "table". */
+  layout?: ListLayout;
+  /** Header row for the "rows" layout (e.g. a bespoke `.list-head`). */
+  renderHead?: () => JSX.Element;
+  /**
+   * Row renderer for the "rows" layout. Receives selection/activation helpers
+   * so bespoke markup stays wired to bulk-select + row-click.
+   */
+  renderRow?: (row: Row, helpers: RowRenderHelpers) => JSX.Element;
+  /** Card renderer for the "cards" layout (responsive grid). */
+  renderCard?: (row: Row, helpers: RowRenderHelpers) => JSX.Element;
+  /** Extra toolbar content (e.g. filter chips) shown beside sort/select. */
+  renderToolbar?: () => JSX.Element;
 }
 
 export function CollectionList(props: CollectionListProps) {
@@ -161,6 +205,25 @@ export function CollectionList(props: CollectionListProps) {
     props.onRowClick?.(row);
   }
 
+  // Per-row helpers handed to custom renderRow/renderCard slots. Getters keep
+  // selectMode/selected reactive when read inside a renderer's JSX.
+  function helpersFor(row: Row): RowRenderHelpers {
+    const id = rowId(row);
+    return {
+      id,
+      get selectMode() {
+        return selectMode();
+      },
+      get selected() {
+        return id !== undefined && (props.selectedIds?.has(id) ?? false);
+      },
+      toggleSelected: () => {
+        if (id !== undefined) toggleSelected(id);
+      },
+      activate: () => handleRowActivate(row),
+    };
+  }
+
   return (
     <div class="flex flex-col gap-3">
       <div class="flex flex-wrap items-center justify-between gap-2">
@@ -210,6 +273,9 @@ export function CollectionList(props: CollectionListProps) {
         </Show>
       </div>
 
+      {/* Consumer toolbar slot — filter chips, segmented controls, etc. */}
+      <Show when={props.renderToolbar}>{props.renderToolbar?.()}</Show>
+
       {/* Bulk-action toolbar — appears in select mode. Page-scoped "select all",
           a live selected count, and the consumer's actions (publish/delete/…),
           disabled while one is running or nothing is selected. */}
@@ -255,60 +321,144 @@ export function CollectionList(props: CollectionListProps) {
           )
         }
       >
-        {/* Table on desktop — hidden below md per the mobile-first card
+        <Switch>
+          {/* "cards" layout — responsive grid of consumer-rendered cards
+              (portfolio / media galleries). */}
+          <Match when={props.layout === "cards" && props.renderCard}>
+            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              <For each={props.rows}>
+                {(row) => props.renderCard?.(row, helpersFor(row))}
+              </For>
+            </div>
+          </Match>
+          {/* "rows" layout — bespoke `.list-head` + per-row markup. */}
+          <Match when={props.layout === "rows" && props.renderRow}>
+            <div class="flex flex-col">
+              {props.renderHead?.()}
+              <For each={props.rows}>
+                {(row) => props.renderRow?.(row, helpersFor(row))}
+              </For>
+            </div>
+          </Match>
+          {/* Default "table" layout. */}
+          <Match when={true}>
+            {/* Table on desktop — hidden below md per the mobile-first card
             layout below, not the other way around. The `hidden md:block`
             lives on a WRAPPER, not the <table>: daisyUI's `.table` sets
             `display: table` with higher precedence than Tailwind's
             `.hidden`, so `class="table hidden md:table"` leaked the table
             into the mobile breakpoint (table AND cards rendered at once).
             `overflow-x-auto` lets a wide table scroll instead of clipping. */}
-        <div class="hidden overflow-x-auto md:block">
-          <table class="table">
-            <thead>
-              <For each={table.getHeaderGroups()}>
-                {(headerGroup) => (
-                  <tr>
-                    <Show when={selectMode()}>
-                      <th>
-                        <input
-                          type="checkbox"
-                          class="checkbox checkbox-sm"
-                          aria-label="Select all"
-                          checked={allSelected()}
-                          onChange={toggleAll}
-                        />
-                      </th>
-                    </Show>
-                    <For each={headerGroup.headers}>
-                      {(header) => (
-                        <th>
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
+            <div class="hidden overflow-x-auto md:block">
+              <table class="table">
+                <thead>
+                  <For each={table.getHeaderGroups()}>
+                    {(headerGroup) => (
+                      <tr>
+                        <Show when={selectMode()}>
+                          <th>
+                            <input
+                              type="checkbox"
+                              class="checkbox checkbox-sm"
+                              aria-label="Select all"
+                              checked={allSelected()}
+                              onChange={toggleAll}
+                            />
+                          </th>
+                        </Show>
+                        <For each={headerGroup.headers}>
+                          {(header) => (
+                            <th>
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                            </th>
                           )}
-                        </th>
-                      )}
-                    </For>
-                  </tr>
-                )}
-              </For>
-            </thead>
-            <tbody>
+                        </For>
+                      </tr>
+                    )}
+                  </For>
+                </thead>
+                <tbody>
+                  <For each={table.getRowModel().rows}>
+                    {(row) => (
+                      <tr
+                        class={
+                          props.onRowClick || selectMode()
+                            ? "cursor-pointer hover"
+                            : undefined
+                        }
+                        onClick={() => handleRowActivate(row.original)}
+                      >
+                        <Show when={selectMode()}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              class="checkbox checkbox-sm"
+                              onClick={(e) => e.stopPropagation()}
+                              checked={
+                                rowId(row.original) !== undefined &&
+                                (props.selectedIds?.has(
+                                  rowId(row.original) as number,
+                                ) ??
+                                  false)
+                              }
+                              onChange={() => {
+                                const id = rowId(row.original);
+                                if (id !== undefined) toggleSelected(id);
+                              }}
+                            />
+                          </td>
+                        </Show>
+                        <For each={row.getVisibleCells()}>
+                          {(cell) => (
+                            // Truncate long cell values (slugs, SEO meta, free
+                            // text) so one field can't blow a column out and make
+                            // the whole table unreadable; `title` exposes the full
+                            // value on hover.
+                            <td
+                              class="max-w-[28ch] truncate"
+                              title={String(cell.getValue() ?? "")}
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                              )}
+                            </td>
+                          )}
+                        </For>
+                      </tr>
+                    )}
+                  </For>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Stacked card list on mobile/tablet — tap-to-select via an
+            always-visible checkbox in select mode, never hover-revealed.
+            Same table model as the desktop view, rendered as key/value rows. */}
+            <div class="flex flex-col gap-2 md:hidden">
               <For each={table.getRowModel().rows}>
                 {(row) => (
-                  <tr
-                    class={
-                      props.onRowClick || selectMode()
-                        ? "cursor-pointer hover"
-                        : undefined
-                    }
+                  // biome-ignore lint/a11y/useSemanticElements: a native <button> can't contain interactive content (the select-mode checkbox below); role="button" + tabIndex/onKeyDown is the standard fallback.
+                  <div
+                    class="card bg-base-200 cursor-pointer p-3"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleRowActivate(row.original)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleRowActivate(row.original);
+                      }
+                    }}
                   >
-                    <Show when={selectMode()}>
-                      <td>
+                    <div class="flex items-start gap-3">
+                      <Show when={selectMode()}>
                         <input
                           type="checkbox"
-                          class="checkbox checkbox-sm"
+                          class="checkbox checkbox-sm mt-1"
                           onClick={(e) => e.stopPropagation()}
                           checked={
                             rowId(row.original) !== undefined &&
@@ -322,90 +472,29 @@ export function CollectionList(props: CollectionListProps) {
                             if (id !== undefined) toggleSelected(id);
                           }}
                         />
-                      </td>
-                    </Show>
-                    <For each={row.getVisibleCells()}>
-                      {(cell) => (
-                        // Truncate long cell values (slugs, SEO meta, free
-                        // text) so one field can't blow a column out and make
-                        // the whole table unreadable; `title` exposes the full
-                        // value on hover.
-                        <td
-                          class="max-w-[28ch] truncate"
-                          title={String(cell.getValue() ?? "")}
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
+                      </Show>
+                      <div class="flex flex-1 flex-col gap-1">
+                        <For each={row.getVisibleCells()}>
+                          {(cell) => (
+                            <div class="flex justify-between gap-2 text-sm">
+                              <span class="opacity-60">{cell.column.id}</span>
+                              <span class="text-right">
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext(),
+                                )}
+                              </span>
+                            </div>
                           )}
-                        </td>
-                      )}
-                    </For>
-                  </tr>
+                        </For>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </For>
-            </tbody>
-          </table>
-        </div>
-
-        {/* Stacked card list on mobile/tablet — tap-to-select via an
-            always-visible checkbox in select mode, never hover-revealed.
-            Same table model as the desktop view, rendered as key/value rows. */}
-        <div class="flex flex-col gap-2 md:hidden">
-          <For each={table.getRowModel().rows}>
-            {(row) => (
-              // biome-ignore lint/a11y/useSemanticElements: a native <button> can't contain interactive content (the select-mode checkbox below); role="button" + tabIndex/onKeyDown is the standard fallback.
-              <div
-                class="card bg-base-200 cursor-pointer p-3"
-                role="button"
-                tabIndex={0}
-                onClick={() => handleRowActivate(row.original)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleRowActivate(row.original);
-                  }
-                }}
-              >
-                <div class="flex items-start gap-3">
-                  <Show when={selectMode()}>
-                    <input
-                      type="checkbox"
-                      class="checkbox checkbox-sm mt-1"
-                      onClick={(e) => e.stopPropagation()}
-                      checked={
-                        rowId(row.original) !== undefined &&
-                        (props.selectedIds?.has(
-                          rowId(row.original) as number,
-                        ) ??
-                          false)
-                      }
-                      onChange={() => {
-                        const id = rowId(row.original);
-                        if (id !== undefined) toggleSelected(id);
-                      }}
-                    />
-                  </Show>
-                  <div class="flex flex-1 flex-col gap-1">
-                    <For each={row.getVisibleCells()}>
-                      {(cell) => (
-                        <div class="flex justify-between gap-2 text-sm">
-                          <span class="opacity-60">{cell.column.id}</span>
-                          <span class="text-right">
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </span>
-                        </div>
-                      )}
-                    </For>
-                  </div>
-                </div>
-              </div>
-            )}
-          </For>
-        </div>
+            </div>
+          </Match>
+        </Switch>
       </Show>
 
       {/* Bottom-anchored prev/next bar — no page numbers, per issue #25's

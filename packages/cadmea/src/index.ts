@@ -4,7 +4,12 @@ export type {
   FieldWidget,
 } from "./CollectionEdit.js";
 export { CollectionEdit } from "./CollectionEdit.js";
-export type { CollectionListProps } from "./CollectionList.js";
+export type {
+  BulkAction,
+  CollectionListProps,
+  ListLayout,
+  RowRenderHelpers,
+} from "./CollectionList.js";
 export { CollectionList } from "./CollectionList.js";
 export type { CollectionCapabilities } from "./capabilities.js";
 export type {
