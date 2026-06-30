@@ -10,7 +10,7 @@
   header, so browsers POST violations to a same-origin collector. Adds
   `createCspReportHandler()` — a Hono handler that parses reports (content-type
   agnostic), forwards them to an `onReport` callback (defaults to `console.warn`
-  so they surface in Logpush / Sentry), and always answers `204`.
+  so they surface in Workers Logs / Sentry), and always answers `204`.
 - 72c7af4: Add `createErrorMonitoring` — a vendor-neutral Hono `onError` handler factory.
   The consumer supplies a `capture(error, c)` sink (Sentry, Axiom, console, …) and
   cadmus stays SDK-free. It reports the error best-effort (swallowing sink
