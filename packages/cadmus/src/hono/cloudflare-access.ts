@@ -20,6 +20,10 @@
 import type { Context, MiddlewareHandler } from "hono";
 
 const ACCESS_JWT_HEADER = "cf-access-jwt-assertion";
+// `CF_Authorization` is Cloudflare Access's public cookie NAME — a fixed
+// protocol identifier, not a secret. The credential is the signed JWT it
+// carries, which is cryptographically verified below.
+// deepcode ignore HardcodedNonCryptoSecret: public CF Access cookie name, not a credential
 const ACCESS_JWT_COOKIE = "CF_Authorization";
 // Tolerance for `exp`/`nbf` against the verifier's clock.
 const CLOCK_SKEW_SECONDS = 10;
