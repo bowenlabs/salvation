@@ -781,6 +781,54 @@ describe("CollectionEdit — autosave (D)", () => {
       vi.useRealTimers();
     }
   });
+
+  it("autosaves unchanged content only once even when draftActions is reactive", async () => {
+    // Reproduces the studio integration: createCollectionEditPage passes
+    // draftActions as a reactive getter whose `saving` reads the saveDraft
+    // mutation's isPending (built eagerly here, same as the real getter).
+    // Reading it inside the autosave effect subscribes the effect to that
+    // signal, so each save (isPending toggling) re-runs the effect — and
+    // because the draft path never re-baselines `dirty`, it used to re-arm the
+    // debounce forever, hammering the server. The guard must save the same
+    // content only once.
+    vi.useFakeTimers();
+    try {
+      const [pending, setPending] = createSignal(false);
+      let saveCount = 0;
+      // A function call in the JSX prop → Solid wraps it in a reactive getter,
+      // so `pending()` is read (and tracked) on every props.draftActions access.
+      const buildDraftActions = () => ({
+        saving: pending(),
+        onSaveDraft: () => {
+          saveCount += 1;
+        },
+        autosave: true,
+        autosaveMs: 500,
+      });
+      render(() => (
+        <CollectionEdit
+          config={versioned}
+          initialValues={{ title: "Home" }}
+          onSubmit={() => {}}
+          draftActions={buildDraftActions()}
+        />
+      ));
+      fireEvent.input(screen.getByLabelText("Title *"), {
+        target: { value: "Updated" },
+      });
+      await vi.advanceTimersByTimeAsync(500);
+      expect(saveCount).toBe(1);
+      // Flip isPending true→false as a real save would when it settles: this
+      // re-runs the effect. The content is unchanged, so it must not re-fire.
+      setPending(true);
+      await vi.advanceTimersByTimeAsync(0);
+      setPending(false);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(saveCount).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("CollectionEdit — live preview (D)", () => {
