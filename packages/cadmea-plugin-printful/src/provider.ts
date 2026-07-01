@@ -1,10 +1,20 @@
 // Copyright (c) 2026 BowenLabs. All rights reserved.
 // MIT licensed. See LICENSE in the repo root.
 //
-// Printful's REST API (v2 for orders, v1 for shipping rates) directly via
-// fetch() — never a Node-targeted Printful SDK. Webhook signature
-// verification uses crypto.subtle, mirroring
-// @thebes/cadmea-plugin-ecommerce-stripe's provider.ts.
+// Printful's REST API v2 (order creation + confirmation) directly via fetch()
+// — never a Node-targeted Printful SDK. Webhook signature verification uses
+// crypto.subtle, mirroring @thebes/cadmea-plugin-ecommerce-stripe's provider.ts.
+//
+// NOTE (#94): order creation + confirmation below are fully on v2. The webhook
+// parsing + signature verification further down still target Printful's v1
+// webhook format (`x-pf-webhook-signature` hex HMAC over the raw body;
+// `{type, data:{order, shipment}}` payload). v2 introduced a separate webhook
+// system with different event payloads and request signing whose exact header
+// name / algorithm is NOT published in the rendered v2 docs — so it can't be
+// reconciled here without a live v2 webhook sample or authoritative docs. This
+// is safe today: webhook registration is a separate config step (the consuming
+// site has none set yet), so nothing depends on the v2 format until v2 webhooks
+// are explicitly enabled. Reconcile before enabling them.
 //
 // Design note on `catalogRef`: `FulfillmentLineItem.catalogRef` is one
 // opaque string per the FulfillmentProvider contract, but a Printful order
@@ -41,7 +51,9 @@ export interface PrintfulProviderConfig {
   autoConfirm?: boolean;
 }
 
-const BASE_URL = "https://api.printful.com";
+// Orders + confirmation run on Printful API v2 (#94) — same base as the
+// catalog/pricing client in pricing.ts.
+const BASE_URL = "https://api.printful.com/v2";
 
 class PrintfulApiError extends Error {
   constructor(
@@ -148,7 +160,8 @@ async function createFulfillmentOrder(
         phone: address.phone,
         email: request.customerEmail,
       },
-      order_items: orderItems,
+      // v2 uses `items` (v1 used `order_items`).
+      items: orderItems,
     }),
   });
 
@@ -160,7 +173,7 @@ async function createFulfillmentOrder(
     // surfacing this as a fulfillment-creation failure would cause the
     // order-paid hook's caller to retry order creation and risk a
     // duplicate Printful order for the same Cadmea order.
-    await printfulFetch(config, `/orders/${order.id}/confirmation`, {
+    await printfulFetch(config, `/orders/${order.id}/confirm`, {
       method: "POST",
     }).catch((error) => {
       console.error(
