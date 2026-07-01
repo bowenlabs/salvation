@@ -279,7 +279,7 @@ export function CollectionEdit(props: CollectionEditProps) {
       formApi: { reset: (values?: Record<string, unknown>) => void };
     }) => {
       try {
-        await props.onSubmit(editablePayload(value));
+        await props.onSubmit(applyCreateAppends(editablePayload(value)));
       } catch {
         // Save failed (props.onSubmit threw/rejected) — leave the form dirty so
         // the guard stays armed and the user can retry. The consumer surfaces
@@ -322,6 +322,25 @@ export function CollectionEdit(props: CollectionEditProps) {
     );
   }
 
+  // Create-form array auto-inserts (#98): before submitting a *new* row, let
+  // an array field append a derived item (e.g. a "template" create-flow
+  // auto-inserting a page-builder block bound to another field). Runs once at
+  // submit; never on edit (real content wins there).
+  function applyCreateAppends(
+    value: Record<string, unknown>,
+  ): Record<string, unknown> {
+    if (operation !== "create") return value;
+    let next = value;
+    for (const [key, field] of Object.entries(props.config.fields)) {
+      if (field.type !== "array") continue;
+      const append = field.admin?.appendOnCreate;
+      if (!append || (append.when && !append.when(next))) continue;
+      const existing = Array.isArray(next[key]) ? (next[key] as unknown[]) : [];
+      next = { ...next, [key]: [...existing, append.item(next)] };
+    }
+    return next;
+  }
+
   const ctx: RenderContext = {
     get onUploadFile() {
       return props.onUploadFile;
@@ -338,6 +357,43 @@ export function CollectionEdit(props: CollectionEditProps) {
   };
 
   const fieldGroups = groupFields(editableFields(props.config));
+
+  // Create-form field defaults (#98): reactively seed a field from another
+  // (e.g. a page title from the chosen category), overridable by the user. We
+  // re-seed only while the target is empty or still equal to the value we last
+  // seeded — so a value the user typed is never clobbered, but switching the
+  // source (picking another category) still updates an untouched target. Only
+  // ever runs while creating; the edit form keeps its real data.
+  if (operation === "create") {
+    for (const [key, field] of Object.entries(props.config.fields)) {
+      const defaultFrom = field.admin?.defaultFrom;
+      if (!defaultFrom) continue;
+      let lastSeeded: unknown;
+      createEffect(() => {
+        const values = formValues();
+        const sourceValue = values[defaultFrom.field];
+        if (sourceValue == null || sourceValue === "") return;
+        const sourceField = props.config.fields[defaultFrom.field];
+        let label: string | undefined;
+        if (sourceField?.type === "relationship") {
+          label = props.relationshipOptions?.[sourceField.relationTo]?.find(
+            (o) => o.id === sourceValue,
+          )?.label;
+        }
+        const seeded = defaultFrom.map
+          ? defaultFrom.map({ value: sourceValue, label })
+          : (label ?? sourceValue);
+        const current = values[key];
+        const pristine =
+          current == null || current === "" || current === lastSeeded;
+        if (pristine && current !== seeded) {
+          lastSeeded = seeded;
+          form.setFieldValue(key, seeded);
+        }
+      });
+    }
+  }
+
   const versioned = () => props.config.versions?.drafts && props.draftActions;
 
   // Debounced autosave (opt-in via draftActions.autosave). While the form is

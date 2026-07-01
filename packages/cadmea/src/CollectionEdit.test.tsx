@@ -569,6 +569,136 @@ describe("CollectionEdit — admin field metadata (A)", () => {
   });
 });
 
+describe("CollectionEdit — create-form behaviors (#98)", () => {
+  it("seeds a field from admin.defaultFrom and lets the user override it", async () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: {
+        kind: { type: "select", options: ["", "wildlife", "landscape"] },
+        title: { type: "text", admin: { defaultFrom: { field: "kind" } } },
+      },
+    };
+    render(() => <CollectionEdit config={config} onSubmit={() => {}} />);
+    const title = () => screen.getByLabelText("Title") as HTMLInputElement;
+    expect(title().value).toBe("");
+
+    // Picking a source value seeds the pristine target…
+    fireEvent.change(screen.getByLabelText("Kind"), {
+      target: { value: "wildlife" },
+    });
+    await vi.waitFor(() => expect(title().value).toBe("wildlife"));
+
+    // …switching the source re-seeds while the target is still untouched…
+    fireEvent.change(screen.getByLabelText("Kind"), {
+      target: { value: "landscape" },
+    });
+    await vi.waitFor(() => expect(title().value).toBe("landscape"));
+
+    // …but a value the user typed is never clobbered.
+    fireEvent.input(title(), { target: { value: "My own title" } });
+    fireEvent.change(screen.getByLabelText("Kind"), {
+      target: { value: "wildlife" },
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(title().value).toBe("My own title");
+  });
+
+  it("defaults a title from a relationship's selected option label", async () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: {
+        category: { type: "relationship", relationTo: "categories" },
+        title: {
+          type: "text",
+          admin: {
+            defaultFrom: { field: "category", map: ({ label }) => label },
+          },
+        },
+      },
+    };
+    render(() => (
+      <CollectionEdit
+        config={config}
+        relationshipOptions={{
+          categories: [
+            { id: 1, label: "Wildlife" },
+            { id: 2, label: "Landscapes" },
+          ],
+        }}
+        onSubmit={() => {}}
+      />
+    ));
+    fireEvent.focus(screen.getByLabelText("Category"));
+    fireEvent.click(screen.getByRole("option", { name: "Wildlife" }));
+    await vi.waitFor(() =>
+      expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe(
+        "Wildlife",
+      ),
+    );
+  });
+
+  it("appends an admin.appendOnCreate array item on create, but not on edit", async () => {
+    const config: CollectionConfig = {
+      slug: "pages",
+      fields: {
+        id: { type: "number", autoIncrement: true },
+        template: { type: "select", options: ["default", "portfolio"] },
+        blocks: {
+          type: "array",
+          fields: { type: { type: "select", options: ["portfolioGallery"] } },
+          admin: {
+            appendOnCreate: {
+              when: (v) => v.template === "portfolio",
+              item: (v) => ({
+                type: "portfolioGallery",
+                category: v.category ?? null,
+              }),
+            },
+          },
+        },
+      },
+    };
+
+    // Create: when the condition holds, the derived block is appended at submit.
+    let created: Record<string, unknown> | undefined;
+    render(() => (
+      <CollectionEdit
+        config={config}
+        onSubmit={(v) => {
+          created = v;
+        }}
+      />
+    ));
+    fireEvent.change(screen.getByLabelText("Template"), {
+      target: { value: "portfolio" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() =>
+      expect(created).toEqual({
+        template: "portfolio",
+        blocks: [{ type: "portfolioGallery", category: null }],
+      }),
+    );
+
+    cleanup();
+
+    // Edit (initialValues carry an id → operation "update"): never appends.
+    let updated: Record<string, unknown> | undefined;
+    render(() => (
+      <CollectionEdit
+        config={config}
+        initialValues={{ id: 5, template: "portfolio" }}
+        onSubmit={(v) => {
+          updated = v;
+        }}
+      />
+    ));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(updated).toBeDefined());
+    expect(updated).not.toHaveProperty("blocks");
+  });
+});
+
 describe("CollectionEdit — visual block builder (B)", () => {
   const blocksConfig: CollectionConfig = {
     slug: "pages",
