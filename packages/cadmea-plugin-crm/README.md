@@ -41,6 +41,17 @@ const inquiriesCollection = {
         // contacts/activities collections' own `access` config is what
         // actually decides whether this value is accepted.
         context: { internal: true },
+        // Optional: copy fields onto a NEW contact (never clobbers an
+        // existing one; email/lastActivityAt stay authoritative).
+        mapContactFields: (doc) => ({
+          firstName: doc.firstName,
+          lastName: doc.lastName,
+        }),
+        // Optional: give the logged activity useful timeline detail.
+        buildActivityMetadata: (doc) => ({
+          subject: doc.subject,
+          excerpt: String(doc.message ?? "").slice(0, 140),
+        }),
       }),
     ],
   },

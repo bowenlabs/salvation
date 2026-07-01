@@ -105,6 +105,9 @@ export function crmPlugin(options: CrmPluginOptions = {}): CadmeaPlugin {
   };
 }
 
+/** The lead-capture document an `afterChange` hook receives. */
+export type LeadDocument = Record<string, unknown>;
+
 export interface ContactUpsertHookOptions<TContext> {
   /**
    * The same `CmsRegistry` object passed to every `createLocalApi` call —
@@ -120,6 +123,21 @@ export interface ContactUpsertHookOptions<TContext> {
   activitiesSlug?: string;
   /** Stored as the created activity's `type`. Default: "form_submission". */
   activityType?: string;
+  /**
+   * Optional: extra fields to set on a **newly-created** contact, derived from
+   * the lead-capture document (e.g. name, company, phone). Applied only on
+   * create, so it never clobbers an existing contact's fields. Field names are
+   * the consumer's choice since the lead-capture shape is arbitrary — return
+   * whatever subset of the contacts collection's fields you want populated.
+   * `email` and `lastActivityAt` stay authoritative and can't be overridden.
+   */
+  mapContactFields?: (doc: LeadDocument) => Record<string, unknown>;
+  /**
+   * Optional: builds the created activity's `metadata` (json) from the lead-
+   * capture document — e.g. subject, a message excerpt, the source record id —
+   * so the contact's timeline reads usefully instead of a bare `{ type }`.
+   */
+  buildActivityMetadata?: (doc: LeadDocument) => unknown;
   /**
    * Hooks (`CollectionHooks.afterChange`) don't receive the original
    * request's access-control context — only `{ doc, operation }` — so
@@ -202,9 +220,14 @@ export function createContactUpsertHook<TContext>(
       });
       contactId = existing.id;
     } else {
+      // Spread the mapped fields first so `email`/`lastActivityAt` stay
+      // authoritative; `lifecycleStage` defaults to "lead" but the mapper may
+      // override it. Only runs on create, so it never clobbers an existing
+      // contact's name/company/etc.
       const created = (await contactsApi.create(options.context, {
-        email,
         lifecycleStage: "lead",
+        ...(options.mapContactFields?.(doc) ?? {}),
+        email,
         lastActivityAt: new Date(),
       })) as ContactRow;
       contactId = created.id;
@@ -217,6 +240,9 @@ export function createContactUpsertHook<TContext>(
     await activitiesApi.create(options.context, {
       contact: contactId,
       type: activityType,
+      ...(options.buildActivityMetadata
+        ? { metadata: options.buildActivityMetadata(doc) }
+        : {}),
     });
   };
 }
