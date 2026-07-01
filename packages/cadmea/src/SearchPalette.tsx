@@ -233,20 +233,24 @@ export function SearchPalette(props: SearchPaletteProps): JSX.Element {
 
   return (
     <Show when={open()}>
-      {/* Backdrop + centering container. No aria-hidden here — it wraps the
-          dialog + focused input, so hiding it would make the whole modal
-          invisible to assistive tech. The inner role="dialog" carries the
-          semantics; the click-to-close is a backdrop convenience. */}
-      <div
-        class="fixed inset-0 z-50 flex items-start justify-center bg-[var(--color-backdrop)] px-4 pt-[15vh]"
-        onClick={close}
-      >
+      {/* Centering container — NOT aria-hidden (it holds the accessible dialog)
+          and not itself interactive. */}
+      <div class="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[15vh]">
+        {/* Decorative backdrop as its own layer: aria-hidden (so its
+            click-to-dismiss is a mouse convenience the a11y lint exempts) and
+            behind the dialog. Keyboard users dismiss via the dialog's Escape
+            handler. Keeping it a sibling — not an ancestor — of the dialog is
+            what keeps the dialog + its focused input visible to assistive tech. */}
+        <div
+          aria-hidden="true"
+          class="absolute inset-0 bg-[var(--color-backdrop)]"
+          onClick={close}
+        />
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Search"
-          class="w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] shadow-2xl"
-          onClick={(event) => event.stopPropagation()}
+          class="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] shadow-2xl"
           onKeyDown={onDialogKeyDown}
         >
           <div class="flex items-center gap-2 border-b border-[var(--line)] px-4 py-3">
