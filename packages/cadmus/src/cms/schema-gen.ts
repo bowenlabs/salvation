@@ -177,15 +177,33 @@ function relationshipJoinTableSources(
 // config file or where it lives — that's app-specific, never hardcoded
 // here (see CLAUDE.md "Code in packages/cadmus/ must not contain
 // anything [app]-specific").
-export function generateSchemaSource(config: CmsConfig): string {
+/** Options for {@link generateSchemaSource}. */
+export interface GenerateSchemaOptions {
+  /**
+   * Collection slugs to omit from the emitted schema. Under Direction B (see
+   * DECISIONS.md + `@thebes/cadmus/migrations`) a consuming site excludes
+   * plugin-owned collections here, so drizzle-kit diffs only site-owned tables —
+   * the plugin tables come from each plugin's own shipped migrations, not the
+   * site's diff.
+   */
+  exclude?: readonly string[];
+}
+
+export function generateSchemaSource(
+  config: CmsConfig,
+  options: GenerateSchemaOptions = {},
+): string {
+  const exclude = new Set(options.exclude ?? []);
   const usedBuilders = new Set<string>(["sqliteTable"]);
-  const blocks = config.collections.flatMap((collection) => [
-    collectionToTableSource(collection, usedBuilders),
-    ...relationshipJoinTableSources(collection, usedBuilders),
-    ...(collection.versions?.drafts
-      ? [versionsTableSource(collection, usedBuilders)]
-      : []),
-  ]);
+  const blocks = config.collections
+    .filter((collection) => !exclude.has(collection.slug))
+    .flatMap((collection) => [
+      collectionToTableSource(collection, usedBuilders),
+      ...relationshipJoinTableSources(collection, usedBuilders),
+      ...(collection.versions?.drafts
+        ? [versionsTableSource(collection, usedBuilders)]
+        : []),
+    ]);
   const importList = [...usedBuilders].sort().join(", ");
   // Every JSON column emitted above carries a `.$type<JsonValue>()` call —
   // detected by string search rather than threading a second tracking set
