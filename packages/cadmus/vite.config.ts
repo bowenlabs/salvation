@@ -16,6 +16,7 @@ export default defineConfig({
       "email/index": "src/email/index.ts",
       "rate-limit/index": "src/rate-limit/index.ts",
       "session/index": "src/session/index.ts",
+      "secrets/index": "src/secrets/index.ts",
       "queues/index": "src/queues/index.ts",
       "hono/index": "src/hono/index.ts",
       "cms/index": "src/cms/index.ts",
