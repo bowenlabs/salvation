@@ -498,7 +498,10 @@ export function CollectionList(props: CollectionListProps) {
       </Show>
 
       {/* Bottom-anchored prev/next bar — no page numbers, per issue #25's
-          mobile-first note. Renders only when pagination is wired up. */}
+          mobile-first note. Renders only when pagination is wired up. When
+          `totalCount` is known the center label reads as a row range
+          ("1–20 of 24", Studio Prototype's pagination); otherwise it falls
+          back to the page number. */}
       <Show when={props.page !== undefined && props.pageSize !== undefined}>
         <div class="bg-base-100 sticky bottom-0 flex items-center justify-between gap-2 border-t py-2">
           <button
@@ -509,7 +512,13 @@ export function CollectionList(props: CollectionListProps) {
           >
             Prev
           </button>
-          <span class="text-sm opacity-70">Page {props.page}</span>
+          <span class="cadmea-page-range text-sm opacity-70">
+            {pageRangeLabel(
+              props.page ?? 1,
+              props.pageSize ?? 0,
+              props.totalCount,
+            )}
+          </span>
           <button
             type="button"
             class="btn btn-sm"
@@ -526,4 +535,18 @@ export function CollectionList(props: CollectionListProps) {
       </Show>
     </div>
   );
+}
+
+// "1–20 of 24" when the total is known (matching a range-style pagination
+// label); "Page N" otherwise. En dash, not hyphen, for the range.
+function pageRangeLabel(
+  page: number,
+  pageSize: number,
+  totalCount: number | undefined,
+): string {
+  if (totalCount === undefined) return `Page ${page}`;
+  if (totalCount === 0) return "0 of 0";
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, totalCount);
+  return `${start}–${end} of ${totalCount}`;
 }

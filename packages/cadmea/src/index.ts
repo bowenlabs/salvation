@@ -1,6 +1,9 @@
 export type {
   BlockFocusTarget,
   CollectionEditProps,
+  EditActionsApi,
+  EditDraftApi,
+  EditSidebarApi,
   FieldWidget,
 } from "./CollectionEdit.js";
 export { CollectionEdit } from "./CollectionEdit.js";

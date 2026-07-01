@@ -123,7 +123,31 @@ describe("CollectionList", () => {
     ));
     expect(screen.getByText("Prev")).toBeDisabled();
     expect(screen.getByText("Next")).toBeDisabled();
-    expect(screen.getByText("Page 1")).toBeInTheDocument();
+    // totalCount known → the center label reads as a row range.
+    expect(screen.getByText("1–1 of 1")).toBeInTheDocument();
+  });
+
+  it("labels the center as a row range when totalCount is known, page number otherwise", () => {
+    render(() => (
+      <CollectionList
+        config={pagesCollection}
+        rows={[{ id: 1, title: "Home", slug: "home" }]}
+        page={2}
+        pageSize={10}
+        totalCount={24}
+      />
+    ));
+    expect(screen.getByText("11–20 of 24")).toBeInTheDocument();
+    cleanup();
+    render(() => (
+      <CollectionList
+        config={pagesCollection}
+        rows={[{ id: 1, title: "Home", slug: "home" }]}
+        page={2}
+        pageSize={10}
+      />
+    ));
+    expect(screen.getByText("Page 2")).toBeInTheDocument();
   });
 
   it("enables Next when totalCount indicates more rows, and calls onPageChange", () => {

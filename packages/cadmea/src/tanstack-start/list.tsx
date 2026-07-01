@@ -16,6 +16,23 @@ export interface CollectionListQueryParams {
   pageSize: number;
   sortField?: string;
   sortDirection?: "asc" | "desc";
+  /**
+   * The active filter value set via {@link ListToolbarApi.setFilter} —
+   * `undefined` means "no filter" (the All chip). The consuming route's
+   * `queryFn` maps it onto a `LocalApi.find({ where })` clause; the string
+   * is opaque to this factory.
+   */
+  filter?: string;
+}
+
+/**
+ * Handed to `renderToolbar` so a consuming route can render filter chips
+ * (All / Active / Draft, …) that drive the factory's query. Setting a filter
+ * resets to page 1 and clears the selection, same as a sort change.
+ */
+export interface ListToolbarApi {
+  filter: string | undefined;
+  setFilter: (value: string | undefined) => void;
 }
 
 export interface CollectionListQueryResult<TRow> {
@@ -73,7 +90,12 @@ export interface CollectionListPageOptions<
   renderHead?: () => JSX.Element;
   renderRow?: (row: TRow, helpers: RowRenderHelpers) => JSX.Element;
   renderCard?: (row: TRow, helpers: RowRenderHelpers) => JSX.Element;
-  renderToolbar?: () => JSX.Element;
+  /**
+   * Toolbar slot (filter chips, segmented controls). Receives a
+   * {@link ListToolbarApi} so chips can drive the factory's `filter` query
+   * param — a bare `() => JSX` still works (the argument is just ignored).
+   */
+  renderToolbar?: (api: ListToolbarApi) => JSX.Element;
 }
 
 /**
@@ -115,15 +137,24 @@ export function createCollectionListPage<TRow extends Record<string, unknown>>(
       "asc",
     );
     const [selectedIds, setSelectedIds] = createSignal<Set<number>>(new Set());
+    // Active toolbar filter (undefined = All) — see ListToolbarApi.
+    const [filter, setFilter] = createSignal<string | undefined>(undefined);
 
     const result = createQuery(() => ({
-      queryKey: [...options.queryKey, page(), sortField(), sortDirection()],
+      queryKey: [
+        ...options.queryKey,
+        page(),
+        sortField(),
+        sortDirection(),
+        filter(),
+      ],
       queryFn: () =>
         options.queryFn({
           page: page(),
           pageSize,
           sortField: sortField(),
           sortDirection: sortDirection(),
+          filter: filter(),
         }),
       // Client-only. If this query runs during SSR its in-flight fetch is
       // serialized as a streamed hydration resource that TanStack Start never
@@ -148,6 +179,19 @@ export function createCollectionListPage<TRow extends Record<string, unknown>>(
       setSelectedIds(new Set());
       setPage(next);
     }
+
+    // Switching filters re-scopes the whole result set — back to page 1, and
+    // drop the selection for the same reason as a page/sort change.
+    const toolbarApi: ListToolbarApi = {
+      get filter() {
+        return filter();
+      },
+      setFilter: (value) => {
+        setFilter(value);
+        setPage(1);
+        setSelectedIds(new Set());
+      },
+    };
 
     // Wrap each consumer action so the list refetches after it mutates; the
     // CollectionList clears the selection itself once run() resolves.
@@ -234,7 +278,11 @@ export function createCollectionListPage<TRow extends Record<string, unknown>>(
                   ) => JSX.Element)
                 | undefined
             }
-            renderToolbar={options.renderToolbar}
+            renderToolbar={
+              options.renderToolbar
+                ? () => options.renderToolbar?.(toolbarApi)
+                : undefined
+            }
           />
         </Show>
       </div>
