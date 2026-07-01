@@ -1,5 +1,14 @@
 # cadmus-example-minimal
 
+## 0.0.9
+
+### Patch Changes
+
+- Updated dependencies [3623a3a]
+- Updated dependencies [56bb1ac]
+- Updated dependencies [5feb1ac]
+  - @thebes/cadmus@0.8.0
+
 ## 0.0.8
 
 ### Patch Changes

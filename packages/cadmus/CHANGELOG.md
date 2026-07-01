@@ -1,5 +1,13 @@
 # @thebes/cadmus
 
+## 0.8.0
+
+### Minor Changes
+
+- 3623a3a: Add `createCloudflareAccess` (`@thebes/cadmus/hono`) — a Hono middleware that verifies Cloudflare Access JWTs at the edge. It validates the `Cf-Access-Jwt-Assertion` token (or `CF_Authorization` cookie) against the team's JWKS over Web Crypto only (no new deps): pinned RS256, signature, `aud`, `iss`, and expiry checks, with per-isolate JWKS caching and one-shot refresh on key rotation. On success the verified `AccessIdentity` (email, sub, claims) is stored on the Hono context; on failure it returns `403` (customizable via `onUnauthorized`). Use it to gate preview deployments or any identity-restricted route set.
+- 56bb1ac: Add `@thebes/cadmus/secrets` — `getSecret` / `requireSecret` accessors over Cloudflare Secrets Store bindings that also work in local dev. A secret is a `secrets_store_secrets` binding (async `.get()`) in a deployed Worker and a plain `.dev.vars` string locally; these helpers accept either, so one call site works in both. `requireSecret` throws on a missing/empty value for fail-fast startup validation. Lets a single Secrets Store value be bound into many Workers (centralized rotation + audit) instead of duplicated per-Worker `wrangler secret put`.
+- 5feb1ac: Add framework-owned `site_settings` to `@thebes/cadmus/db` — `siteSettingsColumns` (the generic identity/appearance/structural-color/contact/nav/SEO/domain/feature-toggle column set) plus a ready-made `siteSettings` singleton table (`id = 1` enforced). Sites compose or use it directly instead of hand-rolling the table, so it stops drifting between clients. It's byte-identical to the current hand-rolled shape, so adopting it produces no spurious migration. First safe slice of the pt#83 migrations-composition work (Direction B — see DECISIONS.md); also pins `generateSchemaSource` determinism with tests.
+
 ## 0.7.0
 
 ### Minor Changes
