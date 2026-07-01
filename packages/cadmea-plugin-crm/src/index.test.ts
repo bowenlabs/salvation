@@ -117,12 +117,16 @@ interface Contact {
   email: string;
   lifecycleStage?: string;
   lastActivityAt?: Date;
+  firstName?: string;
+  lastName?: string;
+  company?: string;
 }
 
 interface Activity {
   id: number;
   contact: number;
   type: string;
+  metadata?: unknown;
 }
 
 describe("createContactUpsertHook", () => {
@@ -244,5 +248,104 @@ describe("createContactUpsertHook", () => {
 
     expect(peopleApi.rows).toHaveLength(1);
     expect(eventsApi.rows[0]?.type).toBe("newsletter_signup");
+  });
+
+  it("copies mapped fields onto a newly-created contact", async () => {
+    const { registry, contactsApi } = buildRegistry();
+    const hook = createContactUpsertHook({
+      registry,
+      emailField: "email",
+      context: { internal: true },
+      mapContactFields: (doc) => ({
+        firstName: doc.firstName,
+        lastName: doc.lastName,
+        company: doc.company,
+      }),
+    });
+
+    await hook({
+      doc: {
+        email: "lead@example.com",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        company: "Analytical Engines",
+      },
+      operation: "create",
+    });
+
+    expect(contactsApi.rows[0]).toMatchObject({
+      email: "lead@example.com",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      company: "Analytical Engines",
+      lifecycleStage: "lead",
+    });
+  });
+
+  it("does not clobber an existing contact's mapped fields on a later submission", async () => {
+    const { registry, contactsApi } = buildRegistry();
+    const hook = createContactUpsertHook({
+      registry,
+      emailField: "email",
+      context: { internal: true },
+      mapContactFields: (doc) => ({ firstName: doc.firstName }),
+    });
+
+    await hook({
+      doc: { email: "lead@example.com", firstName: "Ada" },
+      operation: "create",
+    });
+    // Same email, different name — must not overwrite the original.
+    await hook({
+      doc: { email: "lead@example.com", firstName: "Grace" },
+      operation: "create",
+    });
+
+    expect(contactsApi.rows).toHaveLength(1);
+    expect(contactsApi.rows[0]?.firstName).toBe("Ada");
+  });
+
+  it("keeps email/lastActivityAt authoritative even if the mapper returns them", async () => {
+    const { registry, contactsApi } = buildRegistry();
+    const hook = createContactUpsertHook({
+      registry,
+      emailField: "email",
+      context: { internal: true },
+      mapContactFields: () => ({ email: "spoofed@evil.com" }),
+    });
+
+    await hook({ doc: { email: "real@example.com" }, operation: "create" });
+
+    expect(contactsApi.rows[0]?.email).toBe("real@example.com");
+  });
+
+  it("stores built activity metadata on the logged activity", async () => {
+    const { registry, activitiesApi } = buildRegistry();
+    const hook = createContactUpsertHook({
+      registry,
+      emailField: "email",
+      context: { internal: true },
+      buildActivityMetadata: (doc) => ({
+        subject: doc.subject,
+        excerpt: String(doc.message).slice(0, 20),
+        inquiryId: doc.id,
+      }),
+    });
+
+    await hook({
+      doc: {
+        id: 42,
+        email: "lead@example.com",
+        subject: "Commission",
+        message: "I'd love to commission a piece for our lobby.",
+      },
+      operation: "create",
+    });
+
+    expect(activitiesApi.rows[0]?.metadata).toEqual({
+      subject: "Commission",
+      excerpt: "I'd love to commissi",
+      inquiryId: 42,
+    });
   });
 });
