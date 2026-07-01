@@ -28,6 +28,31 @@ export interface FieldAdminConfig {
    * a serialized meta payload.
    */
   condition?: (values: Record<string, unknown>) => boolean;
+  /**
+   * Create-form only (issue #98). Reactively seed this field from another
+   * field's value — e.g. default a page `title` from the chosen `category`.
+   * When the `field` source changes and this field is still *pristine* (empty,
+   * or still holding the value we last seeded — i.e. the user hasn't typed
+   * their own), this field is set to `map({ value, label })`. For a
+   * `relationship` source, `label` is the selected option's label, and `map`
+   * defaults to `label ?? value` when omitted. Overridable: a value the user
+   * has typed is never clobbered. Ignored on the edit form (real data wins).
+   */
+  defaultFrom?: {
+    field: string;
+    map?: (source: { value: unknown; label?: string }) => unknown;
+  };
+  /**
+   * Create-form only (issue #98). **Array fields only.** When creating a new
+   * row and `when(values)` holds, append `item(values)` to this array before
+   * submit — lets a "template" create-flow auto-insert a page-builder block
+   * bound to another field (e.g. push a `portfolioGallery` block bound to the
+   * chosen `category` into `blocks`). Runs once at submit; never on edit.
+   */
+  appendOnCreate?: {
+    when?: (values: Record<string, unknown>) => boolean;
+    item: (values: Record<string, unknown>) => Record<string, unknown>;
+  };
   /** Render the field read-only in the editor. */
   readOnly?: boolean;
 }
