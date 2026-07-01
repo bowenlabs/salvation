@@ -19,6 +19,14 @@ export interface CollectionCreatePageOptions<
   onUploadFile?: (file: File) => Promise<{ url: string }>;
   /** Per-field custom editor widgets (issue #17), keyed by field name — forwarded to CollectionEdit. */
   fieldWidgets?: CollectionEditProps["fieldWidgets"];
+  /**
+   * Options for `relationship` fields, keyed by the related collection's slug —
+   * forwarded to CollectionEdit. The create factory needs this (not just the
+   * edit factory) so a create form can populate a relationship picker — e.g. a
+   * "template" create-flow where picking a category drives `admin.defaultFrom`
+   * (default the title from it) and `admin.appendOnCreate` (issue #98).
+   */
+  relationshipOptions?: CollectionEditProps["relationshipOptions"];
 }
 
 /**
@@ -54,6 +62,7 @@ export function createCollectionCreatePage<
           onSubmit={(values) => create.mutate(values)}
           onUploadFile={options.onUploadFile}
           fieldWidgets={options.fieldWidgets}
+          relationshipOptions={options.relationshipOptions}
         />
       </div>
     );
