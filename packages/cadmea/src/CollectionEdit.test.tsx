@@ -7,7 +7,7 @@ import {
 } from "@solidjs/testing-library";
 import type { CollectionConfig } from "@thebes/cadmus/cms";
 import { BLOCK_KEY } from "@thebes/cadmus/cms";
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type BlockFocusTarget, CollectionEdit } from "./CollectionEdit.js";
 
@@ -847,6 +847,38 @@ describe("CollectionEdit — visual block builder (B)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Items" }));
     expect(screen.queryByLabelText("Label")).not.toBeInTheDocument();
   });
+
+  it("shows the variant's admin.icon as a tile in the block row", () => {
+    render(() => (
+      <CollectionEdit
+        config={blocksConfig}
+        initialValues={{
+          blocks: [{ type: "hero", heading: "Hi", [BLOCK_KEY]: "k1" }],
+        }}
+        onSubmit={() => {}}
+      />
+    ));
+    const icon = document.querySelector(".cadmea-block-icon i");
+    expect(icon).toHaveClass("ph", "ph-image");
+  });
+
+  it("starts existing blocks collapsed when collapseBlocksByDefault is set", () => {
+    render(() => (
+      <CollectionEdit
+        config={blocksConfig}
+        initialValues={{
+          blocks: [{ type: "hero", heading: "Hi", [BLOCK_KEY]: "k1" }],
+        }}
+        collapseBlocksByDefault
+        onSubmit={() => {}}
+      />
+    ));
+    // Collapsed → the hero's Heading input is hidden, but the row still shows.
+    expect(screen.queryByLabelText("Heading *")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Hero banner" }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("CollectionEdit — autosave (D)", () => {
@@ -1026,5 +1058,125 @@ describe("CollectionEdit — publish confirmation (E)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Publish" }));
     expect(published).toBe(true);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("CollectionEdit — editor chrome slots (F)", () => {
+  it("moves sidebarFields out of the main column, into the rail", () => {
+    render(() => (
+      <CollectionEdit
+        config={pagesCollection}
+        sidebarFields={["status"]}
+        renderSidebar={(api) => (
+          <input
+            aria-label="Rail status"
+            value={(api.values.status as string) ?? ""}
+            onInput={(e) => api.setValue("status", e.currentTarget.value)}
+          />
+        )}
+        onSubmit={() => {}}
+      />
+    ));
+    // Title stays in the main column; the default Status select is gone —
+    // the rail owns it now.
+    expect(screen.getByLabelText("Title *")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Status *")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Rail status")).toBeInTheDocument();
+  });
+
+  it("lets renderSidebar edit the shared form via setValue, submitting the change", async () => {
+    let submitted: Record<string, unknown> | undefined;
+    render(() => (
+      <CollectionEdit
+        config={pagesCollection}
+        initialValues={{ title: "Home", status: "draft" }}
+        sidebarFields={["status"]}
+        renderSidebar={(api) => (
+          <button
+            type="button"
+            onClick={() => api.setValue("status", "published")}
+          >
+            Publish toggle
+          </button>
+        )}
+        onSubmit={(v) => {
+          submitted = v;
+        }}
+      />
+    ));
+    fireEvent.click(screen.getByRole("button", { name: "Publish toggle" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() =>
+      expect(submitted).toEqual({ title: "Home", status: "published" }),
+    );
+  });
+
+  it("renders a custom header and suppresses the default bottom action bar", async () => {
+    let submitted: Record<string, unknown> | undefined;
+    render(() => (
+      <CollectionEdit
+        config={pagesCollection}
+        initialValues={{ title: "Home", status: "draft" }}
+        renderHeader={(api) => (
+          <button type="button" disabled={!api.dirty} onClick={api.save}>
+            Header save
+          </button>
+        )}
+        onSubmit={(v) => {
+          submitted = v;
+        }}
+      />
+    ));
+    // The default bottom Save button is gone; the header owns the action.
+    expect(
+      screen.queryByRole("button", { name: "Save" }),
+    ).not.toBeInTheDocument();
+    const headerSave = screen.getByRole("button", { name: "Header save" });
+    expect(headerSave).toBeDisabled(); // not dirty yet
+    fireEvent.input(screen.getByLabelText("Title *"), {
+      target: { value: "Updated" },
+    });
+    expect(headerSave).not.toBeDisabled();
+    fireEvent.click(headerSave);
+    await vi.waitFor(() =>
+      expect(submitted).toEqual({ title: "Updated", status: "draft" }),
+    );
+  });
+
+  it("exposes draft actions to a custom header for versioned collections", () => {
+    const versionedCollection: CollectionConfig = {
+      ...pagesCollection,
+      versions: { drafts: true },
+    };
+    let published = false;
+    render(() => (
+      <CollectionEdit
+        config={versionedCollection}
+        initialValues={{ title: "Home" }}
+        renderHeader={(api) => (
+          <Show when={api.draft}>
+            {(draft) => (
+              <button
+                type="button"
+                disabled={!draft().canPublish}
+                onClick={draft().publish}
+              >
+                Header publish
+              </button>
+            )}
+          </Show>
+        )}
+        draftActions={{
+          onSaveDraft: () => {},
+          onPublish: () => {
+            published = true;
+          },
+          canPublish: true,
+        }}
+        onSubmit={() => {}}
+      />
+    ));
+    fireEvent.click(screen.getByRole("button", { name: "Header publish" }));
+    expect(published).toBe(true);
   });
 });

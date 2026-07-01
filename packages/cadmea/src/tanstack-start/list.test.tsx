@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from "@solidjs/testing-library";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@solidjs/testing-library";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import {
   createMemoryHistory,
@@ -85,5 +91,50 @@ describe("createCollectionListPage", () => {
     expect(
       await screen.findByRole("link", { name: "New page" }),
     ).toBeInTheDocument();
+  });
+
+  it("threads the toolbar filter into queryFn and resets to page 1", async () => {
+    const seen: { page: number; filter?: string }[] = [];
+    const Page = createCollectionListPage({
+      collection: pagesCollection,
+      queryKey: ["pages"],
+      queryFn: async (params) => {
+        seen.push({ page: params.page, filter: params.filter });
+        return { rows: [], total: 0 };
+      },
+      // Chips rendered through the toolbar slot, driving the factory's filter.
+      renderToolbar: (api) => (
+        <div>
+          <button type="button" onClick={() => api.setFilter(undefined)}>
+            All
+          </button>
+          <button type="button" onClick={() => api.setFilter("draft")}>
+            Draft
+          </button>
+          <span data-testid="active-filter">{api.filter ?? "none"}</span>
+        </div>
+      ),
+    });
+    renderPage(Page);
+    // Initial fetch: no filter. (findBy — the toolbar mounts with the list
+    // once the first query resolves.)
+    expect(await screen.findByTestId("active-filter")).toHaveTextContent(
+      "none",
+    );
+    expect(seen).toEqual([{ page: 1, filter: undefined }]);
+    // Picking a chip refetches with the filter (and stays/resets to page 1).
+    fireEvent.click(screen.getByRole("button", { name: "Draft" }));
+    await waitFor(() =>
+      expect(seen).toEqual([
+        { page: 1, filter: undefined },
+        { page: 1, filter: "draft" },
+      ]),
+    );
+    // findBy again — the filter change swaps the query key, so the list (and
+    // toolbar) pass through the loading state before re-mounting, same as a
+    // page change.
+    expect(await screen.findByTestId("active-filter")).toHaveTextContent(
+      "draft",
+    );
   });
 });

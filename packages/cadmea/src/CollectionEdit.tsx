@@ -155,6 +155,58 @@ export interface DraftActions {
   confirmPublish?: boolean;
 }
 
+/**
+ * The draft sub-slice of {@link EditActionsApi}, present only when the
+ * collection is versioned (`versions.drafts`) and `draftActions` is wired.
+ */
+export interface EditDraftApi {
+  /** Persist the current form values as a new draft version. */
+  saveDraft: () => void;
+  /** Publish the latest saved draft (honors `draftActions.confirmPublish`). */
+  publish: () => void;
+  /** Open a live preview of the latest saved draft, if `previewFn` is wired. */
+  preview?: () => void;
+  saving: boolean;
+  publishing: boolean;
+  previewing: boolean;
+  canPublish: boolean;
+  canPreview: boolean;
+  autosaveStatus: "idle" | "saving" | "saved";
+}
+
+/**
+ * Everything a custom `renderHeader` needs to build its own action bar
+ * (breadcrumb + Save/Publish/…) instead of the default bottom bar. All
+ * fields are live getters, so reading them inside JSX stays reactive.
+ */
+export interface EditActionsApi {
+  /** Current form values — for a breadcrumb title, status pill, etc. */
+  values: Record<string, unknown>;
+  /** True while the form differs from its last-saved baseline. */
+  dirty: boolean;
+  /** Save/submit the form (generic, non-versioned collections). */
+  save: () => void;
+  saving: boolean;
+  /** False when RBAC (`capabilities.canUpdate`) forbids saving. */
+  canSave: boolean;
+  /** Present only for versioned collections with `draftActions`. */
+  draft?: EditDraftApi;
+  /** Delete the row, when the consumer wired `onDelete` (and RBAC allows). */
+  remove?: () => void;
+}
+
+/**
+ * Handed to a custom `renderSidebar` so the rail can render editable
+ * controls (a status toggle, SEO inputs, …) wired straight to the same
+ * form — and read sibling values for derived UI (e.g. an SEO preview).
+ */
+export interface EditSidebarApi {
+  /** Current form values (reactive). */
+  values: Record<string, unknown>;
+  /** Set a field on the shared form — drives dirty/validation/autosave. */
+  setValue: (key: string, value: unknown) => void;
+}
+
 export interface CollectionEditProps {
   config: CollectionConfig;
   initialValues?: Record<string, unknown>;
@@ -223,9 +275,37 @@ export interface CollectionEditProps {
    * Optional right-hand sidebar content (status, metadata, publish controls,
    * …). When provided, the fields render in a two-column grid with this
    * sidebar alongside; when omitted, the editor stays single-column exactly
-   * as before. Additive — existing consumers are unaffected.
+   * as before. Additive — existing consumers are unaffected. Receives an
+   * {@link EditSidebarApi} so the rail can edit the shared form (a bare
+   * `() => JSX` still works — it just ignores the argument).
    */
-  renderSidebar?: () => JSX.Element;
+  renderSidebar?: (api: EditSidebarApi) => JSX.Element;
+  /**
+   * Field keys to move OUT of the main column so the `renderSidebar` rail can
+   * own them (e.g. `["status", "metaTitle", "metaDescription"]`). Only takes
+   * effect alongside `renderSidebar` — the rail is then responsible for
+   * rendering them (via `EditSidebarApi.setValue`); a key hidden here but not
+   * rendered by the rail becomes uneditable. No-op without `renderSidebar`.
+   */
+  sidebarFields?: string[];
+  /**
+   * Optional custom header rendered at the top of the form (a breadcrumb +
+   * action bar, per Studio Prototype). When provided, the default bottom
+   * action bar is suppressed — the header owns Save/Publish/… via the
+   * {@link EditActionsApi} it receives. Omit to keep the default bottom bar.
+   */
+  renderHeader?: (api: EditActionsApi) => JSX.Element;
+  /**
+   * Wire a delete action into the header's {@link EditActionsApi.remove}. The
+   * page factory forwards its own delete here; standalone consumers can too.
+   */
+  onDelete?: () => void;
+  /**
+   * Start discriminated `array` (block) fields collapsed to a one-line
+   * outline (per Studio Prototype's page builder). Existing blocks collapse
+   * on load; newly added ones open for editing. Off by default.
+   */
+  collapseBlocksByDefault?: boolean;
 }
 
 interface RenderContext {
@@ -233,6 +313,7 @@ interface RenderContext {
   relationshipOptions?: Partial<Record<string, RelationshipOption[]>>;
   fieldWidgets?: Record<string, FieldWidget>;
   focusBlock?: BlockFocusTarget;
+  collapseBlocksByDefault?: boolean;
 }
 
 export function CollectionEdit(props: CollectionEditProps) {
@@ -354,9 +435,21 @@ export function CollectionEdit(props: CollectionEditProps) {
     get focusBlock() {
       return props.focusBlock;
     },
+    get collapseBlocksByDefault() {
+      return props.collapseBlocksByDefault;
+    },
   };
 
-  const fieldGroups = groupFields(editableFields(props.config));
+  // Split fields into the main column and the sidebar rail. `sidebarFields`
+  // only applies when a `renderSidebar` slot exists to host them; otherwise
+  // hiding a field would silently make it uneditable. The rail itself renders
+  // its fields (via EditSidebarApi), so here we just drop them from main.
+  const sidebarKeys = new Set(
+    props.renderSidebar ? (props.sidebarFields ?? []) : [],
+  );
+  const mainFieldGroups = groupFields(
+    editableFields(props.config).filter(([key]) => !sidebarKeys.has(key)),
+  );
 
   // Create-form field defaults (#98): reactively seed a field from another
   // (e.g. a page title from the chosen category), overridable by the user. We
@@ -452,6 +545,68 @@ export function CollectionEdit(props: CollectionEditProps) {
   });
   onCleanup(() => clearTimeout(autosaveTimer));
 
+  // Draft slice of the actions API — a stable object of live getters, so a
+  // custom `renderHeader` reading `api.draft?.publishing` etc. stays reactive.
+  const draftApi: EditDraftApi = {
+    saveDraft: () =>
+      void props.draftActions?.onSaveDraft(editablePayload(formValues())),
+    publish: requestPublish,
+    get preview() {
+      return props.draftActions?.onPreview
+        ? () => void props.draftActions?.onPreview?.()
+        : undefined;
+    },
+    get saving() {
+      return props.draftActions?.saving ?? false;
+    },
+    get publishing() {
+      return props.draftActions?.publishing ?? false;
+    },
+    get previewing() {
+      return props.draftActions?.previewing ?? false;
+    },
+    get canPublish() {
+      return props.draftActions?.canPublish ?? false;
+    },
+    get canPreview() {
+      return props.draftActions?.canPreview ?? false;
+    },
+    get autosaveStatus() {
+      return autosaveStatus();
+    },
+  };
+
+  // Handed to `renderHeader` — everything needed to build a custom action bar.
+  const actionsApi: EditActionsApi = {
+    get values() {
+      return formValues();
+    },
+    get dirty() {
+      return !isDefaultValue();
+    },
+    save: () => void form.handleSubmit(),
+    get saving() {
+      return props.saving ?? false;
+    },
+    get canSave() {
+      return props.capabilities?.canUpdate !== false;
+    },
+    get draft() {
+      return versioned() ? draftApi : undefined;
+    },
+    get remove() {
+      return props.onDelete;
+    },
+  };
+
+  // Handed to `renderSidebar` — lets the rail edit the shared form directly.
+  const sidebarApi: EditSidebarApi = {
+    get values() {
+      return formValues();
+    },
+    setValue: (key, value) => form.setFieldValue(key, value),
+  };
+
   return (
     <form
       class="flex flex-col gap-4"
@@ -460,6 +615,7 @@ export function CollectionEdit(props: CollectionEditProps) {
         void form.handleSubmit();
       }}
     >
+      <Show when={props.renderHeader}>{props.renderHeader?.(actionsApi)}</Show>
       <Show when={props.error}>
         {/* role="alert" so assistive tech announces submit failures the
             moment they appear, not only if the user happens to navigate to
@@ -483,7 +639,7 @@ export function CollectionEdit(props: CollectionEditProps) {
             props.renderSidebar ? "flex min-w-0 flex-col gap-4" : "contents"
           }
         >
-          <For each={fieldGroups}>
+          <For each={mainFieldGroups}>
             {(group) => (
               <Show
                 when={group.name}
@@ -513,100 +669,104 @@ export function CollectionEdit(props: CollectionEditProps) {
         </div>
         <Show when={props.renderSidebar}>
           <aside class="flex flex-col gap-4 lg:sticky lg:top-4">
-            {props.renderSidebar?.()}
+            {props.renderSidebar?.(sidebarApi)}
           </aside>
         </Show>
       </div>
       {/* Bottom-anchored, full-width action bar — not a top toolbar, per
-          issue #25's mobile-first note. */}
-      <div class="bg-base-100 sticky bottom-0 flex gap-2 border-t py-3">
-        <Show
-          when={versioned()}
-          fallback={
-            <Show when={props.capabilities?.canUpdate !== false}>
-              {/* type="button" + handleSubmit (not a native submit) so
+          issue #25's mobile-first note. Suppressed when a custom `renderHeader`
+          owns the actions instead. */}
+      <Show when={!props.renderHeader}>
+        <div class="bg-base-100 sticky bottom-0 flex gap-2 border-t py-3">
+          <Show
+            when={versioned()}
+            fallback={
+              <Show when={props.capabilities?.canUpdate !== false}>
+                {/* type="button" + handleSubmit (not a native submit) so
                   TanStack Form owns validation — a native `required` field
                   left empty no longer silently blocks the submit event, and
                   inline validation becomes the single authority. The
                   <form onSubmit> above still handles Enter. */}
+                <button
+                  type="button"
+                  class="btn btn-primary flex-1"
+                  disabled={props.saving}
+                  onClick={() => void form.handleSubmit()}
+                >
+                  <Show
+                    when={props.saving}
+                    fallback={props.submitLabel ?? "Save"}
+                  >
+                    <span class="loading loading-spinner loading-sm" />
+                  </Show>
+                </button>
+              </Show>
+            }
+          >
+            <button
+              type="button"
+              class="btn flex-1"
+              disabled={props.draftActions?.saving}
+              onClick={() =>
+                void props.draftActions?.onSaveDraft(
+                  editablePayload(formValues()),
+                )
+              }
+            >
+              <Show
+                when={props.draftActions?.saving}
+                fallback={props.draftActions?.saveDraftLabel ?? "Save draft"}
+              >
+                <span class="loading loading-spinner loading-sm" />
+              </Show>
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary flex-1"
+              disabled={
+                !props.draftActions?.canPublish ||
+                props.draftActions?.publishing
+              }
+              onClick={requestPublish}
+            >
+              <Show
+                when={props.draftActions?.publishing}
+                fallback={props.draftActions?.publishLabel ?? "Publish"}
+              >
+                <span class="loading loading-spinner loading-sm" />
+              </Show>
+            </button>
+            <Show when={props.draftActions?.onPreview}>
               <button
                 type="button"
-                class="btn btn-primary flex-1"
-                disabled={props.saving}
-                onClick={() => void form.handleSubmit()}
+                class="btn btn-outline flex-1"
+                disabled={
+                  !props.draftActions?.canPreview ||
+                  props.draftActions?.previewing
+                }
+                onClick={() => void props.draftActions?.onPreview?.()}
               >
                 <Show
-                  when={props.saving}
-                  fallback={props.submitLabel ?? "Save"}
+                  when={props.draftActions?.previewing}
+                  fallback={props.draftActions?.previewLabel ?? "Preview"}
                 >
                   <span class="loading loading-spinner loading-sm" />
                 </Show>
               </button>
             </Show>
-          }
-        >
-          <button
-            type="button"
-            class="btn flex-1"
-            disabled={props.draftActions?.saving}
-            onClick={() =>
-              void props.draftActions?.onSaveDraft(
-                editablePayload(formValues()),
-              )
-            }
-          >
-            <Show
-              when={props.draftActions?.saving}
-              fallback={props.draftActions?.saveDraftLabel ?? "Save draft"}
-            >
-              <span class="loading loading-spinner loading-sm" />
-            </Show>
-          </button>
-          <button
-            type="button"
-            class="btn btn-primary flex-1"
-            disabled={
-              !props.draftActions?.canPublish || props.draftActions?.publishing
-            }
-            onClick={requestPublish}
-          >
-            <Show
-              when={props.draftActions?.publishing}
-              fallback={props.draftActions?.publishLabel ?? "Publish"}
-            >
-              <span class="loading loading-spinner loading-sm" />
-            </Show>
-          </button>
-          <Show when={props.draftActions?.onPreview}>
-            <button
-              type="button"
-              class="btn btn-outline flex-1"
-              disabled={
-                !props.draftActions?.canPreview ||
-                props.draftActions?.previewing
-              }
-              onClick={() => void props.draftActions?.onPreview?.()}
-            >
-              <Show
-                when={props.draftActions?.previewing}
-                fallback={props.draftActions?.previewLabel ?? "Preview"}
+            <Show when={props.draftActions?.autosave}>
+              {/* aria-live so assistive tech announces autosave transitions. */}
+              <span
+                class="text-base-content/60 self-center px-1 text-xs"
+                aria-live="polite"
               >
-                <span class="loading loading-spinner loading-sm" />
-              </Show>
-            </button>
+                <Show when={autosaveStatus() === "saving"}>Saving…</Show>
+                <Show when={autosaveStatus() === "saved"}>Saved</Show>
+              </span>
+            </Show>
           </Show>
-          <Show when={props.draftActions?.autosave}>
-            {/* aria-live so assistive tech announces autosave transitions. */}
-            <span
-              class="text-base-content/60 self-center px-1 text-xs"
-              aria-live="polite"
-            >
-              <Show when={autosaveStatus() === "saving"}>Saving…</Show>
-              <Show when={autosaveStatus() === "saved"}>Saved</Show>
-            </span>
-          </Show>
-        </Show>
-      </div>
+        </div>
+      </Show>
 
       {/* Publish-confirmation dialog — a gentle gate before content goes live. */}
       <Show when={confirmingPublish()}>
@@ -1135,6 +1295,18 @@ function BlockEditor(props: {
       ? (props.fieldApi().state.value as Record<string, unknown>[])
       : [];
 
+  // Start existing blocks collapsed (opt-in via collapseBlocksByDefault) so a
+  // loaded page reads as a one-line outline. Runs once, on the first render
+  // that actually has items; blocks added afterward stay expanded for editing.
+  let collapseInitDone = false;
+  createEffect(() => {
+    const list = items();
+    if (collapseInitDone || !props.ctx.collapseBlocksByDefault) return;
+    if (list.length === 0) return;
+    collapseInitDone = true;
+    setCollapsed(new Set(list.map((_, i) => i)));
+  });
+
   function addBlock(variant?: string) {
     // Discriminated arrays are the page-builder's blocks — give each a stable
     // `_key` so a per-block visual-edit ref (`blocks.<_key>`) survives later
@@ -1224,6 +1396,13 @@ function BlockEditor(props: {
     }
     return props.label;
   }
+  // The variant's `admin.icon` (if any) — shown as a small tile in the block
+  // row so the page outline scans by shape, like Studio Prototype's builder.
+  function blockIcon(item: Record<string, unknown>): string | undefined {
+    if (!disc) return undefined;
+    const v = item[disc.key];
+    return typeof v === "string" ? disc.variantsAdmin?.[v]?.icon : undefined;
+  }
   // A one-line preview for a collapsed block — the first non-discriminator
   // text/select value, so the outline reads meaningfully.
   function blockSummary(item: Record<string, unknown>): string {
@@ -1276,6 +1455,11 @@ function BlockEditor(props: {
                     onClick={() => toggleCollapse(index)}
                   >
                     <span aria-hidden="true">{isCollapsed() ? "▸" : "▾"}</span>
+                    <Show when={blockIcon(item())}>
+                      <span class="cadmea-block-icon" aria-hidden="true">
+                        <i class={blockIcon(item())} />
+                      </span>
+                    </Show>
                     <span class="font-semibold">{blockTitle(item())}</span>
                   </button>
                   <Show when={isCollapsed() && blockSummary(item())}>

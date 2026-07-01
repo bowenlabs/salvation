@@ -30,6 +30,8 @@ export interface CollectionEditDraftOptions {
   previewLabel?: string;
   /** Enable debounced autosave of drafts (see CollectionEdit's autosave). */
   autosave?: boolean;
+  /** Ask for confirmation (a dialog) before publishing — forwarded to CollectionEdit. */
+  confirmPublish?: boolean;
 }
 
 /**
@@ -75,6 +77,17 @@ export interface CollectionEditPageOptions {
   relationshipOptions?: CollectionEditProps["relationshipOptions"];
   /** Optional right-hand sidebar content — forwarded to CollectionEdit (two-column layout). */
   renderSidebar?: CollectionEditProps["renderSidebar"];
+  /** Field keys the sidebar rail owns (hidden from the main column) — forwarded to CollectionEdit. */
+  sidebarFields?: CollectionEditProps["sidebarFields"];
+  /**
+   * Custom top header / action bar (a breadcrumb + Save/Publish/…) — forwarded
+   * to CollectionEdit. When set, the factory's default `<h1>` heading and
+   * Delete button are suppressed (the header owns chrome, incl. delete via its
+   * actions API). Omit for the default heading + bottom bar.
+   */
+  renderHeader?: CollectionEditProps["renderHeader"];
+  /** Start block (discriminated array) fields collapsed — forwarded to CollectionEdit. */
+  collapseBlocksByDefault?: boolean;
   /**
    * Renders "Save draft"/"Publish" instead of the generic Save button —
    * only meaningful when `collection.versions?.drafts` is also true (see
@@ -208,9 +221,12 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
 
     const EditorPane = () => (
       <div class="flex flex-col gap-4">
-        <h1 class="text-xl font-semibold">
-          {options.label ?? `Edit ${options.collection.slug}`}
-        </h1>
+        {/* Default heading — suppressed when a custom header owns the chrome. */}
+        <Show when={!options.renderHeader}>
+          <h1 class="text-xl font-semibold">
+            {options.label ?? `Edit ${options.collection.slug}`}
+          </h1>
+        </Show>
         <Show when={row.data}>
           <CollectionEdit
             config={options.collection}
@@ -229,6 +245,10 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
             fieldWidgets={options.fieldWidgets}
             relationshipOptions={options.relationshipOptions}
             renderSidebar={options.renderSidebar}
+            sidebarFields={options.sidebarFields}
+            renderHeader={options.renderHeader}
+            collapseBlocksByDefault={options.collapseBlocksByDefault}
+            onDelete={() => remove.mutate()}
             onDirtyChange={setDirty}
             onValuesChange={setPreviewValues}
             focusBlock={focusBlock()}
@@ -249,11 +269,19 @@ export function createCollectionEditPage(options: CollectionEditPageOptions) {
                 publishLabel: options.draftActions.publishLabel,
                 previewLabel: options.draftActions.previewLabel,
                 autosave: options.draftActions.autosave,
+                confirmPublish: options.draftActions.confirmPublish,
               }
             }
           />
         </Show>
-        <Show when={options.capabilities?.()?.canDelete !== false}>
+        {/* Default Delete — suppressed when a custom header owns the actions
+            (the header offers delete via its actions API instead). */}
+        <Show
+          when={
+            !options.renderHeader &&
+            options.capabilities?.()?.canDelete !== false
+          }
+        >
           <button
             type="button"
             class="btn btn-error btn-outline btn-sm self-start"
