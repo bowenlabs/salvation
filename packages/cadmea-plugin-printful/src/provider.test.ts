@@ -19,10 +19,10 @@ describe("createPrintfulProvider", () => {
   });
 
   describe("createFulfillmentOrder", () => {
-    it("splits catalogRef into catalog_variant_id/fileId and posts to /orders", async () => {
+    it("splits catalogRef into catalog_variant_id/fileId and posts to /v2/orders", async () => {
       let seenBody: Record<string, unknown> | undefined;
       vi.stubGlobal("fetch", async (url: URL, init: RequestInit) => {
-        expect(url.toString()).toContain("/orders");
+        expect(url.toString()).toContain("/v2/orders");
         seenBody = JSON.parse(init.body as string);
         return jsonResponse({ data: { id: 555, status: "draft" } });
       });
@@ -49,7 +49,7 @@ describe("createPrintfulProvider", () => {
       });
       expect(seenBody?.external_id).toBe("cadmea-order-42");
       expect(
-        (seenBody?.order_items as Array<Record<string, unknown>>)[0],
+        (seenBody?.items as Array<Record<string, unknown>>)[0],
       ).toMatchObject({
         catalog_variant_id: 1001,
         quantity: 2,
@@ -80,7 +80,7 @@ describe("createPrintfulProvider", () => {
         shippingAddress: {},
       });
 
-      expect(calledPaths.some((p) => p.includes("/confirmation"))).toBe(false);
+      expect(calledPaths.some((p) => p.includes("/confirm"))).toBe(false);
     });
 
     it("calls the confirmation endpoint when autoConfirm is true", async () => {
@@ -97,9 +97,9 @@ describe("createPrintfulProvider", () => {
         shippingAddress: {},
       });
 
-      expect(
-        calledPaths.some((p) => p.includes("/orders/7/confirmation")),
-      ).toBe(true);
+      expect(calledPaths.some((p) => p.includes("/orders/7/confirm"))).toBe(
+        true,
+      );
     });
 
     it("throws on a malformed catalogRef rather than silently skipping it", async () => {
