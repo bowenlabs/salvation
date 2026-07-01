@@ -207,3 +207,48 @@ describe("generateSchemaSource", () => {
     );
   });
 });
+
+// Determinism (pt#83 Direction B): the emitted schema must be reproducible so a
+// given plugin version yields byte-identical migrations across every consuming
+// site — otherwise N sites drift into N migration trails for one upstream change.
+describe("generateSchemaSource — determinism (pt#83)", () => {
+  const products: CollectionConfig = {
+    slug: "products",
+    fields: {
+      id: { type: "number", autoIncrement: true },
+      name: { type: "text", required: true },
+    },
+  };
+
+  function tableBlock(source: string, slug: string): string {
+    const start = source.indexOf(`export const ${slug} = sqliteTable`);
+    if (start === -1) throw new Error(`no table for "${slug}"`);
+    const end = source.indexOf("\n\n", start);
+    return source.slice(start, end === -1 ? undefined : end);
+  }
+
+  it("emits byte-identical output for the same config", () => {
+    const config = { collections: [pagesCollection, products] };
+    expect(generateSchemaSource(config)).toBe(generateSchemaSource(config));
+  });
+
+  it("emits a collection's table identically regardless of which other collections are present or their order", () => {
+    const alone = generateSchemaSource({ collections: [pagesCollection] });
+    const withOthers = generateSchemaSource({
+      collections: [products, pagesCollection],
+    });
+    // The `pages` block is a pure function of the `pages` config, so a plugin's
+    // table stays stable across sites that compose different collection sets.
+    expect(tableBlock(withOthers, "pages")).toBe(tableBlock(alone, "pages"));
+  });
+
+  it("emits a drizzle import list in sorted order (stable regardless of field order)", () => {
+    const source = generateSchemaSource({ collections: [pagesCollection] });
+    const importLine = source
+      .split("\n")
+      .find((line) => line.includes('from "drizzle-orm/sqlite-core"'));
+    const names = importLine?.match(/\{ (.+) \}/)?.[1].split(", ") ?? [];
+    expect(names.length).toBeGreaterThan(0);
+    expect(names).toEqual([...names].sort());
+  });
+});

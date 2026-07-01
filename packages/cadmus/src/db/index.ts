@@ -14,3 +14,7 @@ export function db<
 >(d1: D1Database, schema?: TSchema) {
   return drizzle(d1, { schema });
 }
+
+// Framework-owned `site_settings` (pt#83) — the generic singleton config table
+// sites compose or use as-is, so it doesn't drift between clients.
+export * from "./site-settings.js";

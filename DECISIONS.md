@@ -9,6 +9,57 @@
 
 ---
 
+## 2026-06-30 — Plugin/site migrations composition: **Direction B** (plugins ship their own migration sets)
+
+**Context:** schema is config-driven today — a site's `generate-schema.ts` calls
+`generateSchemaSource(cadmeaConfig)` and writes `core/db/schema.generated.ts`,
+then `drizzle-kit generate` diffs the **whole composed schema** (site tables +
+plugin tables) into one per-site migration. That's fine for one site, but it
+bites at client #2: every consuming site independently re-derives and reviews
+the *same* migration for a plugin schema change (N sites ⇒ N migration trails
+for one upstream change), there's no per-plugin schema-version provenance, and
+`site_settings` is hand-rolled per site though it's entirely framework-generic.
+(See bowenlabs/project-thebes#83 and bowenlabs/template-web#17.)
+
+**Decision:** adopt **Direction B** — plugins (and cadmus core) **own and ship
+their own versioned migration sets**; a consuming site applies a *merged,
+namespaced, deterministically-ordered* set of framework + site migrations on the
+single D1. (Not Direction A — reproducible-but-still-site-local generation —
+because the agency model stamps many sites and B is the clean separation that
+stops the per-site re-derivation.)
+
+**The tension it has to resolve:** because `drizzle-kit` diffs the composed
+schema, it *already* generates migrations for plugin tables. So B requires the
+site's `generateSchemaSource` / drizzle-kit diff to emit **only site-owned
+collections**; plugin tables leave the site's drizzle-kit scope and come from the
+plugin's shipped SQL instead.
+
+**Target contract:**
+1. Each plugin exports an ordered `migrations` manifest (`{ id, sql }`, baseline
+   + incrementals) shipped in `dist`; a plugin bump that changes a table adds an
+   incremental. cadmus core ships the `site_settings` baseline the same way.
+2. `generateSchemaSource` emits only site-owned collections; drizzle-kit diffs
+   just those.
+3. A compose step merges the sets into the D1 migrations dir with a namespaced,
+   ordered filename scheme — framework/plugin ranges before site ranges, each
+   source internally ordered (`0000_cadmus__site_settings`,
+   `0001_ecommerce__baseline`, … `0100_site__portfolio`) — so the interleave is
+   reproducible across sites for the same plugin versions.
+4. `generateSchemaSource` emission is deterministic (a collection's table block
+   is a pure function of its config; import list sorted) — pinned by tests.
+
+**Shipped in this PR (the safe, non-disruptive slices):** framework-owned
+`site_settings` (`@thebes/cadmus/db` exports `siteSettingsColumns` +
+`siteSettings`, byte-identical to the current hand-rolled table so adopting it
+produces no spurious migration); determinism tests for `generateSchemaSource`;
+and this contract.
+
+**Deferred (needs the design above signed off — it changes every site's
+`db:generate`/`db:migrate` flow):** the plugin migration manifests, splitting
+plugin tables out of the site's drizzle-kit diff, and the compose/merge tool.
+
+---
+
 ## 2026-06-24 — Closed the `tsup` consistency gap for real: every remaining package moved to `vp pack`
 
 **Context:** the cadmea-design-system entry below this one already named the
