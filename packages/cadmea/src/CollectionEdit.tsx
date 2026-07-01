@@ -354,6 +354,16 @@ export function CollectionEdit(props: CollectionEditProps) {
     else void props.draftActions?.onPublish?.();
   }
   let autosaveTimer: ReturnType<typeof setTimeout> | undefined;
+  // The editable payload we last kicked off an autosave for. Unlike the
+  // onSubmit path above, the draft path never re-baselines the form, so
+  // `dirty` stays true after a save; meanwhile `draftActions` is typically a
+  // reactive getter (its `saving`/`canPublish` read the consumer's mutation
+  // signals — see createCollectionEditPage), so this effect re-runs on every
+  // save's pending toggle. Those two facts together would re-arm the debounce
+  // forever — an infinite autosave loop that floods the server (and any write
+  // rate-limit). Gate on the content instead: only (re-)autosave when the
+  // editable values actually differ from what we last saved.
+  let lastAutosaved: string | undefined;
   createEffect(() => {
     const dirty = !isDefaultValue();
     const values = formValues();
@@ -362,11 +372,20 @@ export function CollectionEdit(props: CollectionEditProps) {
       setAutosaveStatus("idle");
       return;
     }
+    const payload = editablePayload(values);
+    const serialized = JSON.stringify(payload);
+    // Already autosaved this exact content — don't re-arm (this is what breaks
+    // the loop when a reactive re-run fires with unchanged values).
+    if (serialized === lastAutosaved) return;
     clearTimeout(autosaveTimer);
     autosaveTimer = setTimeout(async () => {
+      // Record up-front (not after the await) so a reactive re-run mid-save
+      // can't slip a duplicate save through, and a failed save doesn't
+      // retry-storm — the manual Save draft button is the explicit retry path.
+      lastAutosaved = serialized;
       setAutosaveStatus("saving");
       try {
-        await props.draftActions?.onSaveDraft(editablePayload(values));
+        await props.draftActions?.onSaveDraft(payload);
         setAutosaveStatus("saved");
       } catch {
         // Surface nothing special on failure — the manual Save draft button
