@@ -252,3 +252,27 @@ describe("generateSchemaSource — determinism (pt#83)", () => {
     expect(names).toEqual([...names].sort());
   });
 });
+
+describe("generateSchemaSource — exclude option (pt#83 Direction B)", () => {
+  const products: CollectionConfig = {
+    slug: "products",
+    fields: { id: { type: "number", autoIncrement: true } },
+  };
+
+  it("omits excluded collections so plugin tables leave the site's drizzle-kit diff", () => {
+    const source = generateSchemaSource(
+      { collections: [pagesCollection, products] },
+      { exclude: ["products"] },
+    );
+    expect(source).toContain('export const pages = sqliteTable("pages"');
+    expect(source).not.toContain('sqliteTable("products"');
+  });
+
+  it("defaults to emitting every collection when no exclude is given", () => {
+    const source = generateSchemaSource({
+      collections: [pagesCollection, products],
+    });
+    expect(source).toContain('sqliteTable("pages"');
+    expect(source).toContain('sqliteTable("products"');
+  });
+});

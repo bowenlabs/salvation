@@ -63,6 +63,10 @@
       "types": "./dist/secrets/index.d.ts",
       "default": "./dist/secrets/index.js"
     },
+    "./migrations": {
+      "types": "./dist/migrations/index.d.ts",
+      "default": "./dist/migrations/index.js"
+    },
     "./queues": {
       "types": "./dist/queues/index.d.ts",
       "default": "./dist/queues/index.js"
